@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Основные цвета приложения -->
+    <color name="color_primary">#FF9800</color>
+    <color name="color_primary_variant">#F57C00</color>
+    <color name="color_secondary">#80CBC4</color>
+    <color name="color_secondary_variant">#00796B</color>
+
+    <!-- Фон -->
+    <color name="background_light">#121212</color>
+    <color name="background_light_gray">#121212</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="grey">#B3B3B3</color>
+
+    <!-- Тексты -->
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_primary_light">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="text_secondary_light">#B3FFFFFF</color>
+
+    <!-- Ошибки -->
+    <color name="red_error">#EF9A9A</color>
+
+    <!-- Обводка для поиска -->
+    <color name="search_border">#20FFFFFF</color>
+
+    <!-- Дополнительные цвета для иконок -->
+    <color name="icon_color_primary">@color/color_primary</color>
+    <color name="icon_color_white">@color/white</color>
+    <color name="icon_color_grey">@color/grey</color>
+</resources>

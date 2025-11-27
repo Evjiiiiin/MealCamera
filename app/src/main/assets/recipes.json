@@ -1,0 +1,786 @@
+{
+  "ingredients": [
+    {"name": "Соль", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Перец", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Вода", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Растительное масло", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Сахар", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Мука", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Сливочное масло", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Чеснок", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Лавровый лист", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Уксус", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Разрыхлитель", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Шафран", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Панировочные сухари", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Ваниль", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Корица", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Кофе", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Сушеный базилик", "isAlwaysAvailable": true, "isCoreIngredient": false},
+    {"name": "Соус бешамель", "isAlwaysAvailable": true, "isCoreIngredient": false},
+
+    {"name": "Яйцо", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Молоко", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Куриное филе", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Картофель", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Лук", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Морковь", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Макароны", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Сыр", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Помидор", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Хлеб", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Огурец", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Говядина", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Рыба", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Рис", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Капуста", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Перец болгарский", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Грибы", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Сметана", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Майонез", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Яблоко", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Банан", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Лимон", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Клубника", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Ягоды", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Бекон", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Сливки", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Пармезан", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Салат листовой", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Гренки", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Креветки", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Белое вино", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Томатный соус", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Фарш мясной", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Свекла", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Фасоль", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Огурцы маринованные", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Маслины", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Тесто", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Авокадо", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Мед", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Орехи", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Курица целая", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Свинина", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Колбаса", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Шпинат", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Кабачок", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Баклажан", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Зеленый лук", "isAlwaysAvailable": false, "isCoreIngredient": false},
+    {"name": "Овсяные хлопья", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Травы пряные", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Базилик", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Йогурт", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Специи готовые", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Пельмени", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Листы лазаньи", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Сыр кремовый", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Кукурузный крахмал", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Какао", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Слоеёное тесто", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Маскарпоне", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Дамские пальчики", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Мороженое ванильное", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Сироп", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Мята", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Гречка", "isAlwaysAvailable": false, "isCoreIngredient": true},
+    {"name": "Основа для пирога", "isAlwaysAvailable": false, "isCoreIngredient": true}
+  ],
+  "recipes": [
+    {
+      "name": "Омлет с сыром",
+      "description": "Пышный завтрак с расплавленным сыром",
+      "imagePath": "https://images.pexels.com/photos/18363027/pexels-photo-18363027.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Яйцо", "quantity": "3", "unit": "шт."},
+        {"name": "Молоко", "quantity": "50", "unit": "мл"},
+        {"name": "Сыр", "quantity": "50", "unit": "гр"},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""},
+        {"name": "Растительное масло", "quantity": "1", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Яичница с беконом",
+      "description": "Классическая яичница с хрустящим беконом",
+      "imagePath": "https://images.pexels.com/photos/22882533/pexels-photo-22882533.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Бекон", "quantity": "100", "unit": "гр"},
+        {"name": "Хлеб", "quantity": "2", "unit": "ломтика"},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Блины",
+      "description": "Тонкие русские блины",
+      "imagePath": "https://images.pexels.com/photos/8601533/pexels-photo-8601533.jpeg",
+      "category": "Завтрак",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "200", "unit": "гр"},
+        {"name": "Молоко", "quantity": "300", "unit": "мл"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Сахар", "quantity": "1", "unit": "ст.л."},
+        {"name": "Соль", "quantity": "1", "unit": "щепотка"},
+        {"name": "Растительное масло", "quantity": "2", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Сырники",
+      "description": "Творожные сырники с сметаной",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Завтрак",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Сыр", "quantity": "200", "unit": "гр"},
+        {"name": "Мука", "quantity": "50", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Сахар", "quantity": "2", "unit": "ст.л."},
+        {"name": "Растительное масло", "quantity": "2", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Гранола",
+      "description": "Хрустящая гранола с орехами и медом",
+      "imagePath": "https://images.pexels.com/photos/33742594/pexels-photo-33742594.jpeg",
+      "category": "Завтрак",
+      "prepTime": "25 мин",
+      "ingredients": [
+        {"name": "Овсяные хлопья", "quantity": "200", "unit": "гр"},
+        {"name": "Мед", "quantity": "50", "unit": "мл"},
+        {"name": "Орехи", "quantity": "50", "unit": "гр"},
+        {"name": "Растительное масло", "quantity": "30", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Тост с авокадо",
+      "description": "Здоровый тост с авокадо и яйцом",
+      "imagePath": "https://images.pexels.com/photos/34622257/pexels-photo-34622257.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Хлеб", "quantity": "2", "unit": "ломтика"},
+        {"name": "Авокадо", "quantity": "1", "unit": "шт."},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Лимон", "quantity": "0.5", "unit": "шт."},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Панкейки",
+      "description": "Американские панкейки с кленовым сиропом",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Завтрак",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "150", "unit": "гр"},
+        {"name": "Молоко", "quantity": "180", "unit": "мл"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Сахар", "quantity": "2", "unit": "ст.л."},
+        {"name": "Сливочное масло", "quantity": "20", "unit": "гр"},
+        {"name": "Разрыхлитель", "quantity": "1", "unit": "ч.л."}
+      ]
+    },
+    {
+      "name": "Овсянка",
+      "description": "Кремовая овсянка с ягодами",
+      "imagePath": "https://images.pexels.com/photos/5604832/pexels-photo-5604832.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Овсяные хлопья", "quantity": "50", "unit": "гр"},
+        {"name": "Молоко", "quantity": "200", "unit": "мл"},
+        {"name": "Ягоды", "quantity": "30", "unit": "гр"},
+        {"name": "Мед", "quantity": "1", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Яичный рулет",
+      "description": "Нежный рулет с зеленью",
+      "imagePath": "https://images.pexels.com/photos/18363027/pexels-photo-18363027.jpeg",
+      "category": "Завтрак",
+      "prepTime": "15 мин",
+      "ingredients": [
+        {"name": "Яйцо", "quantity": "4", "unit": "шт."},
+        {"name": "Молоко", "quantity": "50", "unit": "мл"},
+        {"name": "Зеленый лук", "quantity": "20", "unit": "гр"},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Сэндвич с сыром",
+      "description": "Горячий сэндвич с расплавленным сыром",
+      "imagePath": "https://images.pexels.com/photos/18363027/pexels-photo-18363027.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Хлеб", "quantity": "2", "unit": "ломтика"},
+        {"name": "Сыр", "quantity": "80", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "10", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Яичница в хлебе",
+      "description": "Оригинальная подача яичницы",
+      "imagePath": "https://images.pexels.com/photos/22882533/pexels-photo-22882533.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Хлеб", "quantity": "2", "unit": "ломтика"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Сливочное масло", "quantity": "10", "unit": "гр"},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Фруктовый салат",
+      "description": "Свежий салат с медом",
+      "imagePath": "https://images.pexels.com/photos/33742594/pexels-photo-33742594.jpeg",
+      "category": "Завтрак",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Яблоко", "quantity": "1", "unit": "шт."},
+        {"name": "Банан", "quantity": "1", "unit": "шт."},
+        {"name": "Клубника", "quantity": "50", "unit": "гр"},
+        {"name": "Мед", "quantity": "1", "unit": "ст.л."},
+        {"name": "Лимон", "quantity": "0.5", "unit": "шт."}
+      ]
+    },
+    {
+      "name": "Каша рисовая",
+      "description": "Кремовая рисовая каша",
+      "imagePath": "https://images.pexels.com/photos/5604832/pexels-photo-5604832.jpeg",
+      "category": "Завтрак",
+      "prepTime": "25 мин",
+      "ingredients": [
+        {"name": "Рис", "quantity": "100", "unit": "гр"},
+        {"name": "Молоко", "quantity": "300", "unit": "мл"},
+        {"name": "Сахар", "quantity": "1", "unit": "ст.л."},
+        {"name": "Сливочное масло", "quantity": "20", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Бутерброд с авокадо",
+      "description": "Здоровый бутерброд",
+      "imagePath": "https://images.pexels.com/photos/30336930/pexels-photo-30336930.jpeg",
+      "category": "Завтрак",
+      "prepTime": "5 мин",
+      "ingredients": [
+        {"name": "Хлеб", "quantity": "2", "unit": "ломтика"},
+        {"name": "Авокадо", "quantity": "1", "unit": "шт."},
+        {"name": "Лимон", "quantity": "0.5", "unit": "шт."},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Йогурт с гранолой",
+      "description": "Простой и полезный завтрак",
+      "imagePath": "https://images.pexels.com/photos/33742594/pexels-photo-33742594.jpeg",
+      "category": "Завтрак",
+      "prepTime": "3 мин",
+      "ingredients": [
+        {"name": "Йогурт", "quantity": "150", "unit": "мл"},
+        {"name": "Овсяные хлопья", "quantity": "30", "unit": "гр"},
+        {"name": "Мед", "quantity": "1", "unit": "ст.л."},
+        {"name": "Ягоды", "quantity": "20", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Крепы",
+      "description": "Тонкие французские блины",
+      "imagePath": "https://images.pexels.com/photos/8601533/pexels-photo-8601533.jpeg",
+      "category": "Завтрак",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "100", "unit": "гр"},
+        {"name": "Молоко", "quantity": "200", "unit": "мл"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Сливочное масло", "quantity": "15", "unit": "гр"},
+        {"name": "Сахар", "quantity": "1", "unit": "ч.л."}
+      ]
+    },
+    {
+      "name": "Куриный суп с лапшой",
+      "description": "Насыщенный суп с курицей и овощами",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "45 мин",
+      "ingredients": [
+        {"name": "Куриное филе", "quantity": "300", "unit": "гр"},
+        {"name": "Картофель", "quantity": "2", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Морковь", "quantity": "1", "unit": "шт."},
+        {"name": "Макароны", "quantity": "100", "unit": "гр"},
+        {"name": "Вода", "quantity": "1.5", "unit": "л"},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Борщ",
+      "description": "Классический красный борщ",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "60 мин",
+      "ingredients": [
+        {"name": "Свекла", "quantity": "1", "unit": "шт."},
+        {"name": "Капуста", "quantity": "200", "unit": "гр"},
+        {"name": "Картофель", "quantity": "2", "unit": "шт."},
+        {"name": "Морковь", "quantity": "1", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Томатный соус", "quantity": "2", "unit": "ст.л."},
+        {"name": "Говядина", "quantity": "200", "unit": "гр"},
+        {"name": "Чеснок", "quantity": "2", "unit": "зубчика"}
+      ]
+    },
+    {
+      "name": "Паста Карбонара",
+      "description": "Итальянская паста с беконом и сыром",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Обед",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Макароны", "quantity": "200", "unit": "гр"},
+        {"name": "Бекон", "quantity": "150", "unit": "гр"},
+        {"name": "Пармезан", "quantity": "100", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Чеснок", "quantity": "1", "unit": "зубчик"},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Солянка",
+      "description": "Острая мясная солянка",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "50 мин",
+      "ingredients": [
+        {"name": "Говядина", "quantity": "150", "unit": "гр"},
+        {"name": "Колбаса", "quantity": "100", "unit": "гр"},
+        {"name": "Огурцы маринованные", "quantity": "3", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Маслины", "quantity": "30", "unit": "гр"},
+        {"name": "Лимон", "quantity": "0.5", "unit": "шт."},
+        {"name": "Сметана", "quantity": "50", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Рататуй",
+      "description": "Французское овощное рагу",
+      "imagePath": "https://images.pexels.com/photos/7439978/pexels-photo-7439978.jpeg",
+      "category": "Обед",
+      "prepTime": "40 мин",
+      "ingredients": [
+        {"name": "Баклажан", "quantity": "1", "unit": "шт."},
+        {"name": "Кабачок", "quantity": "1", "unit": "шт."},
+        {"name": "Помидор", "quantity": "2", "unit": "шт."},
+        {"name": "Перец болгарский", "quantity": "1", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Чеснок", "quantity": "2", "unit": "зубчика"},
+        {"name": "Травы пряные", "quantity": "10", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Ризотто",
+      "description": "Кремовое ризотто с грибами",
+      "imagePath": "https://images.pexels.com/photos/7439978/pexels-photo-7439978.jpeg",
+      "category": "Обед",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Рис", "quantity": "200", "unit": "гр"},
+        {"name": "Грибы", "quantity": "150", "unit": "гр"},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Белое вино", "quantity": "100", "unit": "мл"},
+        {"name": "Сливочное масло", "quantity": "30", "unit": "гр"},
+        {"name": "Пармезан", "quantity": "50", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Паэлья",
+      "description": "Испанская паэлья с морепродуктами",
+      "imagePath": "https://images.pexels.com/photos/30819280/pexels-photo-30819280.jpeg",
+      "category": "Обед",
+      "prepTime": "35 мин",
+      "ingredients": [
+        {"name": "Рис", "quantity": "180", "unit": "гр"},
+        {"name": "Креветки", "quantity": "150", "unit": "гр"},
+        {"name": "Перец болгарский", "quantity": "1", "unit": "шт."},
+        {"name": "Помидор", "quantity": "2", "unit": "шт."},
+        {"name": "Чеснок", "quantity": "3", "unit": "зубчика"},
+        {"name": "Шафран", "quantity": "щепотка", "unit": ""}
+      ]
+    },
+    {
+      "name": "Гаспачо",
+      "description": "Холодный испанский суп",
+      "imagePath": "https://images.pexels.com/photos/7439978/pexels-photo-7439978.jpeg",
+      "category": "Обед",
+      "prepTime": "15 мин",
+      "ingredients": [
+        {"name": "Помидор", "quantity": "4", "unit": "шт."},
+        {"name": "Огурец", "quantity": "1", "unit": "шт."},
+        {"name": "Перец болгарский", "quantity": "1", "unit": "шт."},
+        {"name": "Лук", "quantity": "0.5", "unit": "шт."},
+        {"name": "Чеснок", "quantity": "1", "unit": "зубчик"},
+        {"name": "Уксус", "quantity": "1", "unit": "ст.л."},
+        {"name": "Растительное масло", "quantity": "3", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Суп-пюре",
+      "description": "Крем-суп из грибов",
+      "imagePath": "https://images.pexels.com/photos/7439978/pexels-photo-7439978.jpeg",
+      "category": "Обед",
+      "prepTime": "25 мин",
+      "ingredients": [
+        {"name": "Грибы", "quantity": "300", "unit": "гр"},
+        {"name": "Картофель", "quantity": "2", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Сливки", "quantity": "150", "unit": "мл"},
+        {"name": "Сливочное масло", "quantity": "30", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Бефстроганов",
+      "description": "Говядина в сметанном соусе",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Говядина", "quantity": "300", "unit": "гр"},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Сметана", "quantity": "150", "unit": "мл"},
+        {"name": "Грибы", "quantity": "100", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "20", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Котлеты",
+      "description": "Домашие мясные котлеты",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Обед",
+      "prepTime": "45 мин",
+      "ingredients": [
+        {"name": "Фарш мясной", "quantity": "400", "unit": "гр"},
+        {"name": "Хлеб", "quantity": "100", "unit": "гр"},
+        {"name": "Молоко", "quantity": "100", "unit": "мл"},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Панировочные сухари", "quantity": "50", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Жаркое",
+      "description": "Тушеное мясо с картошкой",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "90 мин",
+      "ingredients": [
+        {"name": "Свинина", "quantity": "300", "unit": "гр"},
+        {"name": "Картофель", "quantity": "4", "unit": "шт."},
+        {"name": "Лук", "quantity": "2", "unit": "шт."},
+        {"name": "Морковь", "quantity": "1", "unit": "шт."},
+        {"name": "Чеснок", "quantity": "3", "unit": "зубчика"}
+      ]
+    },
+    {
+      "name": "Салат Цезарь",
+      "description": "Классический салат с курицей",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Обед",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Куриное филе", "quantity": "200", "unit": "гр"},
+        {"name": "Салат листовой", "quantity": "150", "unit": "гр"},
+        {"name": "Гренки", "quantity": "80", "unit": "гр"},
+        {"name": "Пармезан", "quantity": "50", "unit": "гр"},
+        {"name": "Майонез", "quantity": "30", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Щи",
+      "description": "Традиционный русский суп",
+      "imagePath": "https://images.pexels.com/photos/28872869/pexels-photo-28872869.jpeg",
+      "category": "Обед",
+      "prepTime": "50 мин",
+      "ingredients": [
+        {"name": "Капуста", "quantity": "300", "unit": "гр"},
+        {"name": "Картофель", "quantity": "2", "unit": "шт."},
+        {"name": "Морковь", "quantity": "1", "unit": "шт."},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Говядина", "quantity": "150", "unit": "гр"},
+        {"name": "Помидор", "quantity": "1", "unit": "шт."},
+        {"name": "Сметана", "quantity": "50", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Гречка",
+      "description": "Гречка с грибами",
+      "imagePath": "https://images.pexels.com/photos/7439978/pexels-photo-7439978.jpeg",
+      "category": "Обед",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Гречка", "quantity": "200", "unit": "гр"},
+        {"name": "Грибы", "quantity": "200", "unit": "гр"},
+        {"name": "Лук", "quantity": "1", "unit": "шт."},
+        {"name": "Сливочное масло", "quantity": "30", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Пудинг",
+      "description": "Ванильный пудинг",
+      "imagePath": "https://images.pexels.com/photos/6205787/pexels-photo-6205787.jpeg",
+      "category": "Десерт",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Молоко", "quantity": "300", "unit": "мл"},
+        {"name": "Сахар", "quantity": "50", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Ваниль", "quantity": "1", "unit": "щепотка"},
+        {"name": "Кукурузный крахмал", "quantity": "2", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Чизкейк",
+      "description": "Классический чизкейк",
+      "imagePath": "https://images.pexels.com/photos/18198984/pexels-photo-18198984.jpeg",
+      "category": "Десерт",
+      "prepTime": "60 мин",
+      "ingredients": [
+        {"name": "Сыр кремовый", "quantity": "400", "unit": "гр"},
+        {"name": "Сахар", "quantity": "100", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "3", "unit": "шт."},
+        {"name": "Сметана", "quantity": "100", "unit": "мл"},
+        {"name": "Основа для пирога", "quantity": "200", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Тирамису",
+      "description": "Итальянский десерт",
+      "imagePath": "https://images.pexels.com/photos/18198984/pexels-photo-18198984.jpeg",
+      "category": "Десерт",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Маскарпоне", "quantity": "250", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "3", "unit": "шт."},
+        {"name": "Сахар", "quantity": "75", "unit": "гр"},
+        {"name": "Кофе", "quantity": "200", "unit": "мл"},
+        {"name": "Дамские пальчики", "quantity": "200", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Кекс",
+      "description": "Шоколадный кекс",
+      "imagePath": "https://images.pexels.com/photos/17741885/pexels-photo-17741885.jpeg",
+      "category": "Десерт",
+      "prepTime": "25 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "150", "unit": "гр"},
+        {"name": "Сахар", "quantity": "80", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Какао", "quantity": "30", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "50", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Печенье",
+      "description": "Домашнее песочное печенье",
+      "imagePath": "https://images.pexels.com/photos/6205787/pexels-photo-6205787.jpeg",
+      "category": "Десерт",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "200", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "100", "unit": "гр"},
+        {"name": "Сахар", "quantity": "60", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Ваниль", "quantity": "1", "unit": "щепотка"}
+      ]
+    },
+    {
+      "name": "Маффины",
+      "description": "Маффины с ягодами",
+      "imagePath": "https://images.pexels.com/photos/33468830/pexels-photo-33468830.jpeg",
+      "category": "Десерт",
+      "prepTime": "25 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "150", "unit": "гр"},
+        {"name": "Сахар", "quantity": "60", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Ягоды", "quantity": "80", "unit": "гр"},
+        {"name": "Растительное масло", "quantity": "50", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Торт",
+      "description": "Торт 'Наполеон'",
+      "imagePath": "https://images.pexels.com/photos/18198984/pexels-photo-18198984.jpeg",
+      "category": "Десерт",
+      "prepTime": "120 мин",
+      "ingredients": [
+        {"name": "Слоеёное тесто", "quantity": "500", "unit": "гр"},
+        {"name": "Сливки", "quantity": "300", "unit": "мл"},
+        {"name": "Сахар", "quantity": "150", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "100", "unit": "гр"},
+        {"name": "Ваниль", "quantity": "1", "unit": "щепотка"}
+      ]
+    },
+    {
+      "name": "Пуддинг",
+      "description": "Шоколадный пудинг",
+      "imagePath": "https://images.pexels.com/photos/6205787/pexels-photo-6205787.jpeg",
+      "category": "Десерт",
+      "prepTime": "15 мин",
+      "ingredients": [
+        {"name": "Молоко", "quantity": "250", "unit": "мл"},
+        {"name": "Какао", "quantity": "30", "unit": "гр"},
+        {"name": "Сахар", "quantity": "40", "unit": "гр"},
+        {"name": "Кукурузный крахмал", "quantity": "3", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Яблочный пирог",
+      "description": "Пирог с яблоками и корицей",
+      "imagePath": "https://images.pexels.com/photos/20666398/pexels-photo-20666398.jpeg",
+      "category": "Десерт",
+      "prepTime": "50 мин",
+      "ingredients": [
+        {"name": "Яблоко", "quantity": "3", "unit": "шт."},
+        {"name": "Мука", "quantity": "200", "unit": "гр"},
+        {"name": "Сахар", "quantity": "80", "unit": "гр"},
+        {"name": "Сливочное масло", "quantity": "100", "unit": "гр"},
+        {"name": "Корица", "quantity": "1", "unit": "ч.л."}
+      ]
+    },
+    {
+      "name": "Банановый хлеб",
+      "description": "Мягкий хлеб с бананом",
+      "imagePath": "https://images.pexels.com/photos/6205787/pexels-photo-6205787.jpeg",
+      "category": "Десерт",
+      "prepTime": "60 мин",
+      "ingredients": [
+        {"name": "Банан", "quantity": "3", "unit": "шт."},
+        {"name": "Мука", "quantity": "200", "unit": "гр"},
+        {"name": "Сахар", "quantity": "100", "unit": "гр"},
+        {"name": "Яйцо", "quantity": "2", "unit": "шт."},
+        {"name": "Сливочное масло", "quantity": "50", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Вафли",
+      "description": "Хрустящие вафли с ягодами",
+      "imagePath": "https://images.pexels.com/photos/31377698/pexels-photo-31377698.jpeg",
+      "category": "Десерт",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Мука", "quantity": "150", "unit": "гр"},
+        {"name": "Молоко", "quantity": "200", "unit": "мл"},
+        {"name": "Яйцо", "quantity": "1", "unit": "шт."},
+        {"name": "Сахар", "quantity": "40", "unit": "гр"},
+        {"name": "Ягоды", "quantity": "100", "unit": "гр"}
+      ]
+    },
+    {
+      "name": "Смузи",
+      "description": "Фруктовый смузи",
+      "imagePath": "https://images.pexels.com/photos/11410545/pexels-photo-11410545.jpeg",
+      "category": "Напитки",
+      "prepTime": "5 мин",
+      "ingredients": [
+        {"name": "Банан", "quantity": "1", "unit": "шт."},
+        {"name": "Ягоды", "quantity": "100", "unit": "гр"},
+        {"name": "Молоко", "quantity": "200", "unit": "мл"},
+        {"name": "Мед", "quantity": "1", "unit": "ст.л."}
+      ]
+    },
+    {
+      "name": "Молочный коктейль",
+      "description": "Ванильный молочный коктейль",
+      "imagePath": "https://images.pexels.com/photos/28525198/pexels-photo-28525198.jpeg",
+      "category": "Напитки",
+      "prepTime": "5 мин",
+      "ingredients": [
+        {"name": "Молоко", "quantity": "300", "unit": "мл"},
+        {"name": "Мороженое ванильное", "quantity": "100", "unit": "гр"},
+        {"name": "Сироп", "quantity": "30", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Лимонад",
+      "description": "Свежий домашний лимонад",
+      "imagePath": "https://images.pexels.com/photos/30412118/pexels-photo-30412118.jpeg",
+      "category": "Напитки",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Лимон", "quantity": "3", "unit": "шт."},
+        {"name": "Сахар", "quantity": "100", "unit": "гр"},
+        {"name": "Вода", "quantity": "1", "unit": "л"}
+      ]
+    },
+    {
+      "name": "Клубничный мохито",
+      "description": "Освежающий безалкогольный мохито",
+      "imagePath": "https://images.pexels.com/photos/30412118/pexels-photo-30412118.jpeg",
+      "category": "Напитки",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Клубника", "quantity": "150", "unit": "гр"},
+        {"name": "Мята", "quantity": "20", "unit": "гр"},
+        {"name": "Лимон", "quantity": "1", "unit": "шт."},
+        {"name": "Сахар", "quantity": "2", "unit": "ст.л."},
+        {"name": "Вода", "quantity": "500", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Горячий шоколад",
+      "description": "Согревающий напиток",
+      "imagePath": "https://images.pexels.com/photos/34308971/pexels-photo-34308971.jpeg",
+      "category": "Напитки",
+      "prepTime": "10 мин",
+      "ingredients": [
+        {"name": "Молоко", "quantity": "250", "unit": "мл"},
+        {"name": "Какао", "quantity": "30", "unit": "гр"},
+        {"name": "Сахар", "quantity": "30", "unit": "гр"},
+        {"name": "Сливки", "quantity": "50", "unit": "мл"}
+      ]
+    },
+    {
+      "name": "Курица с рисом и овощами",
+      "description": "Простое и сытное блюдо для ужина.",
+      "imagePath": "https://images.pexels.com/photos/1624487/pexels-photo-1624487.jpeg",
+      "category": "Ужин",
+      "prepTime": "30 мин",
+      "ingredients": [
+        {"name": "Куриное филе", "quantity": "200", "unit": "гр"},
+        {"name": "Рис", "quantity": "100", "unit": "гр"},
+        {"name": "Перец болгарский", "quantity": "1", "unit": "шт"},
+        {"name": "Лук", "quantity": "1", "unit": "шт"},
+        {"name": "Растительное масло", "quantity": "2", "unit": "ст.л."},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""},
+        {"name": "Перец", "quantity": "по вкусу", "unit": ""}
+      ]
+    },
+    {
+      "name": "Паста с томатным соусом",
+      "description": "Классическая итальянская паста.",
+      "imagePath": "https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg",
+      "category": "Ужин",
+      "prepTime": "20 мин",
+      "ingredients": [
+        {"name": "Макароны", "quantity": "150", "unit": "гр"},
+        {"name": "Помидор", "quantity": "2", "unit": "шт"},
+        {"name": "Чеснок", "quantity": "1", "unit": "зубчик"},
+        {"name": "Растительное масло", "quantity": "1", "unit": "ст.л."},
+        {"name": "Базилик", "quantity": "по вкусу", "unit": ""},
+        {"name": "Соль", "quantity": "по вкусу", "unit": ""}
+      ]
+    }
+  ]
+}

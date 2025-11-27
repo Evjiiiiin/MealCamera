@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Splash</string>    <!-- ДОБАВЬТЕ ЭТИ СТРОКИ -->
+    <string name="app_logo">Логотип приложения</string>
+    <string name="scanned_ingredient_image">Изображение отсканированного ингредиента</string>
+</resources>
