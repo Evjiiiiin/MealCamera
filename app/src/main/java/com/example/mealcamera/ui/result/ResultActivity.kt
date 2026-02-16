@@ -2,50 +2,54 @@ package com.example.mealcamera.ui.result
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View // <-- ИСПРАВЛЕНО: Правильный импорт для View.VISIBLE/GONE
-import android.widget.TextView
+import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.EditableIngredient
-import com.example.mealcamera.data.model.RecipeResult
-import com.example.mealcamera.databinding.ActivityResultBinding // <-- ИСПРАВЛЕНО: Используем конкретный Binding
-import com.example.mealcamera.ui.SharedViewModel
+import com.example.mealcamera.data.util.UnitHelper // <-- Импорт остается
+import com.example.mealcamera.databinding.ActivityResultBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.home.MainActivity
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import com.example.mealcamera.ui.scan.ScanActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class ResultActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityResultBinding // <-- ИСПРАВЛЕНО: Правильный тип
-
+    private lateinit var binding: ActivityResultBinding
     private val viewModel: ResultViewModel by viewModels {
         (application as MealCameraApplication).viewModelFactory
     }
 
-    private val sharedViewModel: SharedViewModel by lazy {
-        ViewModelProvider(
-            (application as MealCameraApplication),
-            (application as MealCameraApplication).viewModelFactory
-        )[SharedViewModel::class.java]
-    }
-
-    private lateinit var editableAdapter: EditableIngredientAdapter
     private lateinit var perfectAdapter: ResultAdapter
     private lateinit var oneMissingAdapter: ResultAdapter
     private lateinit var twoMissingAdapter: ResultAdapter
 
+    private var editableIngredientMutableList: MutableList<EditableIngredient> = mutableListOf()
+    private lateinit var editableAdapter: EditableIngredientAdapter
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // --- ИСПРАВЛЕНО: Правильная инициализация биндинга ---
         binding = ActivityResultBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        val detectedNames = intent.getStringArrayListExtra(ScanActivity.EXTRA_DETECTED_INGREDIENTS) ?: arrayListOf()
+
+        val initialList = detectedNames.mapIndexed { index, name ->
+            EditableIngredient(
+                id = index.toLong(),
+                name = name,
+                quantity = "",
+                // Автоматически предлагаем единицу измерения при создании, используя ваш UnitHelper
+                unit = UnitHelper.getUnitForIngredient(name)
+            )
+        }.toMutableList()
+
+        viewModel.setInitialIngredients(initialList)
 
         setupToolbar()
         setupBottomNavigation()
@@ -56,6 +60,7 @@ class ResultActivity : AppCompatActivity() {
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
     private fun setupBottomNavigation() {
@@ -69,7 +74,7 @@ class ResultActivity : AppCompatActivity() {
                     true
                 }
                 R.id.navigation_camera -> {
-                    finish() // Возвращаемся на ScanActivity
+                    finish()
                     true
                 }
                 else -> false
@@ -85,64 +90,44 @@ class ResultActivity : AppCompatActivity() {
         binding.perfectMatchRecyclerView.adapter = perfectAdapter
         binding.oneMissingRecyclerView.adapter = oneMissingAdapter
         binding.twoMissingRecyclerView.adapter = twoMissingAdapter
+
+        editableAdapter = EditableIngredientAdapter(editableIngredientMutableList)
+        binding.editableIngredientsRecyclerView.adapter = editableAdapter
     }
 
     private fun observeViewModels() {
-        // Подписываемся на SharedViewModel для получения списка ингредиентов
         lifecycleScope.launch {
-            sharedViewModel.scannedIngredients.collectLatest { ingredients ->
-                if (ingredients.isNotEmpty()) {
-                    val editableIngredients = ingredients.map {
-                        EditableIngredient(id = it.timestamp, name = it.name, quantity = it.quantity, unit = it.unit)
-                    }
-                    viewModel.setInitialIngredients(editableIngredients)
-                } else {
-                    // Если в SharedViewModel не осталось ингредиентов (все удалили),
-                    // то закрываем этот экран и возвращаемся на камеру.
-                    finish()
-                }
-            }
-        }
+            viewModel.editableIngredients.collect { list ->
+                editableIngredientMutableList.clear()
+                editableIngredientMutableList.addAll(list)
+                editableAdapter.notifyDataSetChanged()
 
-        // Остальная логика остается привязанной к локальному ResultViewModel
-        lifecycleScope.launch {
-            viewModel.editableIngredients.collectLatest { ingredients ->
-                if (ingredients.isNotEmpty()) {
-                    editableAdapter = EditableIngredientAdapter(ingredients)
-                    binding.editableIngredientsRecyclerView.adapter = editableAdapter
-
+                if (list.isNotEmpty()) {
                     binding.btnApplyFilters.setOnClickListener {
-                        val updatedIngredients = editableAdapter.getEditedIngredients()
-                        viewModel.findRecipes(updatedIngredients)
+                        val updated = editableAdapter.getEditedIngredients()
+                        viewModel.findRecipes(updated)
                     }
-                    binding.btnApplyFilters.performClick()
                 }
             }
         }
-
-        observeResults(viewModel.perfectRecipes, binding.tvPerfectMatchHeader, perfectAdapter)
-        observeResults(viewModel.oneMissingRecipes, binding.tvOneMissingHeader, oneMissingAdapter)
-        observeResults(viewModel.twoMissingRecipes, binding.tvTwoMissingHeader, twoMissingAdapter)
 
         lifecycleScope.launch {
             combine(
                 viewModel.perfectRecipes,
                 viewModel.oneMissingRecipes,
                 viewModel.twoMissingRecipes
-            ) { p, o, t ->
-                p.isEmpty() && o.isEmpty() && t.isEmpty()
-            }.collect { isEmpty ->
+            ) { p, o, t -> Triple(p, o, t) }.collect { (p, o, t) ->
+                perfectAdapter.submitList(p)
+                oneMissingAdapter.submitList(o)
+                twoMissingAdapter.submitList(t)
+
+                binding.tvPerfectMatchHeader.visibility = if (p.isNotEmpty()) View.VISIBLE else View.GONE
+                binding.tvOneMissingHeader.visibility = if (o.isNotEmpty()) View.VISIBLE else View.GONE
+                binding.tvTwoMissingHeader.visibility = if (t.isNotEmpty()) View.VISIBLE else View.GONE
+
+                val isEmpty = p.isEmpty() && o.isEmpty() && t.isEmpty()
                 binding.resultsContainer.visibility = if (!isEmpty) View.VISIBLE else View.GONE
                 binding.tvNoResults.visibility = if (isEmpty) View.VISIBLE else View.GONE
-            }
-        }
-    }
-
-    private fun observeResults(flow: StateFlow<List<RecipeResult>>, header: TextView, adapter: ResultAdapter) {
-        lifecycleScope.launch {
-            flow.collect { recipes ->
-                header.visibility = if (recipes.isNotEmpty()) View.VISIBLE else View.GONE
-                adapter.submitList(recipes)
             }
         }
     }
@@ -151,10 +136,5 @@ class ResultActivity : AppCompatActivity() {
         startActivity(Intent(this, RecipeDetailActivity::class.java).apply {
             putExtra(RecipeDetailActivity.EXTRA_RECIPE_ID, recipeId)
         })
-    }
-
-    override fun onSupportNavigateUp(): Boolean {
-        finish()
-        return true
     }
 }

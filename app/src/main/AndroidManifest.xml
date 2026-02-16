@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Разрешения и фичи -->
     <uses-feature android:name="android.hardware.camera.any" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -15,9 +14,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MealCamera">
 
+        <!-- 1. Заставка (Splash) -->
         <activity
             android:name=".ui.splash.SplashActivity"
             android:exported="true"
+            android:noHistory="true"
             android:theme="@style/Theme.MealCamera">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,31 +26,41 @@
             </intent-filter>
         </activity>
 
-        <!-- Главный экран -->
+        <!-- Каталог ингредиентов (ДОБАВЛЕНО) -->
+        <activity
+            android:name=".ui.catalog.IngredientCatalogActivity"
+            android:exported="false"
+            android:label="Выбор ингредиентов"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MealCamera" />
+
+        <activity
+            android:name=".ui.auth.LoginActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".ui.auth.RegisterActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".ui.home.MainActivity"
             android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.MealCamera" />
+            android:launchMode="singleTop" />
 
-        <!-- Экран сканирования -->
         <activity
             android:name=".ui.scan.ScanActivity"
             android:screenOrientation="portrait"
-            android:parentActivityName=".ui.home.MainActivity"
-            android:theme="@style/Theme.MealCamera" />
+            android:parentActivityName=".ui.home.MainActivity" />
 
-        <!-- Экран результатов -->
         <activity
             android:name=".ui.result.ResultActivity"
-            android:parentActivityName=".ui.scan.ScanActivity"
-            android:theme="@style/Theme.MealCamera" />
+            android:parentActivityName=".ui.scan.ScanActivity" />
 
-        <!-- Экран деталей рецепта -->
         <activity
             android:name=".ui.detail.RecipeDetailActivity"
-            android:parentActivityName=".ui.home.MainActivity"
-            android:theme="@style/Theme.MealCamera" />
+            android:parentActivityName=".ui.home.MainActivity" />
 
     </application>
 </manifest>

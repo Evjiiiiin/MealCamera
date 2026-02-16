@@ -2,16 +2,18 @@ package com.example.mealcamera.ui.home
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
 import com.example.mealcamera.databinding.ActivityMainBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
+import com.example.mealcamera.ui.profile.ProfileFragment
 import com.example.mealcamera.ui.scan.ScanActivity
-import com.google.android.material.chip.Chip
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -19,6 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var recipeAdapter: RecipeAdapter
+
     private val viewModel: MainViewModel by viewModels {
         (application as MealCameraApplication).viewModelFactory
     }
@@ -30,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
         setupGreeting()
         setupRecyclerView()
+        setupSearch()
         setupFilters()
         setupBottomNavigation()
         observeViewModel()
@@ -38,11 +42,11 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         binding.bottomNavigationView.menu.findItem(R.id.navigation_home).isChecked = true
+        binding.mainContentLayer.visibility = View.VISIBLE
     }
 
     private fun setupGreeting() {
-        val calendar = Calendar.getInstance()
-        val hour = calendar.get(Calendar.HOUR_OF_DAY)
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val greeting = when (hour) {
             in 6..11 -> "Доброе утро"
             in 12..17 -> "Добрый день"
@@ -64,15 +68,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupSearch() {
+        binding.searchEditText.doAfterTextChanged { text ->
+            viewModel.setSearchQuery(text?.toString().orEmpty())
+        }
+    }
+
     private fun setupFilters() {
         binding.chipAll.isChecked = true
         viewModel.setCategoryFilter("Все")
 
-        // --- ИСПРАВЛЕНО: Возвращаем старый, но 100% рабочий метод ---
-        binding.filterChipGroup.setOnCheckedChangeListener { group, checkedId ->
-            val chip = group.findViewById<Chip>(checkedId)
-            // Если чип не найден (например, при сбросе), ставим "Все" по умолчанию
-            viewModel.setCategoryFilter(chip?.text.toString() ?: "Все")
+        binding.filterChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            val category = when (checkedIds.firstOrNull()) {
+                R.id.chipBreakfast -> "Завтрак"
+                R.id.chipLunch -> "Обед"
+                R.id.chipDinner -> "Ужин"
+                R.id.chipAll -> "Все"
+                else -> "Все"
+            }
+            viewModel.setCategoryFilter(category)
         }
     }
 
@@ -80,16 +94,26 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNavigationView.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> {
-                    // Мы уже здесь, ничего не делаем
+                    binding.mainContentLayer.visibility = View.VISIBLE
+                    supportFragmentManager.findFragmentById(R.id.fragment_container)?.let { fragment ->
+                        supportFragmentManager.beginTransaction().remove(fragment).commit()
+                    }
                     true
                 }
+
                 R.id.navigation_camera -> {
-                    // Запускаем ScanActivity
-                    startActivity(Intent(this, ScanActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                    })
+                    startActivity(Intent(this, ScanActivity::class.java))
+                    false
+                }
+
+                R.id.navigation_profile -> {
+                    binding.mainContentLayer.visibility = View.GONE
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container, ProfileFragment())
+                        .commit()
                     true
                 }
+
                 else -> false
             }
         }
@@ -98,7 +122,7 @@ class MainActivity : AppCompatActivity() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.uiState.collect { state ->
-                recipeAdapter.submitList(state.filteredRecipes)
+                recipeAdapter.submitList(state.recipes)
             }
         }
     }

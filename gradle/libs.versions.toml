@@ -2,13 +2,16 @@
 agp = "8.5.2"
 kotlin = "1.9.23"
 coreKtx = "1.13.1"
+# --- Firebase и Google Services ---
+googleServices = "4.4.2"
+firebaseBom = "33.1.2"
+
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
 material = "1.12.0"
-# --- ИСПРАВЛЕНО: Обновляем версию activity до совместимой с material ---
-activity = "1.9.0" # Это последняя стабильная версия, она совместима.
+activity = "1.9.0"
 fragment = "1.7.0"
 constraintlayout = "2.1.4"
 room = "2.6.1"
@@ -18,6 +21,11 @@ lifecycle = "2.8.4"
 camerax = "1.4.0"
 
 [libraries]
+# --- Firebase библиотеки ---
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
@@ -49,3 +57,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+# --- Плагин Google Services ---
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

@@ -9,10 +9,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.mealcamera" />
+                  <option name="mobileSdkAppId" value="1:819919828811:android:8dc9fecfd7ab8aecf99ace" />
+                  <option name="projectId" value="mealcamera" />
+                  <option name="projectNumber" value="819919828811" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

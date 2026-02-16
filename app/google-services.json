@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "819919828811",
+    "project_id": "mealcamera",
+    "storage_bucket": "mealcamera.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:819919828811:android:8dc9fecfd7ab8aecf99ace",
+        "android_client_info": {
+          "package_name": "com.example.mealcamera"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsINVwcXgT8rT3ajXc_89n24b7sAsgE8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

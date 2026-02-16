@@ -1,89 +1,66 @@
 package com.example.mealcamera.data
 
 import com.example.mealcamera.data.dao.RecipeDao
-import com.example.mealcamera.data.model.Ingredient
-import com.example.mealcamera.data.model.IngredientWithDetails
-import com.example.mealcamera.data.model.Recipe
-import com.example.mealcamera.data.model.RecipeResult
+import com.example.mealcamera.data.dao.ShoppingListDao
+import com.example.mealcamera.data.model.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map // Важно: импортируем Flow.map
 
-class RecipeRepository(private val recipeDao: RecipeDao) {
+// Предполагается, что ваш RecipeRepository принимает RecipeDao и ShoppingListDao
+class RecipeRepository(
+    private val recipeDao: RecipeDao,
+    private val shoppingListDao: ShoppingListDao // Предполагается, что ShoppingListDao нужен
+) {
 
     val allRecipes: Flow<List<Recipe>> = recipeDao.getAllRecipes()
 
-    fun getRecipeById(recipeId: Long): Flow<Recipe> = recipeDao.getRecipeById(recipeId)
-
-    suspend fun incrementRecipePopularity(recipeId: Long) = recipeDao.incrementPopularity(recipeId)
-
-    fun getIngredientsForRecipe(recipeId: Long) = flow {
-        val recipeWithDetails = recipeDao.getRecipeWithIngredientsById(recipeId)
-
-        val ingredientsWithDetails = recipeWithDetails.ingredients.map { ingredient ->
-            val crossRef = recipeDao.getCrossRef(recipeId, ingredient.ingredientId)
-            IngredientWithDetails(
-                ingredient = ingredient,
-                quantity = crossRef?.quantity ?: "",
-                unit = crossRef?.unit ?: ""
-            )
-        }
-        emit(ingredientsWithDetails)
+    suspend fun insertRecipe(recipe: Recipe): Long {
+        return recipeDao.insertRecipe(recipe)
     }
 
-    suspend fun filterRecipesByAvailableIngredients(
-        scannedIngredientNames: List<String>
-    ): Triple<List<RecipeResult>, List<RecipeResult>, List<RecipeResult>> {
-        val allRecipesWithIngredients = recipeDao.getAllRecipesWithIngredients()
-        val allDbIngredients = recipeDao.getAllIngredients()
+    fun getRecipeById(recipeId: Long): Flow<Recipe> {
+        return recipeDao.getRecipeById(recipeId)
+    }
 
-        val alwaysAvailableIds = allDbIngredients
-            .filter { it.isAlwaysAvailable }
-            .map { it.ingredientId }
-            .toSet()
+    suspend fun incrementRecipePopularity(recipeId: Long) {
+        recipeDao.incrementPopularity(recipeId)
+    }
 
-        val scannedIds = allDbIngredients
-            .filter { dbIngredient ->
-                scannedIngredientNames.any { scannedName ->
-                    dbIngredient.name.trim().equals(scannedName.trim(), ignoreCase = true)
-                }
+    suspend fun getAllDbIngredients(): List<Ingredient> {
+        return recipeDao.getAllIngredients()
+    }
+
+    suspend fun getAllRecipesWithIngredients(): List<RecipeWithIngredients> {
+        return recipeDao.getAllRecipesWithIngredients()
+    }
+
+    // ИСПРАВЛЕННЫЙ МЕТОД: getIngredientsForRecipe
+    fun getIngredientsForRecipe(recipeId: Long): Flow<List<IngredientWithDetails>> {
+        return recipeDao.getRecipeWithIngredientsById(recipeId).map { recipeWithIngredients ->
+            // Теперь мы находимся в suspend контексте благодаря Flow.map.
+            // Можем безопасно вызывать suspend функции внутри этого блока.
+            val ingredientsWithDetailsList = mutableListOf<IngredientWithDetails>()
+            for (ingredient in recipeWithIngredients.ingredients) {
+                val crossRef = recipeDao.getCrossRef(recipeId, ingredient.ingredientId)
+                ingredientsWithDetailsList.add(
+                    IngredientWithDetails(
+                        ingredient = ingredient,
+                        quantity = crossRef?.quantity ?: "",
+                        unit = crossRef?.unit ?: ""
+                    )
+                )
             }
-            .map { it.ingredientId }
-            .toSet()
-
-        if (scannedIds.isEmpty() && scannedIngredientNames.none { it.equals("вода", ignoreCase = true) }) {
-            return Triple(emptyList(), emptyList(), emptyList())
+            ingredientsWithDetailsList // Возвращаем преобразованный список
         }
+    }
 
-        val perfectMatches = mutableListOf<RecipeResult>()
-        val oneMissingMatches = mutableListOf<RecipeResult>()
-        val twoMissingMatches = mutableListOf<RecipeResult>()
 
-        for (recipeWithIngredients in allRecipesWithIngredients) {
-            val recipe = recipeWithIngredients.recipe
+    fun getStepsForRecipe(recipeId: Long): Flow<List<RecipeStep>> {
+        return recipeDao.getStepsByRecipeId(recipeId)
+    }
 
-            // --- ИСПРАВЛЕНО: Добавляем "защиту от заглушек" ---
-            // Пропускаем рецепты, если у них пустое имя или имя-заглушка.
-            if (recipe.name.isBlank() || recipe.name.contains("Новый рецепт", ignoreCase = true)) {
-                continue // Переходим к следующему рецепту
-            }
-
-            val ingredients = recipeWithIngredients.ingredients
-
-            val missingIngredients = ingredients.filter { ingredient ->
-                val id = ingredient.ingredientId
-                id !in scannedIds && id !in alwaysAvailableIds
-            }
-
-            val missingCount = missingIngredients.size
-            val missingNames = missingIngredients.map { it.name }
-
-            when (missingCount) {
-                0 -> perfectMatches.add(RecipeResult(recipe, emptyList()))
-                1 -> oneMissingMatches.add(RecipeResult(recipe, missingNames))
-                2 -> twoMissingMatches.add(RecipeResult(recipe, missingNames))
-            }
-        }
-
-        return Triple(perfectMatches, oneMissingMatches, twoMissingMatches)
+    // НОВЫЙ МЕТОД: для получения RecipeIngredientCrossRef для конкретного ингредиента в рецепте
+    suspend fun getRecipeIngredientCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef? {
+        return recipeDao.getCrossRef(recipeId, ingredientId)
     }
 }

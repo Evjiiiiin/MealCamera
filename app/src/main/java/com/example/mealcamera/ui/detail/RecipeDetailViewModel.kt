@@ -5,35 +5,42 @@ import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.model.IngredientWithDetails
 import com.example.mealcamera.data.model.Recipe
+import com.example.mealcamera.data.model.RecipeStep
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class RecipeDetailViewModel(private val repository: RecipeRepository) : ViewModel() {
+
     private val _recipe = MutableStateFlow<Recipe?>(null)
-    val recipe = _recipe.asStateFlow()
+    val recipe: StateFlow<Recipe?> = _recipe.asStateFlow()
 
     private val _ingredients = MutableStateFlow<List<IngredientWithDetails>>(emptyList())
-    val ingredients = _ingredients.asStateFlow()
+    val ingredients: StateFlow<List<IngredientWithDetails>> = _ingredients.asStateFlow()
+
+    private val _steps = MutableStateFlow<List<RecipeStep>>(emptyList())
+    val steps: StateFlow<List<RecipeStep>> = _steps.asStateFlow()
+
+    private val _portions = MutableStateFlow(1)
+    val portions: StateFlow<Int> = _portions.asStateFlow()
+
+    fun setPortions(count: Int) {
+        if (count in 1..10) {
+            _portions.value = count
+        }
+    }
 
     fun loadRecipe(recipeId: Long) {
-        // --- ИСПРАВЛЕНО: Используем правильные, существующие методы репозитория ---
-
-        // 1. Загружаем основную информацию о рецепте
         viewModelScope.launch {
-            repository.getRecipeById(recipeId).collect { recipe ->
-                _recipe.value = recipe
-            }
+            repository.getRecipeById(recipeId).collect { _recipe.value = it }
         }
-
-        // 2. Загружаем список ингредиентов для этого рецепта
         viewModelScope.launch {
-            repository.getIngredientsForRecipe(recipeId).collect { details ->
-                _ingredients.value = details
-            }
+            repository.getIngredientsForRecipe(recipeId).collect { _ingredients.value = it }
         }
-
-        // 3. Увеличиваем счетчик популярности рецепта
+        viewModelScope.launch {
+            repository.getStepsForRecipe(recipeId).collect { _steps.value = it }
+        }
         viewModelScope.launch {
             repository.incrementRecipePopularity(recipeId)
         }

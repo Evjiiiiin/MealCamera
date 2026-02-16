@@ -15,8 +15,8 @@ import java.io.IOException
 class PrepopulateManager(private val context: Context) {
 
     suspend fun prepopulateIfNeeded(recipeDao: RecipeDao) {
-        val recipeCount = recipeDao.getRecipeCount()
-        if (recipeCount == 0) {
+        val hasRecipes = recipeDao.getAllRecipesWithIngredients().isNotEmpty()
+        if (!hasRecipes) {
             Log.i("PrepopulateManager", "🔄 База данных пуста, начинаю заполнение...")
             try {
                 loadDataFromJson(recipeDao)

@@ -15,7 +15,7 @@ interface RecipeDao {
 
     // ======== RECIPES ========
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertRecipe(recipe: Recipe): Long
+    suspend fun insertRecipe(recipe: Recipe): Long // <-- ИСПРАВЛЕНО: удалено второе "fun"
 
     @Query("SELECT * FROM recipes ORDER BY popularityScore DESC, name ASC")
     fun getAllRecipes(): Flow<List<Recipe>>
@@ -29,11 +29,16 @@ interface RecipeDao {
     @Query("UPDATE recipes SET popularityScore = popularityScore + 1 WHERE recipeId = :recipeId")
     suspend fun incrementPopularity(recipeId: Long)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertStep(step: RecipeStep)
+
+    @Query("SELECT * FROM recipe_steps WHERE recipeId = :recipeId ORDER BY stepNumber ASC")
+    fun getStepsByRecipeId(recipeId: Long): Flow<List<RecipeStep>>
+
     // ======== CROSS-REFERENCE ========
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertRecipeIngredientCrossRef(crossRef: RecipeIngredientCrossRef)
 
-    // --- ИСПРАВЛЕНО: Добавлен метод для получения конкретной связки ---
     @Query("SELECT * FROM recipe_ingredient_cross_ref WHERE recipeId = :recipeId AND ingredientId = :ingredientId")
     suspend fun getCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef?
 
@@ -44,7 +49,8 @@ interface RecipeDao {
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
-    suspend fun getRecipeWithIngredientsById(recipeId: Long): RecipeWithIngredients
+    fun getRecipeWithIngredientsById(recipeId: Long): Flow<RecipeWithIngredients>
+
 
     @Query("SELECT * FROM recipes WHERE category = :category")
     fun getRecipesByCategory(category: String): Flow<List<Recipe>>

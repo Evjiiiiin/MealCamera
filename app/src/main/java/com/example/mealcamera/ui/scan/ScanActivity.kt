@@ -15,16 +15,14 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mealcamera.MealCameraApplication
-import com.example.mealcamera.data.model.ScannedIngredient
-import com.example.mealcamera.databinding.ActivityScanBinding
+import com.example.mealcamera.databinding.ActivityScanBinding // Этот импорт должен быть!
 import com.example.mealcamera.ml.DetectedFood
 import com.example.mealcamera.ui.SharedViewModel
 import com.example.mealcamera.ui.result.ResultActivity
-import com.example.mealcamera.util.toBitmapSafe
+import com.example.mealcamera.util.toBitmapSafe // Импортируем вашу функцию toBitmapSafe
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -36,21 +34,17 @@ class ScanActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private lateinit var scannedAdapter: ScannedIngredientAdapter
 
-    // Локальный ViewModel для логики камеры
     private val viewModel: ScanViewModel by viewModels {
         (application as MealCameraApplication).viewModelFactory
     }
 
-    // --- ИСПРАВЛЕНО: Получаем SharedViewModel от Application ---
     private val sharedViewModel: SharedViewModel by lazy {
-        ViewModelProvider(
-            (application as MealCameraApplication), // Контекст приложения, который является ViewModelStoreOwner
-            (application as MealCameraApplication).viewModelFactory
-        )[SharedViewModel::class.java]
+        (application as MealCameraApplication).sharedViewModel
     }
 
     companion object {
         private const val CAMERA_PERMISSION_CODE = 100
+        const val EXTRA_DETECTED_INGREDIENTS = "detected_ingredients"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +70,6 @@ class ScanActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         scannedAdapter = ScannedIngredientAdapter { ingredient ->
-            // Удаляем ингредиент через SharedViewModel
             sharedViewModel.removeIngredient(ingredient)
         }
         binding.scannedIngredientsRecyclerView.layoutManager =
@@ -85,15 +78,16 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun observeViewModels() {
-        // Подписываемся на SharedViewModel для отображения списка
+        binding.bottomPanel.visibility = View.VISIBLE
+
         lifecycleScope.launch {
             sharedViewModel.scannedIngredients.collect { ingredients ->
-                binding.bottomPanel.visibility = if (ingredients.isNotEmpty()) View.VISIBLE else View.GONE
                 scannedAdapter.submitList(ingredients)
+                binding.btnShowResults.isEnabled = ingredients.isNotEmpty()
+                binding.btnShowResults.alpha = if (ingredients.isNotEmpty()) 1f else 0.5f
             }
         }
 
-        // Локальный ViewModel управляет только состоянием прогресс-бара
         lifecycleScope.launch {
             viewModel.isProcessing.collect { isProcessing ->
                 binding.progressBar.visibility = if (isProcessing) View.VISIBLE else View.GONE
@@ -104,9 +98,12 @@ class ScanActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.btnShowResults.setOnClickListener {
-            // Просто запускаем ResultActivity, данные он возьмет сам
-            if (sharedViewModel.scannedIngredients.value.isNotEmpty()) {
-                startActivity(Intent(this, ResultActivity::class.java))
+            val scannedFoodNames = sharedViewModel.scannedIngredients.value.map { it.name }
+            if (scannedFoodNames.isNotEmpty()) {
+                val intent = Intent(this, ResultActivity::class.java).apply {
+                    putStringArrayListExtra(EXTRA_DETECTED_INGREDIENTS, ArrayList(scannedFoodNames))
+                }
+                startActivity(intent)
             } else {
                 Toast.makeText(this, "Отсканируйте хотя бы один продукт", Toast.LENGTH_SHORT).show()
             }
@@ -133,12 +130,14 @@ class ScanActivity : AppCompatActivity() {
         } else {
             imageCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val capturedBitmap = image.toBitmapSafe()
+                    val capturedBitmap: Bitmap = image.toBitmapSafe() // ИСПОЛЬЗУЕМ ВАШУ ФУНКЦИЮ
                     image.close()
+
                     viewModel.processImageWithBitmap(capturedBitmap) { detectedFoods ->
                         runOnUiThread { handleDetectionResult(detectedFoods, capturedBitmap) }
                     }
                 }
+
                 override fun onError(exc: ImageCaptureException) {
                     runOnUiThread {
                         Toast.makeText(this@ScanActivity, "Ошибка съемки: ${exc.message}", Toast.LENGTH_SHORT).show()
@@ -154,7 +153,6 @@ class ScanActivity : AppCompatActivity() {
             val message = detectedFoods.joinToString("\n") { "• ${it.name}" }
             Toast.makeText(this, "Обнаружено:\n$message", Toast.LENGTH_LONG).show()
 
-            // Добавляем ингредиенты через SharedViewModel
             viewModel.getIngredientsFromDetection(detectedFoods, capturedBitmap) { newIngredients ->
                 sharedViewModel.addIngredients(newIngredients)
             }
@@ -173,7 +171,6 @@ class ScanActivity : AppCompatActivity() {
             .setPositiveButton("Добавить") { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotBlank()) {
-                    // Добавляем вручную через SharedViewModel
                     sharedViewModel.addIngredientManually(name)
                     Toast.makeText(this, "Добавлено: $name", Toast.LENGTH_SHORT).show()
                 }
@@ -192,9 +189,42 @@ class ScanActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
-    private fun checkCameraPermission() = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-    private fun requestCameraPermission() { ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE) }
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); if (requestCode == CAMERA_PERMISSION_CODE) { if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) { startCamera() } else {
-        Toast.makeText(this, "Нужен доступ к камере", Toast.LENGTH_LONG).show(); finish() } } }
-    private fun startCamera() { val cameraProviderFuture = ProcessCameraProvider.getInstance(this); cameraProviderFuture.addListener({ val cameraProvider = cameraProviderFuture.get(); val preview = Preview.Builder().build().also { it.setSurfaceProvider(binding.viewFinder.surfaceProvider) }; imageCapture = ImageCapture.Builder().setTargetRotation(binding.viewFinder.display.rotation).build(); val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA; try { cameraProvider.unbindAll(); cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture) } catch (exc: Exception) { Toast.makeText(this, "Ошибка запуска камеры", Toast.LENGTH_SHORT).show() } }, ContextCompat.getMainExecutor(this)) }
+    private fun checkCameraPermission() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+
+    private fun requestCameraPermission() {
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startCamera()
+            } else {
+                Toast.makeText(this, "Нужен доступ к камере", Toast.LENGTH_LONG).show()
+                finish()
+            }
+        }
+    }
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+            }
+            imageCapture = ImageCapture.Builder()
+                .setTargetRotation(binding.viewFinder.display.rotation)
+                .build()
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture)
+            } catch (exc: Exception) {
+                Toast.makeText(this, "Ошибка запуска камеры", Toast.LENGTH_SHORT).show()
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
 }

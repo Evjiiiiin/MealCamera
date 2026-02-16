@@ -9,8 +9,8 @@ import com.example.mealcamera.data.dao.ShoppingListDao
 import com.example.mealcamera.data.model.*
 
 @Database(
-    entities = [Recipe::class, Ingredient::class, RecipeIngredientCrossRef::class, ShoppingListItem::class],
-    version = 3,
+    entities = [Recipe::class, Ingredient::class, RecipeIngredientCrossRef::class, ShoppingListItem::class, RecipeStep::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
