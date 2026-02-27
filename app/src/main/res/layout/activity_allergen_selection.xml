@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Пищевые ограничения"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            android:text="Отметьте группы продуктов, которые вам не подходят. Это поможет персонализировать рекомендации." />
+
+        <CheckBox
+            android:id="@+id/cbDairy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Молочные продукты" />
+
+        <CheckBox
+            android:id="@+id/cbMeat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Мясо" />
+
+        <CheckBox
+            android:id="@+id/cbGrains"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Крупы" />
+
+        <CheckBox
+            android:id="@+id/cbNuts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Орехи" />
+
+        <CheckBox
+            android:id="@+id/cbSeafood"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Морепродукты" />
+
+        <CheckBox
+            android:id="@+id/cbEggs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Яйца" />
+
+        <Button
+            android:id="@+id/btnContinue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Сохранить и продолжить" />
+
+        <Button
+            android:id="@+id/btnSkip"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Пропустить" />
+
+    </LinearLayout>
+</ScrollView>

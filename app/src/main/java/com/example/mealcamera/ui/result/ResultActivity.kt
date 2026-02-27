@@ -54,6 +54,7 @@ class ResultActivity : AppCompatActivity() {
         setupToolbar()
         setupBottomNavigation()
         setupRecyclerViews()
+        setupPortionControls()
         observeViewModels()
     }
 
@@ -91,8 +92,22 @@ class ResultActivity : AppCompatActivity() {
         binding.oneMissingRecyclerView.adapter = oneMissingAdapter
         binding.twoMissingRecyclerView.adapter = twoMissingAdapter
 
-        editableAdapter = EditableIngredientAdapter(editableIngredientMutableList)
+        editableAdapter = EditableIngredientAdapter(editableIngredientMutableList) { ingredient ->
+            editableIngredientMutableList.removeAll { it.id == ingredient.id }
+            editableAdapter.updateIngredients(editableIngredientMutableList)
+            viewModel.findRecipes(editableAdapter.getEditedIngredients().map { it.copy() })
+        }
         binding.editableIngredientsRecyclerView.adapter = editableAdapter
+    }
+
+    private fun setupPortionControls() {
+        binding.btnPlusPortion.setOnClickListener {
+            viewModel.setPortions(viewModel.portions.value + 1)
+        }
+
+        binding.btnMinusPortion.setOnClickListener {
+            viewModel.setPortions(viewModel.portions.value - 1)
+        }
     }
 
     private fun observeViewModels() {
@@ -100,14 +115,22 @@ class ResultActivity : AppCompatActivity() {
             viewModel.editableIngredients.collect { list ->
                 editableIngredientMutableList.clear()
                 editableIngredientMutableList.addAll(list)
-                editableAdapter.notifyDataSetChanged()
+                editableAdapter.updateIngredients(editableIngredientMutableList)
 
                 if (list.isNotEmpty()) {
                     binding.btnApplyFilters.setOnClickListener {
-                        val updated = editableAdapter.getEditedIngredients()
+                        val updated = editableAdapter.getEditedIngredients().map { it.copy() }
                         viewModel.findRecipes(updated)
                     }
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.portions.collect { portionCount ->
+                binding.tvPortions.text = "Порции: $portionCount"
+                binding.btnMinusPortion.isEnabled = portionCount > 1
+                binding.btnPlusPortion.isEnabled = portionCount < 10
             }
         }
 

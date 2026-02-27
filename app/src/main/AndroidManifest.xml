@@ -26,7 +26,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Каталог ингредиентов (ДОБАВЛЕНО) -->
+        <!-- Каталог ингредиентов -->
         <activity
             android:name=".ui.catalog.IngredientCatalogActivity"
             android:exported="false"
@@ -41,6 +41,12 @@
 
         <activity
             android:name=".ui.auth.RegisterActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- Новый экран выбора аллергенов -->
+        <activity
+            android:name=".ui.auth.AllergenSelectionActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 

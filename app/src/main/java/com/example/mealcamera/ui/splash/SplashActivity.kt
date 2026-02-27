@@ -6,15 +6,20 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
+import com.example.mealcamera.ui.auth.LoginActivity
 import com.example.mealcamera.ui.home.MainActivity
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class SplashActivity : AppCompatActivity() {
 
-    private val MIN_SPLASH_DISPLAY_TIME_MS = 2000L // Минимум 2 секунды показа Splash-экрана
+    companion object {
+        private const val MIN_SPLASH_DISPLAY_TIME_MS = 2000L
+        private const val APP_INIT_TIMEOUT_MS = 7000L
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,24 +30,26 @@ class SplashActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val startTime = System.currentTimeMillis()
 
-            // Ждем завершения инициализации приложения И минимального времени показа Splash-экрана
-            // combine объединяет два Flow и выдает значение, когда оба emit-нули.
-            combine(
-                app.isAppInitialized, // Flow, который завершается, когда приложение инициализировано
-                flow { // Искусственный Flow для обеспечения минимальной задержки
-                    val elapsedTime = System.currentTimeMillis() - startTime
-                    if (elapsedTime < MIN_SPLASH_DISPLAY_TIME_MS) {
-                        delay(MIN_SPLASH_DISPLAY_TIME_MS - elapsedTime)
-                    }
-                    emit(true) // Показываем, что минимальная задержка соблюдена
-                }
-            ) { isAppReady, minDelayMet ->
-                isAppReady && minDelayMet
-            }.collect { isReadyToProceed ->
-                if (isReadyToProceed) {
-                    startActivity(Intent(this@SplashActivity, MainActivity::class.java))
-                    finish() // Закрываем SplashActivity
-                }
+            // Ждем инициализацию приложения, но не бесконечно.
+            withTimeoutOrNull(APP_INIT_TIMEOUT_MS) {
+                app.isAppInitialized.first { it }
+            }
+
+            // Гарантируем минимальную длительность splash для плавного UX.
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < MIN_SPLASH_DISPLAY_TIME_MS) {
+                delay(MIN_SPLASH_DISPLAY_TIME_MS - elapsed)
+            }
+
+            val destination = if (FirebaseAuth.getInstance().currentUser == null) {
+                LoginActivity::class.java
+            } else {
+                MainActivity::class.java
+            }
+
+            if (!isFinishing && !isDestroyed) {
+                startActivity(Intent(this@SplashActivity, destination))
+                finish()
             }
         }
     }

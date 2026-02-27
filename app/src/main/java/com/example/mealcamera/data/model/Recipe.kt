@@ -7,10 +7,11 @@ import androidx.room.PrimaryKey
 data class Recipe(
     @PrimaryKey(autoGenerate = true)
     val recipeId: Long = 0,
+    val firestoreId: String? = null,
     val name: String,
     val description: String,
     val imagePath: String,
     val category: String,
     val prepTime: String,
-    val popularityScore: Int = 0 // Добавлено для сортировки
+    val popularityScore: Int = 0
 )

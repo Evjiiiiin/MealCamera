@@ -9,7 +9,6 @@ import com.example.mealcamera.ui.detail.RecipeDetailViewModel
 import com.example.mealcamera.ui.home.MainViewModel
 import com.example.mealcamera.ui.result.ResultViewModel
 import com.example.mealcamera.ui.scan.ScanViewModel
-// import com.example.mealcamera.ui.splash.SplashViewModel // УДАЛЕНО: SplashViewModel не создается
 
 class ViewModelFactory(
     private val application: Application,
@@ -33,8 +32,6 @@ class ViewModelFactory(
 
             modelClass.isAssignableFrom(SharedViewModel::class.java) ->
                 SharedViewModel(repository) as T
-
-            // УДАЛЕНО: Логика для SplashViewModel, так как его не создаем
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

@@ -25,15 +25,25 @@ class ResultViewModel(private val repository: RecipeRepository) : ViewModel() {
     private val _twoMissingRecipes = MutableStateFlow<List<RecipeResult>>(emptyList())
     val twoMissingRecipes: StateFlow<List<RecipeResult>> = _twoMissingRecipes.asStateFlow()
 
+    private val _portions = MutableStateFlow(1)
+    val portions: StateFlow<Int> = _portions.asStateFlow()
+
+    fun setPortions(newValue: Int) {
+        if (newValue in 1..10) {
+            _portions.value = newValue
+            findRecipes(_editableIngredients.value)
+        }
+    }
+
     fun setInitialIngredients(initialIngredients: List<EditableIngredient>) {
         if (_editableIngredients.value.isEmpty()) {
-            _editableIngredients.value = initialIngredients
+            _editableIngredients.value = initialIngredients.map { it.copy() }
             findRecipes(initialIngredients)
         }
     }
 
     fun findRecipes(updatedIngredients: List<EditableIngredient>) {
-        _editableIngredients.value = updatedIngredients
+        _editableIngredients.value = updatedIngredients.map { it.copy() }
 
         viewModelScope.launch {
             try {
@@ -62,9 +72,9 @@ class ResultViewModel(private val repository: RecipeRepository) : ViewModel() {
                     recipeWithIngredients.ingredients.forEach { ingredientInRecipe ->
                         val recipeIngredientName = ingredientInRecipe.name.trim().lowercase()
 
-                        // Получаем RecipeIngredientCrossRef для данного ингредиента в этом рецепте
                         val crossRef = repository.getRecipeIngredientCrossRef(recipe.recipeId, ingredientInRecipe.ingredientId)
-                        val recipeRequiredQuantity = crossRef?.quantity?.toDoubleOrNull() ?: 0.0
+                        val baseRequiredQuantity = crossRef?.quantity?.toDoubleOrNull() ?: 0.0
+                        val recipeRequiredQuantity = baseRequiredQuantity * _portions.value
 
                         if (ingredientInRecipe.ingredientId !in alwaysAvailableIds) {
                             val userProvidedIngredient = userIngredientsMap[recipeIngredientName]

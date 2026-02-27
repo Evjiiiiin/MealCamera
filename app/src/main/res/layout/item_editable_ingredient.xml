@@ -17,26 +17,27 @@
             android:id="@+id/ingredient_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:text="@{ingredient.name}"
+            android:textColor="?android:attr/textColorPrimary"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="@+id/ingredient_quantity_layout"
             app:layout_constraintEnd_toStartOf="@+id/ingredient_quantity_layout"
-            android:layout_marginEnd="8dp"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/ingredient_quantity_layout" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ingredient_quantity_layout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="80dp"
+            android:layout_width="72dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:hint="Кол-во"
             app:boxStrokeColor="?android:attr/textColorSecondary"
             app:hintTextColor="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toStartOf="@+id/ingredient_unit_layout"
-            app:layout_constraintTop_toTopOf="parent"
-            android:layout_marginEnd="8dp">
+            app:layout_constraintTop_toTopOf="parent">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/ingredient_quantity"
@@ -44,19 +45,20 @@
                 android:layout_height="wrap_content"
                 android:inputType="numberDecimal"
                 android:singleLine="true"
-                android:textColor="?android:attr/textColorPrimary"
-                android:text="@={ingredient.quantity}" />
+                android:text="@={ingredient.quantity}"
+                android:textColor="?android:attr/textColorPrimary" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ingredient_unit_layout"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="80dp"
+            android:layout_width="72dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:hint="Ед. изм."
             app:boxStrokeColor="?android:attr/textColorSecondary"
             app:hintTextColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/btnRemoveIngredient"
             app:layout_constraintTop_toTopOf="parent">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -65,9 +67,22 @@
                 android:layout_height="wrap_content"
                 android:inputType="text"
                 android:singleLine="true"
-                android:textColor="?android:attr/textColorPrimary"
-                android:text="@={ingredient.unit}" />
+                android:text="@={ingredient.unit}"
+                android:textColor="?android:attr/textColorPrimary" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <ImageButton
+            android:id="@+id/btnRemoveIngredient"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Удалить ингредиент"
+            android:padding="8dp"
+            android:src="@drawable/ic_close"
+            android:tint="@color/color_primary"
+            app:layout_constraintBottom_toBottomOf="@+id/ingredient_unit_layout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/ingredient_unit_layout" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

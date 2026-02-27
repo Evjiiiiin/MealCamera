@@ -18,8 +18,8 @@
                 android:id="@+id/toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="?attr/actionBarSize"
-                app:title="Результаты подбора"
-                android:titleTextColor="@color/white" />
+                android:titleTextColor="@color/white"
+                app:title="Результаты подбора" />
 
         </com.google.android.material.appbar.AppBarLayout>
 
@@ -40,8 +40,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_margin="16dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardBackgroundColor="?android:attr/colorBackground">
+                    app:cardBackgroundColor="?android:attr/colorBackground"
+                    app:cardCornerRadius="12dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -52,18 +52,55 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Ваши ингредиенты"
                             android:layout_marginBottom="8dp"
-                            android:textColor="?android:attr/textColorPrimary"
-                            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6" />
+                            android:text="Ваши ингредиенты"
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                            android:textColor="?android:attr/textColorPrimary" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp"
                             android:text="Уточните количество, чтобы найти больше рецептов"
+                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                            android:textColor="?android:attr/textColorSecondary" />
+
+                        <!-- Порции ВНУТРИ карточки -->
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:layout_marginBottom="16dp"
-                            android:textColor="?android:attr/textColorSecondary"
-                            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <ImageButton
+                                android:id="@+id/btnMinusPortion"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Уменьшить порции"
+                                android:src="@drawable/ic_remove"
+                                android:tint="@color/color_primary" />
+
+                            <TextView
+                                android:id="@+id/tvPortions"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginHorizontal="8dp"
+                                android:text="Порции: 1"
+                                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                                android:textStyle="bold" />
+
+                            <ImageButton
+                                android:id="@+id/btnPlusPortion"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="Увеличить порции"
+                                android:src="@drawable/ic_add"
+                                android:tint="@color/color_primary" />
+
+                        </LinearLayout>
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/editableIngredientsRecyclerView"
@@ -101,11 +138,11 @@
                         android:id="@+id/tvPerfectMatchHeader"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Можно приготовить сейчас"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
                         android:layout_marginStart="16dp"
                         android:layout_marginTop="16dp"
+                        android:text="Можно приготовить сейчас"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                        android:textColor="?android:attr/textColorPrimary"
                         android:visibility="gone"
                         tools:visibility="visible" />
 
@@ -114,19 +151,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                        tools:listitem="@layout/item_recipe_result"
-                        tools:itemCount="1" />
+                        tools:itemCount="1"
+                        tools:listitem="@layout/item_recipe_result" />
 
                     <!-- One missing -->
                     <TextView
                         android:id="@+id/tvOneMissingHeader"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Не хватает 1 ингредиента"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
                         android:layout_marginStart="16dp"
                         android:layout_marginTop="24dp"
+                        android:text="Не хватает 1 ингредиента"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                        android:textColor="?android:attr/textColorPrimary"
                         android:visibility="gone"
                         tools:visibility="visible" />
 
@@ -135,19 +172,19 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                        tools:listitem="@layout/item_recipe_result"
-                        tools:itemCount="1" />
+                        tools:itemCount="1"
+                        tools:listitem="@layout/item_recipe_result" />
 
                     <!-- Two missing -->
                     <TextView
                         android:id="@+id/tvTwoMissingHeader"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Не хватает 2 ингредиентов"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
                         android:layout_marginStart="16dp"
                         android:layout_marginTop="24dp"
+                        android:text="Не хватает 2 ингредиентов"
+                        android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
+                        android:textColor="?android:attr/textColorPrimary"
                         android:visibility="gone"
                         tools:visibility="visible" />
 
@@ -156,8 +193,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                        tools:listitem="@layout/item_recipe_result"
-                        tools:itemCount="1" />
+                        tools:itemCount="1"
+                        tools:listitem="@layout/item_recipe_result" />
                 </LinearLayout>
 
                 <!-- No results -->
@@ -165,11 +202,11 @@
                     android:id="@+id/tvNoResults"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="По вашему набору продуктов ничего не найдено.\n\nПопробуйте изменить количество или добавить больше ингредиентов."
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
-                    android:gravity="center"
                     android:layout_margin="32dp"
+                    android:gravity="center"
+                    android:text="По вашему набору продуктов ничего не найдено.\n\nПопробуйте изменить количество или добавить больше ингредиентов."
+                    android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                    android:textColor="?android:attr/textColorSecondary"
                     android:visibility="gone"
                     tools:visibility="visible" />
 
