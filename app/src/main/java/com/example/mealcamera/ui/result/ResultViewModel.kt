@@ -87,8 +87,9 @@ class ResultViewModel(private val repository: RecipeRepository) : ViewModel() {
 
                                 if (userProvidedQuantity < recipeRequiredQuantity) {
                                     val difference = recipeRequiredQuantity - userProvidedQuantity
+                                    // 👇 ИСПОЛЬЗУЕМ UnitHelper.formatQuantity ВМЕСТО UnitHelper.getUnitForIngredient
                                     val unitToDisplay = userProvidedIngredient.unit.ifBlank {
-                                        UnitHelper.getUnitForIngredient(userProvidedIngredient.name)
+                                        UnitHelper.getDefaultUnit(userProvidedIngredient.name)
                                     }
                                     currentRecipeDetailedMissingIngredients.add(
                                         "не хватает ${UnitHelper.formatQuantity(difference)} ${ingredientInRecipe.name} (${unitToDisplay})"

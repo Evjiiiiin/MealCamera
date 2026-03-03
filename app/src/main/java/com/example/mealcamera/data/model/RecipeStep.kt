@@ -22,5 +22,8 @@ data class RecipeStep(
     val stepId: Long = 0,
     val recipeId: Long,
     val stepNumber: Int,
-    val instruction: String
+    val title: String,
+    val instruction: String,
+    val timerMinutes: Int = 0,
+    val imagePath: String = ""
 )

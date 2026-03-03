@@ -18,11 +18,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mealcamera.MealCameraApplication
-import com.example.mealcamera.databinding.ActivityScanBinding // Этот импорт должен быть!
+import com.example.mealcamera.databinding.ActivityScanBinding
 import com.example.mealcamera.ml.DetectedFood
 import com.example.mealcamera.ui.SharedViewModel
+import com.example.mealcamera.ui.home.MainActivity
 import com.example.mealcamera.ui.result.ResultActivity
-import com.example.mealcamera.util.toBitmapSafe // Импортируем вашу функцию toBitmapSafe
+import com.example.mealcamera.util.toBitmapSafe
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -57,6 +58,7 @@ class ScanActivity : AppCompatActivity() {
         supportActionBar?.title = ""
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
         if (checkCameraPermission()) {
             startCamera()
         } else {
@@ -130,7 +132,7 @@ class ScanActivity : AppCompatActivity() {
         } else {
             imageCapture.takePicture(cameraExecutor, object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(image: ImageProxy) {
-                    val capturedBitmap: Bitmap = image.toBitmapSafe() // ИСПОЛЬЗУЕМ ВАШУ ФУНКЦИЮ
+                    val capturedBitmap: Bitmap = image.toBitmapSafe()
                     image.close()
 
                     viewModel.processImageWithBitmap(capturedBitmap) { detectedFoods ->

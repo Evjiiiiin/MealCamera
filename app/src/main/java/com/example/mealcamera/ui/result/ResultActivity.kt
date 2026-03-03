@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.EditableIngredient
-import com.example.mealcamera.data.util.UnitHelper // <-- Импорт остается
+import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.databinding.ActivityResultBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.home.MainActivity
@@ -31,7 +31,6 @@ class ResultActivity : AppCompatActivity() {
     private var editableIngredientMutableList: MutableList<EditableIngredient> = mutableListOf()
     private lateinit var editableAdapter: EditableIngredientAdapter
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityResultBinding.inflate(layoutInflater)
@@ -39,13 +38,13 @@ class ResultActivity : AppCompatActivity() {
 
         val detectedNames = intent.getStringArrayListExtra(ScanActivity.EXTRA_DETECTED_INGREDIENTS) ?: arrayListOf()
 
+        // Создаем ингредиенты с единицами по умолчанию из UnitHelper
         val initialList = detectedNames.mapIndexed { index, name ->
             EditableIngredient(
                 id = index.toLong(),
                 name = name,
                 quantity = "",
-                // Автоматически предлагаем единицу измерения при создании, используя ваш UnitHelper
-                unit = UnitHelper.getUnitForIngredient(name)
+                unit = UnitHelper.getDefaultUnit(name)
             )
         }.toMutableList()
 
@@ -92,11 +91,15 @@ class ResultActivity : AppCompatActivity() {
         binding.oneMissingRecyclerView.adapter = oneMissingAdapter
         binding.twoMissingRecyclerView.adapter = twoMissingAdapter
 
-        editableAdapter = EditableIngredientAdapter(editableIngredientMutableList) { ingredient ->
-            editableIngredientMutableList.removeAll { it.id == ingredient.id }
-            editableAdapter.updateIngredients(editableIngredientMutableList)
-            viewModel.findRecipes(editableAdapter.getEditedIngredients().map { it.copy() })
-        }
+        editableAdapter = EditableIngredientAdapter(
+            editableIngredientMutableList,
+            { ingredient ->
+                editableIngredientMutableList.removeAll { it.id == ingredient.id }
+                editableAdapter.updateIngredients(editableIngredientMutableList)
+                viewModel.findRecipes(editableAdapter.getEditedIngredients().map { it.copy() })
+            },
+            this
+        )
         binding.editableIngredientsRecyclerView.adapter = editableAdapter
     }
 

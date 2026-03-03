@@ -13,5 +13,7 @@ data class Recipe(
     val imagePath: String,
     val category: String,
     val prepTime: String,
-    val popularityScore: Int = 0
+    val popularityScore: Int = 0,
+    val cuisine: String = "Русская",
+    val cuisineCode: String = "RU"
 )

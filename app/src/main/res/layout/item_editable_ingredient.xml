@@ -36,7 +36,7 @@
             android:hint="Кол-во"
             app:boxStrokeColor="?android:attr/textColorSecondary"
             app:hintTextColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toStartOf="@+id/ingredient_unit_layout"
+            app:layout_constraintEnd_toStartOf="@+id/unit_container"
             app:layout_constraintTop_toTopOf="parent">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -49,27 +49,33 @@
                 android:textColor="?android:attr/textColorPrimary" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/ingredient_unit_layout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        <LinearLayout
+            android:id="@+id/unit_container"
             android:layout_width="72dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="8dp"
             android:layout_marginEnd="8dp"
-            android:hint="Ед. изм."
-            app:boxStrokeColor="?android:attr/textColorSecondary"
-            app:hintTextColor="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toStartOf="@+id/btnRemoveIngredient"
-            app:layout_constraintTop_toTopOf="parent">
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <TextView
                 android:id="@+id/ingredient_unit"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:inputType="text"
-                android:singleLine="true"
-                android:text="@={ingredient.unit}"
-                android:textColor="?android:attr/textColorPrimary" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:text="@{ingredient.unit}"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="16sp"
+                android:maxLines="1"
+                android:drawableEnd="@drawable/ic_arrow_drop_down"
+                android:drawablePadding="4dp" />
+
+        </LinearLayout>
 
         <ImageButton
             android:id="@+id/btnRemoveIngredient"
@@ -80,9 +86,9 @@
             android:padding="8dp"
             android:src="@drawable/ic_close"
             android:tint="@color/color_primary"
-            app:layout_constraintBottom_toBottomOf="@+id/ingredient_unit_layout"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/ingredient_unit_layout" />
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

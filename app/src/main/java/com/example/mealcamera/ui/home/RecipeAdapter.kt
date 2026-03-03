@@ -2,6 +2,7 @@ package com.example.mealcamera.ui.home
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -11,8 +12,30 @@ import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.databinding.ItemRecipeCardBinding
 
 class RecipeAdapter(
-    private val onClick: (Recipe) -> Unit
+    private val onItemClick: (Recipe) -> Unit,
+    private val onFavoriteClick: (Recipe, Boolean) -> Unit
 ) : ListAdapter<Recipe, RecipeAdapter.ViewHolder>(RecipeDiffCallback()) {
+
+    private val favoriteIds = mutableSetOf<Long>()
+
+    fun setFavoriteIds(ids: Set<Long>) {
+        favoriteIds.clear()
+        favoriteIds.addAll(ids)
+        notifyDataSetChanged()
+    }
+
+    fun updateFavoriteStatus(recipeId: Long, isFavorite: Boolean) {
+        if (isFavorite) {
+            favoriteIds.add(recipeId)
+        } else {
+            favoriteIds.remove(recipeId)
+        }
+
+        val position = currentList.indexOfFirst { it.recipeId == recipeId }
+        if (position != -1) {
+            notifyItemChanged(position)
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemRecipeCardBinding.inflate(
@@ -28,23 +51,31 @@ class RecipeAdapter(
     inner class ViewHolder(private val binding: ItemRecipeCardBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        @Suppress("UNUSED_PARAMETER")
         fun bind(recipe: Recipe) {
-            // ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЕ ID ИЗ XML
-            // android:id="@+id/recipeNameTextView" -> binding.recipeNameTextView
             binding.recipeNameTextView.text = recipe.name
-
-            // android:id="@+id/recipeTypeTextView" -> binding.recipeTypeTextView
-            // В этот TextView мы будем выводить категорию (завтрак, обед и т.д.)
             binding.recipeTypeTextView.text = recipe.category
 
-            // android:id="@+id/recipeImageView" -> binding.recipeImageView
             Glide.with(binding.root.context)
                 .load(recipe.imagePath)
                 .centerCrop()
                 .placeholder(R.drawable.ic_recipe_placeholder)
                 .into(binding.recipeImageView)
 
-            binding.root.setOnClickListener { onClick(recipe) }
+            val isFavorite = favoriteIds.contains(recipe.recipeId)
+            binding.btnFavorite.setImageDrawable(
+                ContextCompat.getDrawable(
+                    binding.root.context,
+                    if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline
+                )
+            )
+
+            binding.root.setOnClickListener { onItemClick(recipe) }
+
+            binding.btnFavorite.setOnClickListener {
+                val newState = !isFavorite
+                onFavoriteClick(recipe, newState)
+            }
         }
     }
 

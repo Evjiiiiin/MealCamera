@@ -1,15 +1,15 @@
 package com.example.mealcamera.ui.profile
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import com.example.mealcamera.R  // 👈 ВАЖНО: импорт R
 import com.example.mealcamera.databinding.FragmentProfileBinding
-import com.example.mealcamera.ui.auth.LoginActivity
-import com.google.firebase.auth.FirebaseAuth
+import com.example.mealcamera.ui.home.MainActivity
+import com.google.android.material.tabs.TabLayoutMediator
 
 class ProfileFragment : Fragment() {
 
@@ -28,22 +28,39 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Отображаем Email текущего пользователя
-        val user = FirebaseAuth.getInstance().currentUser
-        binding.tvUserEmail.text = user?.email ?: "Гость"
+        setupViewPager()
+    }
 
-        // Кнопка выхода
-        binding.btnLogout.setOnClickListener {
-            FirebaseAuth.getInstance().signOut()
-            val intent = Intent(requireContext(), LoginActivity::class.java)
-            // Очищаем стек активити, чтобы нельзя было вернуться назад
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
+    override fun onResume() {
+        super.onResume()
+        val activity = requireActivity()
+        if (activity is MainActivity) {
+            activity.updateNavigationSelection(R.id.navigation_profile)
         }
+    }
 
-        // Заглушка для добавления рецепта (сделаем позже)
-        binding.btnAddRecipe.setOnClickListener {
-            Toast.makeText(context, "Функция добавления рецепта скоро появится!", Toast.LENGTH_SHORT).show()
+    private fun setupViewPager() {
+        val adapter = ProfilePagerAdapter(this)
+        binding.viewPager.adapter = adapter
+
+        TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
+            tab.text = when (position) {
+                0 -> "Профиль"
+                1 -> "Избранное"
+                else -> ""
+            }
+        }.attach()
+    }
+
+    inner class ProfilePagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
+        override fun getItemCount(): Int = 2
+
+        override fun createFragment(position: Int): Fragment {
+            return when (position) {
+                0 -> ProfileInfoFragment()
+                1 -> FavoritesFragment()
+                else -> ProfileInfoFragment()
+            }
         }
     }
 

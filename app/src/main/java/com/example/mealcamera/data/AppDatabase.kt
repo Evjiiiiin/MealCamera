@@ -4,18 +4,28 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.mealcamera.data.dao.FavoriteDao
 import com.example.mealcamera.data.dao.RecipeDao
 import com.example.mealcamera.data.dao.ShoppingListDao
 import com.example.mealcamera.data.model.*
 
 @Database(
-    entities = [Recipe::class, Ingredient::class, RecipeIngredientCrossRef::class, ShoppingListItem::class, RecipeStep::class],
-    version = 6,
+    entities = [
+        Recipe::class,
+        Ingredient::class,
+        RecipeIngredientCrossRef::class,
+        ShoppingListItem::class,
+        RecipeStep::class,
+        FavoriteRecipe::class,
+        StepIngredient::class
+    ],
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun recipeDao(): RecipeDao
     abstract fun shoppingListDao(): ShoppingListDao
+    abstract fun favoriteDao(): FavoriteDao
 
     companion object {
         @Volatile
