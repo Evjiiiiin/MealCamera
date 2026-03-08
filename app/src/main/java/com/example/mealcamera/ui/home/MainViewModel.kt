@@ -26,25 +26,33 @@ class MainViewModel(private val repository: RecipeRepository) : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    val uiState: StateFlow<MainUiState> = combine(
+    private val filteredState: Flow<MainUiState> = combine(
         repository.allRecipes,
         _searchQuery,
         _categoryFilter,
         _cuisineFilter,
-        _isRefreshing,
-        _error
-    ) { recipes, query, category, cuisine, refreshing, error ->
-        val filtered = recipes.filter { recipe ->
-            val matchesQuery = recipe.name.contains(query, ignoreCase = true)
-            val matchesCategory = category == "Все" || recipe.category == category
-            val matchesCuisine = cuisine == "Все кухни" || (recipe.cuisine == cuisine)
-            matchesQuery && matchesCategory && matchesCuisine
-        }
+        _isRefreshing
+    ) { recipes, query, category, cuisine, refreshing ->
+        val filtered = recipes
+            .filter { recipe ->
+                val matchesQuery = recipe.name.contains(query, ignoreCase = true)
+                val matchesCategory = category == "Все" || recipe.category == category
+                val matchesCuisine = cuisine == "Все кухни" || recipe.cuisine == cuisine
+                matchesQuery && matchesCategory && matchesCuisine
+            }
+            .distinctBy { recipe ->
+                "${recipe.name.lowercase()}|${recipe.category.lowercase()}"
+            }
+
         MainUiState(
             recipes = filtered,
             isRefreshing = refreshing,
-            error = error
+            error = null
         )
+    }
+
+    val uiState: StateFlow<MainUiState> = combine(filteredState, _error) { state, error ->
+        state.copy(error = error)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),

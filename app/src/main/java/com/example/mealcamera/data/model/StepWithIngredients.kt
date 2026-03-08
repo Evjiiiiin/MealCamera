@@ -14,3 +14,8 @@ data class StepWithIngredients(
     )
     val ingredients: List<Ingredient>
 )
+
+data class CookingStepWithIngredients(
+    val step: RecipeStep,
+    val ingredients: List<IngredientWithDetails>
+)

@@ -118,13 +118,51 @@ class FirestoreService {
                         }
                     }
 
-                    // Получаем шаги как список
-                    val stepsList = mutableListOf<String>()
+                    // Получаем шаги как список структурированных данных
+                    val stepsList = mutableListOf<StepData>()
                     val stepsField = document.get("steps")
                     if (stepsField is List<*>) {
                         stepsField.forEach { step ->
-                            if (step is String) {
-                                stepsList.add(step)
+                            if (step is Map<*, *>) {
+                                val ingredients = mutableListOf<CloudIngredient>()
+                                val rawIngredients = step["ingredients"]
+                                if (rawIngredients is List<*>) {
+                                    rawIngredients.forEach { ingredient ->
+                                        if (ingredient is Map<*, *>) {
+                                            val ingredientName = ingredient["name"] as? String ?: ""
+                                            if (ingredientName.isNotEmpty()) {
+                                                ingredients.add(
+                                                    CloudIngredient(
+                                                        name = ingredientName,
+                                                        quantity = ingredient["quantity"] as? String ?: "",
+                                                        unit = ingredient["unit"] as? String ?: ""
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                stepsList.add(
+                                    StepData(
+                                        title = step["title"] as? String ?: "",
+                                        description = step["description"] as? String ?: "",
+                                        timerMinutes = (step["timerMinutes"] as? Long)?.toInt() ?: 0,
+                                        imagePath = step["imagePath"] as? String ?: "",
+                                        ingredients = ingredients
+                                    )
+                                )
+                            } else if (step is String) {
+                                // Поддержка старого формата, где шаги были просто строками
+                                stepsList.add(
+                                    StepData(
+                                        title = "Шаг",
+                                        description = step,
+                                        timerMinutes = 0,
+                                        imagePath = "",
+                                        ingredients = emptyList()
+                                    )
+                                )
                             }
                         }
                     }
@@ -179,7 +217,21 @@ class FirestoreService {
                         "unit" to it.unit
                     )
                 },
-                "steps" to recipe.steps
+                "steps" to recipe.steps.map { step ->
+                    mapOf(
+                        "title" to step.title,
+                        "description" to step.description,
+                        "timerMinutes" to step.timerMinutes,
+                        "imagePath" to step.imagePath,
+                        "ingredients" to step.ingredients.map {
+                            mapOf(
+                                "name" to it.name,
+                                "quantity" to it.quantity,
+                                "unit" to it.unit
+                            )
+                        }
+                    )
+                }
             )
             val docRef = recipesCollection.add(data).await()
             Log.d("FirestoreService", "✅ Added recipe: ${recipe.name} with ID: ${docRef.id}")
@@ -211,7 +263,21 @@ class FirestoreService {
                         "unit" to it.unit
                     )
                 },
-                "steps" to recipe.steps
+                "steps" to recipe.steps.map { step ->
+                    mapOf(
+                        "title" to step.title,
+                        "description" to step.description,
+                        "timerMinutes" to step.timerMinutes,
+                        "imagePath" to step.imagePath,
+                        "ingredients" to step.ingredients.map {
+                            mapOf(
+                                "name" to it.name,
+                                "quantity" to it.quantity,
+                                "unit" to it.unit
+                            )
+                        }
+                    )
+                }
             )
             recipesCollection.document(recipeId).set(data).await()
             Log.d("FirestoreService", "✅ Updated recipe: ${recipe.name}")
@@ -302,7 +368,15 @@ data class CloudRecipe(
     val cuisine: String = "Русская",
     val cuisineCode: String = "RU",
     val ingredients: List<CloudIngredient> = emptyList(),
-    val steps: List<String> = emptyList()
+    val steps: List<StepData> = emptyList()
+)
+
+data class StepData(
+    val title: String = "",
+    val description: String = "",
+    val timerMinutes: Int = 0,
+    val imagePath: String = "",
+    val ingredients: List<CloudIngredient> = emptyList()
 )
 
 data class CloudIngredient(

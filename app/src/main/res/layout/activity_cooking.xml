@@ -28,8 +28,7 @@
             android:layout_height="wrap_content"
             android:text="1 из 5"
             android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginEnd="16dp" />
+            android:textStyle="bold" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -37,30 +36,31 @@
             android:layout_width="0dp"
             android:layout_height="8dp"
             android:layout_weight="1"
-            android:progress="20"
+            android:layout_marginStart="16dp"
             android:max="100"
-            android:progressTint="@color/color_primary" />
+            android:progress="20"
+            android:progressTint="?attr/colorPrimary" />
 
     </LinearLayout>
 
+    <!-- Контент шага -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="16dp">
+        android:layout_weight="1">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="24dp">
 
             <TextView
                 android:id="@+id/tvStepNumber"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Шаг 1"
-                android:textSize="24sp"
-                android:textStyle="bold"
+                android:textSize="14sp"
                 android:textColor="?attr/colorPrimary"
                 android:layout_marginBottom="8dp" />
 
@@ -71,7 +71,17 @@
                 android:text="Подготовка яиц"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="12dp" />
+
+            <ImageView
+                android:id="@+id/ivStepImage"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginBottom="16dp"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_recipe_placeholder"
+                android:visibility="gone" />
 
             <!-- Ингредиенты для шага -->
             <LinearLayout
@@ -100,6 +110,14 @@
                     android:lineSpacingExtra="4dp" />
 
             </LinearLayout>
+
+            <Button
+                android:id="@+id/btnVoiceCommand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🎤 Голосовая команда"
+                android:layout_marginBottom="12dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             <!-- Таймер -->
             <LinearLayout

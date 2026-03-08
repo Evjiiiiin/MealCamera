@@ -1,21 +1,19 @@
 package com.example.mealcamera.ui.cooking
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.RecipeRepository
-import com.example.mealcamera.data.model.StepWithIngredients
+import com.example.mealcamera.data.model.CookingStepWithIngredients
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
 
 class CookingViewModel(
     private val repository: RecipeRepository
 ) : ViewModel() {
 
-    fun getStepsWithIngredients(recipeId: Long): Flow<List<StepWithIngredients>> =
-        repository.getStepsWithIngredients(recipeId)
+    fun getStepsWithIngredients(recipeId: Long, portions: Int): Flow<List<CookingStepWithIngredients>> =
+        repository.getCookingStepsWithIngredients(recipeId, portions)
 
-    suspend fun saveToHistory(recipeId: Long, recipeName: String) {
-        // TODO: Добавить сохранение в историю
-        // Это будет в следующей задаче
+    suspend fun saveToHistory(recipeId: Long, _recipeName: String) {
+        if (recipeId <= 0L) return
+        repository.incrementRecipePopularity(recipeId)
     }
 }

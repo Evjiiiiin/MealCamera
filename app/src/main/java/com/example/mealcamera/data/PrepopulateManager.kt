@@ -45,10 +45,12 @@ class PrepopulateManager(
                     }
 
                     firestoreService.uploadInitialData(firestoreIngredients, recipes)
-                }
 
-                // Сохраняем локально в Room
-                saveToLocalDatabase(recipeDao, ingredients, recipes)
+                    // Если облако пусто (или оффлайн при первом запуске), берём JSON как источник локальных данных
+                    saveToLocalDatabase(recipeDao, ingredients, recipes)
+                } else {
+                    Log.i("PrepopulateManager", "☁️ Данные уже есть в Firestore, локально ждём синхронизацию из облака")
+                }
 
                 Log.i("PrepopulateManager", "✅ База данных успешно заполнена")
             } catch (e: Exception) {
@@ -80,6 +82,7 @@ class PrepopulateManager(
 
         for (i in 0 until recipesArray.length()) {
             val recipeObj = recipesArray.getJSONObject(i)
+            val recipeName = recipeObj.getString("name")
 
             val recipeIngredients = mutableListOf<CloudIngredient>()
             val recipeIngredientsArray = recipeObj.getJSONArray("ingredients")
@@ -111,23 +114,26 @@ class PrepopulateManager(
                         }
                     }
 
+                    val stepImagePath = stepObj.optString("imagePath", "")
+                        .ifBlank { buildDefaultStepImagePath(recipeName, j + 1) }
+
                     steps.add(com.example.mealcamera.data.remote.StepData(
                         title = stepObj.getString("title"),
                         description = stepObj.getString("description"),
                         timerMinutes = stepObj.optInt("timerMinutes", 0),
-                        imagePath = stepObj.optString("imagePath", ""),
+                        imagePath = stepImagePath,
                         ingredients = stepIngredients
                     ))
                 }
             }
 
-            // Определяем кухню по названию рецепта
-            val (cuisine, cuisineCode) = detectCuisine(recipeObj.getString("name"))
+            // Определяем кухню
+            val (cuisine, cuisineCode) = detectCuisine(recipeName)
 
             recipes.add(CloudRecipe(
-                name = recipeObj.getString("name"),
+                name = recipeName,
                 description = recipeObj.getString("description"),
-                imagePath = recipeObj.getString("imagePath"),
+                imagePath = recipeObj.optString("imagePath", ""),
                 category = recipeObj.getString("category"),
                 prepTime = recipeObj.getString("prepTime"),
                 popularityScore = recipeObj.optInt("popularityScore", 0),
@@ -139,6 +145,16 @@ class PrepopulateManager(
         }
 
         return Pair(ingredients, recipes)
+    }
+
+    private fun buildDefaultStepImagePath(recipeName: String, stepNumber: Int): String {
+        val slug = recipeName
+            .lowercase()
+            .replace("ё", "е")
+            .replace(Regex("[^a-zа-я0-9]+"), "_")
+            .trim('_')
+
+        return "step_images/${slug}/step_${stepNumber}.jpg"
     }
 
     private fun detectCuisine(recipeName: String): Pair<String, String> {

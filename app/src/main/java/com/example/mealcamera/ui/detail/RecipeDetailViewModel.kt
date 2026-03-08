@@ -44,7 +44,7 @@ class RecipeDetailViewModel(
         viewModelScope.launch {
             repository.getRecipeById(recipeId).collect { recipe ->
                 _recipe.value = recipe
-                recipe?.let { checkIfFavorite(it.recipeId) }
+                checkIfFavorite(recipe.recipeId)
             }
         }
         viewModelScope.launch {

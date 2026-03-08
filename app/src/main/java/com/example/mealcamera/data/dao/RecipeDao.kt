@@ -24,6 +24,9 @@ interface RecipeDao {
     @Query("SELECT recipeId FROM recipes WHERE firestoreId = :firestoreId LIMIT 1")
     suspend fun getRecipeIdByFirestoreId(firestoreId: String): Long?
 
+    @Query("SELECT * FROM recipes WHERE name = :name AND category = :category LIMIT 1")
+    suspend fun getRecipeByNameAndCategory(name: String, category: String): Recipe?
+
     @Query("SELECT COUNT(*) FROM recipes")
     suspend fun getRecipeCount(): Int
 

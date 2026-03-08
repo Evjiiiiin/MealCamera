@@ -31,14 +31,27 @@ class RecipeRepository(
             Log.d("RecipeRepository", "📦 Loaded ${cloudRecipes.size} recipes from cloud")
 
             cloudRecipes.forEach { cloudData ->
-                val existingId = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
+                val existingIdByFirestore = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
+                val existingByNameAndCategory = recipeDao.getRecipeByNameAndCategory(
+                    cloudData.recipe.name,
+                    cloudData.recipe.category
+                )
 
-                if (existingId == null) {
-                    Log.d("RecipeRepository", "   ➕ Inserting new recipe")
-                    insertNewRecipe(cloudData)
-                } else {
-                    Log.d("RecipeRepository", "   🔄 Updating existing recipe")
-                    updateExistingRecipe(cloudData, existingId)
+                when {
+                    existingIdByFirestore != null -> {
+                        Log.d("RecipeRepository", "   🔄 Updating existing recipe by firestoreId")
+                        updateExistingRecipe(cloudData, existingIdByFirestore)
+                    }
+
+                    existingByNameAndCategory != null -> {
+                        Log.d("RecipeRepository", "   🔗 Linking local JSON recipe to firestoreId and updating")
+                        updateExistingRecipe(cloudData, existingByNameAndCategory.recipeId)
+                    }
+
+                    else -> {
+                        Log.d("RecipeRepository", "   ➕ Inserting new recipe")
+                        insertNewRecipe(cloudData)
+                    }
                 }
             }
 
@@ -129,7 +142,7 @@ class RecipeRepository(
         cloudData: RecipeData,
         localId: Long
     ) {
-        cloudData.recipe.ingredients.forEach { cloudIngredient ->
+        for (cloudIngredient in cloudData.recipe.ingredients) {
             val name = cloudIngredient.name
             if (name.isNotEmpty()) {
                 val existingIngredients = recipeDao.getAllIngredients()
@@ -141,14 +154,13 @@ class RecipeRepository(
                     recipeDao.insertIngredient(Ingredient(name = name))
                 }
 
-                recipeDao.insertRecipeIngredientCrossRef(
-                    RecipeIngredientCrossRef(
-                        recipeId = localId,
-                        ingredientId = ingredientId,
-                        quantity = cloudIngredient.quantity,
-                        unit = cloudIngredient.unit
-                    )
+                val crossRef = RecipeIngredientCrossRef(
+                    recipeId = localId,
+                    ingredientId = ingredientId,
+                    quantity = cloudIngredient.quantity,
+                    unit = cloudIngredient.unit
                 )
+                recipeDao.insertRecipeIngredientCrossRef(crossRef)
             }
         }
     }
@@ -157,42 +169,34 @@ class RecipeRepository(
         cloudData: RecipeData,
         localId: Long
     ) {
+        val existingIngredients = recipeDao.getAllIngredients()
+
         cloudData.recipe.steps.forEachIndexed { index, stepData ->
-            // Создаем шаг
             val step = RecipeStep(
                 recipeId = localId,
                 stepNumber = index + 1,
                 title = stepData.title,
                 instruction = stepData.description,
-                timerMinutes = stepData.timerMinutes ?: 0,
-                imagePath = stepData.imagePath ?: ""
+                timerMinutes = stepData.timerMinutes,
+                imagePath = stepData.imagePath
             )
             val stepId = recipeDao.insertStep(step)
 
-            // Сохраняем ингредиенты для этого шага
-            stepData.ingredients?.forEach { stepIngredient ->
-                val name = stepIngredient.name
-                if (name.isNotEmpty()) {
-                    // Находим или создаем ингредиент
-                    val existingIngredients = recipeDao.getAllIngredients()
-                    val existingIngredient = existingIngredients.find { it.name == name }
-
-                    val ingredientId = if (existingIngredient != null) {
-                        existingIngredient.ingredientId
-                    } else {
-                        recipeDao.insertIngredient(Ingredient(name = name))
+            stepData.ingredients.forEach { cloudIngredient ->
+                val ingredientName = cloudIngredient.name
+                val ingredient = existingIngredients.find { it.name == ingredientName }
+                    ?: run {
+                        val newId = recipeDao.insertIngredient(Ingredient(name = ingredientName))
+                        Ingredient(ingredientId = newId, name = ingredientName)
                     }
 
-                    // Создаем связь шага с ингредиентом
-                    recipeDao.insertStepIngredient(
-                        StepIngredient(
-                            stepId = stepId,
-                            ingredientId = ingredientId,
-                            quantity = stepIngredient.quantity,
-                            unit = stepIngredient.unit
-                        )
-                    )
-                }
+                val stepIngredient = StepIngredient(
+                    stepId = stepId,
+                    ingredientId = ingredient.ingredientId,
+                    quantity = cloudIngredient.quantity,
+                    unit = cloudIngredient.unit
+                )
+                recipeDao.insertStepIngredient(stepIngredient)
             }
         }
     }
@@ -228,6 +232,36 @@ class RecipeRepository(
 
     fun getStepsWithIngredients(recipeId: Long): Flow<List<StepWithIngredients>> =
         recipeDao.getStepsWithIngredients(recipeId)
+
+
+    fun getCookingStepsWithIngredients(recipeId: Long, portions: Int): Flow<List<CookingStepWithIngredients>> {
+        val safePortions = portions.coerceIn(1, 10)
+
+        return recipeDao.getStepsByRecipeId(recipeId).map { steps ->
+            steps.map { step ->
+                val stepIngredients = recipeDao.getStepIngredients(step.stepId)
+                val ingredientDetails = stepIngredients.mapNotNull { stepIngredient ->
+                    val ingredient = recipeDao.getIngredientById(stepIngredient.ingredientId) ?: return@mapNotNull null
+
+                    val scaledQuantity = stepIngredient.quantity.toDoubleOrNull()?.let { numeric ->
+                        val total = numeric * safePortions
+                        if (total % 1.0 == 0.0) total.toInt().toString() else String.format("%.1f", total)
+                    } ?: stepIngredient.quantity
+
+                    IngredientWithDetails(
+                        ingredient = ingredient,
+                        quantity = scaledQuantity,
+                        unit = stepIngredient.unit
+                    )
+                }
+
+                CookingStepWithIngredients(
+                    step = step,
+                    ingredients = ingredientDetails
+                )
+            }
+        }
+    }
 
     suspend fun getRecipeIngredientCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef? =
         recipeDao.getCrossRef(recipeId, ingredientId)

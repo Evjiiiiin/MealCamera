@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.mealcamera.R  // 👈 ВАЖНО: импорт R
+import com.example.mealcamera.ui.profile.ProfileInfoFragment
 import com.example.mealcamera.databinding.FragmentProfileBinding
 import com.example.mealcamera.ui.home.MainActivity
 import com.google.android.material.tabs.TabLayoutMediator

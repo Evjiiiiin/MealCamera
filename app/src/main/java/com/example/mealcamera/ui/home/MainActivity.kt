@@ -15,7 +15,6 @@ import com.example.mealcamera.databinding.ActivityMainBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.profile.ProfileFragment
 import com.example.mealcamera.ui.scan.ScanActivity
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -229,14 +228,10 @@ class MainActivity : AppCompatActivity() {
             viewModel.uiState.collect { state ->
                 recipeAdapter.submitList(state.recipes)
 
-                if (state.isRefreshing) {
-                    binding.swipeRefreshLayout.isRefreshing = true
-                } else {
-                    binding.swipeRefreshLayout.isRefreshing = false
-                }
+                binding.swipeRefreshLayout.isRefreshing = state.isRefreshing
 
-                state.error?.let {
-                    Toast.makeText(this@MainActivity, it, Toast.LENGTH_SHORT).show()
+                state.error?.let { errorMessage ->
+                    Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
                 }
             }
         }

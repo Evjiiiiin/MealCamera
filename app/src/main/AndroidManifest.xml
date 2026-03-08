@@ -4,6 +4,7 @@
     <uses-feature android:name="android.hardware.camera.any" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".MealCameraApplication"
@@ -67,6 +68,12 @@
         <activity
             android:name=".ui.detail.RecipeDetailActivity"
             android:parentActivityName=".ui.home.MainActivity" />
+
+
+        <activity
+            android:name=".ui.cooking.CookingActivity"
+            android:screenOrientation="portrait"
+            android:parentActivityName=".ui.detail.RecipeDetailActivity" />
 
     </application>
 </manifest>

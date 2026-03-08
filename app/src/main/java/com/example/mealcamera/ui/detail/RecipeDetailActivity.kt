@@ -1,5 +1,6 @@
 package com.example.mealcamera.ui.detail
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.OnBackPressedCallback
@@ -72,8 +73,17 @@ class RecipeDetailActivity : AppCompatActivity() {
             val intent = Intent(this, CookingActivity::class.java).apply {
                 putExtra(CookingActivity.EXTRA_RECIPE_ID, recipe.recipeId)
                 putExtra(CookingActivity.EXTRA_RECIPE_NAME, recipe.name)
+                putExtra(CookingActivity.EXTRA_PORTIONS, viewModel.portions.value)
             }
-            startActivity(intent)
+            try {
+                startActivity(intent)
+            } catch (e: ActivityNotFoundException) {
+                android.widget.Toast.makeText(
+                    this,
+                    "Экран готовки не найден. Проверь AndroidManifest.xml",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 
