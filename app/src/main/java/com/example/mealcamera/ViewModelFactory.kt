@@ -30,7 +30,7 @@ class ViewModelFactory(
                 RecipeDetailViewModel(recipeRepository, favoriteRepository, sharedViewModel) as T
 
             modelClass.isAssignableFrom(ResultViewModel::class.java) ->
-                ResultViewModel(recipeRepository) as T
+                ResultViewModel(recipeRepository, sharedViewModel) as T  // ← ИСПРАВЛЕНО: добавлен sharedViewModel
 
             modelClass.isAssignableFrom(ScanViewModel::class.java) ->
                 ScanViewModel(application) as T

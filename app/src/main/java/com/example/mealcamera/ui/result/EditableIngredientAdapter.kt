@@ -12,6 +12,7 @@ import com.example.mealcamera.databinding.ItemEditableIngredientBinding
 class EditableIngredientAdapter(
     private val ingredients: MutableList<EditableIngredient>,
     private val onDeleteClick: (EditableIngredient) -> Unit,
+    private val onUpdateClick: (EditableIngredient) -> Unit,
     private val fragmentActivity: FragmentActivity
 ) : RecyclerView.Adapter<EditableIngredientAdapter.IngredientViewHolder>() {
 
@@ -21,7 +22,6 @@ class EditableIngredientAdapter(
         fun bind(ingredient: EditableIngredient, position: Int) {
             binding.ingredient = ingredient
 
-            // 👇 КЛИК НА КОНТЕЙНЕР С ЕДИНИЦЕЙ
             binding.unitContainer.setOnClickListener {
                 val availableUnits = UnitHelper.getAvailableUnits(ingredient.name)
                 showUnitDialog(ingredient, availableUnits, position)
@@ -30,6 +30,14 @@ class EditableIngredientAdapter(
             binding.btnRemoveIngredient.setOnClickListener {
                 onDeleteClick(ingredient)
             }
+
+            // Слушатель изменения количества
+            binding.ingredientQuantity.setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) {
+                    onUpdateClick(ingredient)
+                }
+            }
+
             binding.executePendingBindings()
         }
 
@@ -43,6 +51,7 @@ class EditableIngredientAdapter(
                 .setItems(units.toTypedArray()) { dialog, which ->
                     ingredient.unit = units[which]
                     notifyItemChanged(position)
+                    onUpdateClick(ingredient)
                     dialog.dismiss()
                 }
                 .setNegativeButton("Отмена", null)

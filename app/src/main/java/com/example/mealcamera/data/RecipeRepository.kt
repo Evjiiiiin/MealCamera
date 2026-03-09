@@ -23,39 +23,61 @@ class RecipeRepository(
         try {
             Log.d("RecipeRepository", "🔄 Starting sync from cloud")
 
-            // Синхронизация ингредиентов
             syncIngredientsFromCloud()
 
-            // Синхронизация рецептов
+            val localRecipes = recipeDao.getAllRecipesWithIngredients()
+            val localRecipeMap = localRecipes.associate {
+                "${it.recipe.name.lowercase()}|${it.recipe.category.lowercase()}" to it.recipe
+            }
+
             val cloudRecipes = firestoreService.getAllRecipes()
             Log.d("RecipeRepository", "📦 Loaded ${cloudRecipes.size} recipes from cloud")
 
+            var addedCount = 0
+            var updatedCount = 0
+
             cloudRecipes.forEach { cloudData ->
-                val existingIdByFirestore = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
-                val existingByNameAndCategory = recipeDao.getRecipeByNameAndCategory(
-                    cloudData.recipe.name,
-                    cloudData.recipe.category
-                )
+                val cloudRecipe = cloudData.recipe
+                val recipeKey = "${cloudRecipe.name.lowercase()}|${cloudRecipe.category.lowercase()}"
+
+                val existingByFirestoreId = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
+                val existingByName = localRecipeMap[recipeKey]
 
                 when {
-                    existingIdByFirestore != null -> {
-                        Log.d("RecipeRepository", "   🔄 Updating existing recipe by firestoreId")
-                        updateExistingRecipe(cloudData, existingIdByFirestore)
+                    existingByFirestoreId != null -> {
+                        Log.d("RecipeRepository", "   🔄 Updating existing recipe by firestoreId: ${cloudRecipe.name}")
+                        updateExistingRecipe(cloudData, existingByFirestoreId)
+                        updatedCount++
                     }
 
-                    existingByNameAndCategory != null -> {
-                        Log.d("RecipeRepository", "   🔗 Linking local JSON recipe to firestoreId and updating")
-                        updateExistingRecipe(cloudData, existingByNameAndCategory.recipeId)
+                    existingByName != null && existingByName.firestoreId == null -> {
+                        Log.d("RecipeRepository", "   🔗 Linking local JSON recipe to firestoreId: ${cloudRecipe.name}")
+                        val updatedRecipe = existingByName.copy(
+                            firestoreId = cloudData.id,
+                            name = cloudRecipe.name,
+                            description = cloudRecipe.description,
+                            imagePath = cloudRecipe.imagePath,
+                            prepTime = cloudRecipe.prepTime,
+                            popularityScore = cloudRecipe.popularityScore,
+                            cuisine = cloudRecipe.cuisine,
+                            cuisineCode = cloudRecipe.cuisineCode
+                        )
+                        recipeDao.updateRecipe(updatedRecipe)
+
+                        updateRecipeIngredientsAndSteps(cloudData, existingByName.recipeId)
+                        updatedCount++
                     }
 
                     else -> {
-                        Log.d("RecipeRepository", "   ➕ Inserting new recipe")
+                        Log.d("RecipeRepository", "   ➕ Inserting new recipe: ${cloudRecipe.name}")
                         insertNewRecipe(cloudData)
+                        addedCount++
                     }
                 }
             }
 
-            Log.d("RecipeRepository", "✅ Sync completed successfully")
+            Log.d("RecipeRepository", "✅ Sync completed: +$addedCount new, 🔄 $updatedCount updated")
+
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error during sync", e)
         }
@@ -67,18 +89,36 @@ class RecipeRepository(
             Log.d("RecipeRepository", "📦 Loaded ${cloudIngredients.size} ingredients from cloud")
 
             val localIngredients = recipeDao.getAllIngredients()
+            val localIngredientMap = localIngredients.associateBy { it.name.lowercase() }
+
+            var addedCount = 0
+            var updatedCount = 0
 
             cloudIngredients.forEach { cloudIngredient ->
-                val existing = localIngredients.find { it.name == cloudIngredient.name }
+                val existing = localIngredientMap[cloudIngredient.name.lowercase()]
+
                 if (existing == null) {
                     recipeDao.insertIngredient(Ingredient(
                         name = cloudIngredient.name,
                         isAlwaysAvailable = cloudIngredient.isAlwaysAvailable,
                         isCoreIngredient = cloudIngredient.isCoreIngredient
                     ))
+                    addedCount++
                     Log.d("RecipeRepository", "   ➕ Added new ingredient: ${cloudIngredient.name}")
+                } else if (existing.isAlwaysAvailable != cloudIngredient.isAlwaysAvailable ||
+                    existing.isCoreIngredient != cloudIngredient.isCoreIngredient) {
+                    val updatedIngredient = existing.copy(
+                        isAlwaysAvailable = cloudIngredient.isAlwaysAvailable,
+                        isCoreIngredient = cloudIngredient.isCoreIngredient
+                    )
+                    recipeDao.updateIngredient(updatedIngredient)
+                    updatedCount++
+                    Log.d("RecipeRepository", "   🔄 Updated ingredient: ${cloudIngredient.name}")
                 }
             }
+
+            Log.d("RecipeRepository", "   📊 Ingredients: +$addedCount new, 🔄 $updatedCount updated")
+
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error syncing ingredients", e)
         }
@@ -100,10 +140,7 @@ class RecipeRepository(
         )
         val localId = recipeDao.insertRecipe(newRecipe)
 
-        // Сохраняем общие ингредиенты
         saveIngredientsForRecipe(cloudData, localId)
-
-        // Сохраняем шаги с их ингредиентами
         saveStepsForRecipe(cloudData, localId)
 
         Log.d("RecipeRepository", "   ✅ Successfully inserted recipe with ID: $localId")
@@ -126,41 +163,47 @@ class RecipeRepository(
         )
         recipeDao.updateRecipe(updatedRecipe)
 
-        // Удаляем старые связи
-        recipeDao.deleteCrossRefsByRecipeId(existingId)
-        recipeDao.deleteStepsByRecipeId(existingId)
-        recipeDao.deleteStepIngredientsByRecipeId(existingId)
-
-        // Сохраняем новые
-        saveIngredientsForRecipe(cloudData, existingId)
-        saveStepsForRecipe(cloudData, existingId)
+        updateRecipeIngredientsAndSteps(cloudData, existingId)
 
         Log.d("RecipeRepository", "   ✅ Successfully updated recipe: ${cloudData.recipe.name}")
+    }
+
+    private suspend fun updateRecipeIngredientsAndSteps(cloudData: RecipeData, recipeId: Long) {
+        recipeDao.deleteCrossRefsByRecipeId(recipeId)
+        recipeDao.deleteStepsByRecipeId(recipeId)
+        recipeDao.deleteStepIngredientsByRecipeId(recipeId)
+
+        saveIngredientsForRecipe(cloudData, recipeId)
+        saveStepsForRecipe(cloudData, recipeId)
     }
 
     private suspend fun saveIngredientsForRecipe(
         cloudData: RecipeData,
         localId: Long
     ) {
-        for (cloudIngredient in cloudData.recipe.ingredients) {
+        val allIngredients = recipeDao.getAllIngredients()
+        val ingredientNameToId = allIngredients.associateBy { it.name.lowercase() }
+
+        cloudData.recipe.ingredients.forEach { cloudIngredient ->
             val name = cloudIngredient.name
             if (name.isNotEmpty()) {
-                val existingIngredients = recipeDao.getAllIngredients()
-                val existingIngredient = existingIngredients.find { it.name == name }
+                val ingredientId = ingredientNameToId[name.lowercase()]?.ingredientId
+                    ?: run {
+                        recipeDao.insertIngredient(Ingredient(name = name))
+                    }
 
-                val ingredientId = if (existingIngredient != null) {
-                    existingIngredient.ingredientId
-                } else {
-                    recipeDao.insertIngredient(Ingredient(name = name))
-                }
+                // Безопасное преобразование quantity в строку
+                val quantityStr = cloudIngredient.quantity.toString()
 
                 val crossRef = RecipeIngredientCrossRef(
                     recipeId = localId,
                     ingredientId = ingredientId,
-                    quantity = cloudIngredient.quantity,
+                    quantity = quantityStr,
                     unit = cloudIngredient.unit
                 )
                 recipeDao.insertRecipeIngredientCrossRef(crossRef)
+
+                Log.d("RecipeRepository", "      Saved ingredient: $name = $quantityStr ${cloudIngredient.unit}")
             }
         }
     }
@@ -169,7 +212,8 @@ class RecipeRepository(
         cloudData: RecipeData,
         localId: Long
     ) {
-        val existingIngredients = recipeDao.getAllIngredients()
+        val allIngredients = recipeDao.getAllIngredients()
+        val ingredientNameToId = allIngredients.associateBy { it.name.lowercase() }
 
         cloudData.recipe.steps.forEachIndexed { index, stepData ->
             val step = RecipeStep(
@@ -184,16 +228,18 @@ class RecipeRepository(
 
             stepData.ingredients.forEach { cloudIngredient ->
                 val ingredientName = cloudIngredient.name
-                val ingredient = existingIngredients.find { it.name == ingredientName }
+                val ingredientId = ingredientNameToId[ingredientName.lowercase()]?.ingredientId
                     ?: run {
-                        val newId = recipeDao.insertIngredient(Ingredient(name = ingredientName))
-                        Ingredient(ingredientId = newId, name = ingredientName)
+                        recipeDao.insertIngredient(Ingredient(name = ingredientName))
                     }
+
+                // Безопасное преобразование quantity в строку
+                val quantityStr = cloudIngredient.quantity.toString()
 
                 val stepIngredient = StepIngredient(
                     stepId = stepId,
-                    ingredientId = ingredient.ingredientId,
-                    quantity = cloudIngredient.quantity,
+                    ingredientId = ingredientId,
+                    quantity = quantityStr,
                     unit = cloudIngredient.unit
                 )
                 recipeDao.insertStepIngredient(stepIngredient)
@@ -232,7 +278,6 @@ class RecipeRepository(
 
     fun getStepsWithIngredients(recipeId: Long): Flow<List<StepWithIngredients>> =
         recipeDao.getStepsWithIngredients(recipeId)
-
 
     fun getCookingStepsWithIngredients(recipeId: Long, portions: Int): Flow<List<CookingStepWithIngredients>> {
         val safePortions = portions.coerceIn(1, 10)

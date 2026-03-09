@@ -65,7 +65,7 @@
                             android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
                             android:textColor="?android:attr/textColorSecondary" />
 
-                        <!-- Порции ВНУТРИ карточки -->
+                        <!-- Порции -->
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -102,6 +102,7 @@
 
                         </LinearLayout>
 
+                        <!-- RecyclerView для ингредиентов -->
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/editableIngredientsRecyclerView"
                             android:layout_width="match_parent"
@@ -111,6 +112,7 @@
                             tools:itemCount="2"
                             tools:listitem="@layout/item_editable_ingredient" />
 
+                        <!-- Кнопка применения фильтров -->
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnApplyFilters"
                             style="@style/Widget.MaterialComponents.Button"
@@ -121,8 +123,46 @@
                             android:textColor="@color/white"
                             app:backgroundTint="@color/color_primary"
                             app:cornerRadius="30dp" />
+
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+
+                <!-- Кнопки управления сессией -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:layout_marginBottom="16dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAddIngredient"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:text="+ Добавить ингредиент"
+                        android:textColor="@color/white"
+                        app:backgroundTint="@color/color_primary"
+                        app:cornerRadius="16dp"
+                        app:icon="@drawable/ic_add"
+                        app:iconGravity="textStart" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnResetSession"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:text="Начать заново"
+                        android:textColor="@color/white"
+                        app:backgroundTint="#FF5252"
+                        app:cornerRadius="16dp"
+                        app:icon="@drawable/ic_refresh"
+                        app:iconGravity="textStart" />
+
+                </LinearLayout>
 
                 <!-- Results container -->
                 <LinearLayout
@@ -150,6 +190,7 @@
                         android:id="@+id/perfectMatchRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                         tools:itemCount="1"
                         tools:listitem="@layout/item_recipe_result" />
@@ -171,6 +212,7 @@
                         android:id="@+id/oneMissingRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                         tools:itemCount="1"
                         tools:listitem="@layout/item_recipe_result" />
@@ -192,6 +234,7 @@
                         android:id="@+id/twoMissingRecyclerView"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false"
                         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                         tools:itemCount="1"
                         tools:listitem="@layout/item_recipe_result" />
@@ -237,5 +280,4 @@
         </com.google.android.material.card.MaterialCardView>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
 </layout>

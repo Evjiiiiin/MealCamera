@@ -3,7 +3,10 @@ package com.example.mealcamera.ui.result
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.MealCameraApplication
@@ -11,9 +14,10 @@ import com.example.mealcamera.R
 import com.example.mealcamera.data.model.EditableIngredient
 import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.databinding.ActivityResultBinding
+import com.example.mealcamera.ui.SharedViewModel
+import com.example.mealcamera.ui.catalog.IngredientCatalogActivity
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.home.MainActivity
-import com.example.mealcamera.ui.scan.ScanActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -24,6 +28,10 @@ class ResultActivity : AppCompatActivity() {
         (application as MealCameraApplication).viewModelFactory
     }
 
+    private val sharedViewModel: SharedViewModel by lazy {
+        (application as MealCameraApplication).sharedViewModel
+    }
+
     private lateinit var perfectAdapter: ResultAdapter
     private lateinit var oneMissingAdapter: ResultAdapter
     private lateinit var twoMissingAdapter: ResultAdapter
@@ -31,36 +39,77 @@ class ResultActivity : AppCompatActivity() {
     private var editableIngredientMutableList: MutableList<EditableIngredient> = mutableListOf()
     private lateinit var editableAdapter: EditableIngredientAdapter
 
+    private val addIngredientLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val data = result.data
+            val selectedNames = data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
+
+            // Получаем текущие ингредиенты из сессии (то, что уже есть в списке)
+            val currentIngredientNames = editableIngredientMutableList.map { it.name }.toSet()
+
+            // Создаем новые ингредиенты ТОЛЬКО для тех, которых еще нет в списке
+            val newIngredients = selectedNames
+                .filter { name -> !currentIngredientNames.contains(name) }
+                .map { name ->
+                    EditableIngredient(
+                        id = System.currentTimeMillis(),
+                        name = name,
+                        quantity = "1",
+                        unit = UnitHelper.getDefaultUnit(name)
+                    )
+                }
+
+            if (newIngredients.isNotEmpty()) {
+                // Добавляем только новые ингредиенты к существующему списку
+                val updatedList = editableIngredientMutableList.toMutableList()
+                updatedList.addAll(newIngredients)
+                viewModel.addIngredients(updatedList)
+                Toast.makeText(this, "Добавлено: ${newIngredients.joinToString { it.name }}", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Все выбранные ингредиенты уже есть в списке", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityResultBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val detectedNames = intent.getStringArrayListExtra(ScanActivity.EXTRA_DETECTED_INGREDIENTS) ?: arrayListOf()
-
-        // Создаем ингредиенты с единицами по умолчанию из UnitHelper
-        val initialList = detectedNames.mapIndexed { index, name ->
-            EditableIngredient(
-                id = index.toLong(),
-                name = name,
-                quantity = "",
-                unit = UnitHelper.getDefaultUnit(name)
-            )
-        }.toMutableList()
-
-        viewModel.setInitialIngredients(initialList)
+        // Получаем активную сессию
+        val session = sharedViewModel.activeSession.value
+        if (session != null && !sharedViewModel.shouldResetSession()) {
+            // Восстанавливаем сессию
+            viewModel.restoreSession(session.ingredients, session.portions)
+        } else {
+            // Если сессия устарела или нет активной сессии, показываем сообщение и закрываем
+            if (session == null) {
+                Toast.makeText(this, "Нет активной сессии", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Сессия устарела. Начните новый подбор.", Toast.LENGTH_LONG).show()
+                sharedViewModel.endSession()
+            }
+            finish()
+            return
+        }
 
         setupToolbar()
         setupBottomNavigation()
         setupRecyclerViews()
         setupPortionControls()
+        setupAddButton()
+        setupResetButton()
         observeViewModels()
     }
 
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.setNavigationOnClickListener {
+            finish()
+        }
     }
 
     private fun setupBottomNavigation() {
@@ -94,9 +143,10 @@ class ResultActivity : AppCompatActivity() {
         editableAdapter = EditableIngredientAdapter(
             editableIngredientMutableList,
             { ingredient ->
-                editableIngredientMutableList.removeAll { it.id == ingredient.id }
-                editableAdapter.updateIngredients(editableIngredientMutableList)
-                viewModel.findRecipes(editableAdapter.getEditedIngredients().map { it.copy() })
+                viewModel.removeIngredient(ingredient)
+            },
+            { ingredient ->
+                viewModel.updateIngredient(ingredient)
             },
             this
         )
@@ -110,6 +160,29 @@ class ResultActivity : AppCompatActivity() {
 
         binding.btnMinusPortion.setOnClickListener {
             viewModel.setPortions(viewModel.portions.value - 1)
+        }
+    }
+
+    private fun setupAddButton() {
+        binding.btnAddIngredient.setOnClickListener {
+            val intent = Intent(this, IngredientCatalogActivity::class.java)
+            val selectedNames = editableIngredientMutableList.map { it.name }
+            intent.putStringArrayListExtra("selected_names", ArrayList(selectedNames))
+            addIngredientLauncher.launch(intent)
+        }
+    }
+
+    private fun setupResetButton() {
+        binding.btnResetSession.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Начать заново")
+                .setMessage("Вы уверены? Все текущие настройки будут сброшены.")
+                .setPositiveButton("Да") { _, _ ->
+                    sharedViewModel.endSession()
+                    finish()
+                }
+                .setNegativeButton("Нет", null)
+                .show()
         }
     }
 
@@ -162,5 +235,9 @@ class ResultActivity : AppCompatActivity() {
         startActivity(Intent(this, RecipeDetailActivity::class.java).apply {
             putExtra(RecipeDetailActivity.EXTRA_RECIPE_ID, recipeId)
         })
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
     }
 }

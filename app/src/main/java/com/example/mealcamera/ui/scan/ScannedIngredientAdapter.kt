@@ -11,7 +11,7 @@ import com.example.mealcamera.data.model.ScannedIngredient
 import com.example.mealcamera.databinding.ItemScannedIngredientBinding
 
 class ScannedIngredientAdapter(
-    private val onDeleteClick: (ScannedIngredient) -> Unit // Слушатель для удаления
+    private val onDeleteClick: (ScannedIngredient) -> Unit
 ) : ListAdapter<ScannedIngredient, ScannedIngredientAdapter.ViewHolder>(DiffCallback()) {
 
     class ViewHolder(private val binding: ItemScannedIngredientBinding) : RecyclerView.ViewHolder(binding.root) {
@@ -21,13 +21,20 @@ class ScannedIngredientAdapter(
             Glide.with(binding.root.context)
                 .load(item.imagePath.ifEmpty { R.drawable.ic_recipe_placeholder })
                 .centerCrop()
-                .into(binding.ivIngredientThumb) // <-- Это имя должно быть правильным
+                .into(binding.ivIngredientThumb)
 
-            // Устанавливаем слушатели
-            binding.ivDelete.setOnClickListener { onDeleteClick(item) }
+            // Устанавливаем тег для идентификации
+            binding.ivDelete.tag = item
+            binding.root.tag = item
+
+            binding.ivDelete.setOnClickListener {
+                val ingredient = it.tag as? ScannedIngredient
+                ingredient?.let { onDeleteClick(it) }
+            }
+
             binding.root.setOnLongClickListener {
                 onDeleteClick(item)
-                true // Возвращаем true, чтобы показать, что событие обработано
+                true
             }
         }
     }
