@@ -3,13 +3,13 @@ package com.example.mealcamera.ui.cooking
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -21,6 +21,7 @@ import com.example.mealcamera.R
 import com.example.mealcamera.data.local.AppStatsManager
 import com.example.mealcamera.data.model.CookingStepWithIngredients
 import com.example.mealcamera.databinding.ActivityCookingBinding
+import com.example.mealcamera.util.VoiceCommandHelper
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -35,10 +36,13 @@ class CookingActivity : AppCompatActivity() {
     private var currentStepIndex = 0
     private var stepsList = listOf<CookingStepWithIngredients>()
     private var timer: CountDownTimer? = null
+    private var timerRunning = false
+    private var timeLeftInMillis: Long = 0
 
-    private var speechRecognizer: SpeechRecognizer? = null
-    private lateinit var recognizerIntent: Intent
-    private var isVoiceListeningEnabled = true
+    // Голосовое управление
+    private var voiceCommandHelper: VoiceCommandHelper? = null
+    private var textToSpeech: TextToSpeech? = null
+    private var isVoiceEnabled = false
 
     companion object {
         const val EXTRA_RECIPE_ID = "recipe_id"
@@ -46,7 +50,6 @@ class CookingActivity : AppCompatActivity() {
         const val EXTRA_PORTIONS = "portions"
 
         private const val RECORD_AUDIO_REQUEST_CODE = 301
-        private val WAKE_PHRASES = listOf("окей сплэш", "ok splash", "okay splash", "окей splash")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,9 +68,9 @@ class CookingActivity : AppCompatActivity() {
         }
 
         setupToolbar(recipeName)
+        checkVoicePermission()
         loadSteps(recipeId, portions)
         setupListeners()
-        setupVoiceCommands()
     }
 
     private fun setupToolbar(recipeName: String) {
@@ -75,6 +78,140 @@ class CookingActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = recipeName
         binding.toolbar.setNavigationOnClickListener { finish() }
+    }
+
+    private fun checkVoicePermission() {
+        textToSpeech = TextToSpeech(this) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech?.language = Locale("ru")
+            }
+        }
+
+        // Просто проверяем разрешение, без диалогов
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            enableVoiceControl()
+        } else {
+            // Запрашиваем разрешение один раз как для камеры
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                RECORD_AUDIO_REQUEST_CODE
+            )
+        }
+    }
+
+    private fun enableVoiceControl() {
+        isVoiceEnabled = true
+        voiceCommandHelper = VoiceCommandHelper(this) { command ->
+            runOnUiThread { handleVoiceCommand(command) }
+        }
+        voiceCommandHelper?.initialize()
+        voiceCommandHelper?.startListening()
+        showVoiceIndicator()
+    }
+
+    private fun showVoiceIndicator() {
+        binding.voiceIndicator.visibility = View.VISIBLE
+        binding.voiceIndicator.text = "🎤 Микрофон активен"
+        // Индикатор исчезает через 3 секунды
+        binding.root.postDelayed({
+            binding.voiceIndicator.visibility = View.GONE
+        }, 3000)
+    }
+
+    private fun handleVoiceCommand(command: String) {
+        when (command) {
+            "next" -> goToNextStep()
+            "previous" -> goToPreviousStep()
+            "start_timer" -> startTimer()
+            "pause_timer" -> pauseTimer()
+            "stop_timer" -> stopTimer()
+            "repeat" -> repeatCurrentStep()
+            "next_step" -> speakNextStep()
+            "ingredients" -> speakIngredients()
+            "finish" -> completeCooking()
+            "help" -> speakHelp()
+        }
+    }
+
+    // ИСПРАВЛЕНО: правильная обработка TextToSpeech для всех версий Android
+    private fun speak(text: String) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                // Для Android 5.0 и выше
+                textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+            } else {
+                // Для старых версий Android
+                @Suppress("DEPRECATION")
+                textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun goToNextStep() {
+        if (currentStepIndex < stepsList.size - 1) {
+            timer?.cancel()
+            currentStepIndex++
+            displayStep(currentStepIndex)
+            speak("Шаг ${currentStepIndex + 1}: ${stepsList[currentStepIndex].step.title}")
+        } else {
+            speak("Это последний шаг")
+        }
+    }
+
+    private fun goToPreviousStep() {
+        if (currentStepIndex > 0) {
+            timer?.cancel()
+            currentStepIndex--
+            displayStep(currentStepIndex)
+            speak("Шаг ${currentStepIndex + 1}: ${stepsList[currentStepIndex].step.title}")
+        } else {
+            speak("Это первый шаг")
+        }
+    }
+
+    private fun repeatCurrentStep() {
+        displayStep(currentStepIndex)
+        speak("Повторяю шаг ${currentStepIndex + 1}: ${stepsList[currentStepIndex].step.instruction}")
+    }
+
+    private fun speakNextStep() {
+        if (currentStepIndex < stepsList.size - 1) {
+            val nextStep = stepsList[currentStepIndex + 1]
+            speak("Следующий шаг: ${nextStep.step.title}")
+        } else {
+            speak("Это последний шаг. Для завершения скажите готово")
+        }
+    }
+
+    private fun speakIngredients() {
+        val step = stepsList[currentStepIndex]
+        if (step.ingredients.isNotEmpty()) {
+            val ingredientsText = step.ingredients.joinToString(", ") {
+                "${it.ingredient.name} ${it.quantity} ${it.unit}"
+            }
+            speak("Ингредиенты для этого шага: $ingredientsText")
+        } else {
+            speak("Для этого шага не требуются дополнительные ингредиенты")
+        }
+    }
+
+    private fun speakHelp() {
+        val commands = listOf(
+            "следующий",
+            "предыдущий",
+            "старт",
+            "пауза",
+            "стоп",
+            "повтори",
+            "ингредиенты",
+            "готово"
+        ).joinToString(", ")
+        speak("Доступные команды: $commands")
     }
 
     private fun loadSteps(recipeId: Long, portions: Int) {
@@ -102,134 +239,6 @@ class CookingActivity : AppCompatActivity() {
         binding.btnPrevious.isEnabled = false
         binding.btnNext.isEnabled = false
         updateProgress(0, 1)
-    }
-
-    private fun setupVoiceCommands() {
-        binding.btnVoiceCommand.text = "🎤 Голос: ВКЛ (фраза: 'Окей Сплэш')"
-        binding.btnVoiceCommand.setOnClickListener {
-            isVoiceListeningEnabled = !isVoiceListeningEnabled
-            if (isVoiceListeningEnabled) {
-                binding.btnVoiceCommand.text = "🎤 Голос: ВКЛ (фраза: 'Окей Сплэш')"
-                startVoiceRecognitionIfReady()
-            } else {
-                binding.btnVoiceCommand.text = "🎤 Голос: ВЫКЛ"
-                stopVoiceRecognition()
-            }
-        }
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            initSpeechRecognizer()
-            startVoiceRecognitionIfReady()
-        } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                RECORD_AUDIO_REQUEST_CODE
-            )
-        }
-    }
-
-    private fun initSpeechRecognizer() {
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            binding.btnVoiceCommand.text = "🎤 Голос недоступен на устройстве"
-            binding.btnVoiceCommand.isEnabled = false
-            return
-        }
-
-        speechRecognizer?.destroy()
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) = Unit
-                override fun onBeginningOfSpeech() = Unit
-                override fun onRmsChanged(rmsdB: Float) = Unit
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
-                override fun onEndOfSpeech() = Unit
-
-                override fun onError(error: Int) {
-                    if (!isVoiceListeningEnabled) return
-                    restartListeningWithDelay()
-                }
-
-                override fun onResults(results: Bundle?) {
-                    val matches = results
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
-                    if (matches.isNotEmpty()) {
-                        handleVoiceTranscript(matches.first())
-                    }
-                    restartListeningWithDelay()
-                }
-
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
-                    if (matches.isNotEmpty()) {
-                        handleVoiceTranscript(matches.first())
-                    }
-                }
-
-                override fun onEvent(eventType: Int, params: Bundle?) = Unit
-            })
-        }
-
-        recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-        }
-    }
-
-    private fun handleVoiceTranscript(raw: String) {
-        val normalized = raw.lowercase(Locale.getDefault()).trim()
-        val wakePhrase = WAKE_PHRASES.firstOrNull { normalized.contains(it) } ?: return
-
-        val commandText = normalized.substringAfter(wakePhrase, "").trim()
-        if (commandText.isBlank()) {
-            Toast.makeText(this, "Слушаю команду после фразы 'Окей Сплэш'", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        handleVoiceCommand(commandText)
-    }
-
-    private fun handleVoiceCommand(command: String) {
-        when {
-            command.contains("след") || command.contains("дальше") -> binding.btnNext.performClick()
-            command.contains("назад") || command.contains("пред") -> binding.btnPrevious.performClick()
-            command.contains("старт") || command.contains("запусти") -> binding.btnStartTimer.performClick()
-            command.contains("пауза") -> binding.btnPauseTimer.performClick()
-            command.contains("стоп") || command.contains("останов") -> binding.btnStopTimer.performClick()
-            command.contains("заверш") || command.contains("готово") -> completeCooking()
-            command.contains("повтори") -> displayStep(currentStepIndex)
-            else -> Toast.makeText(this, "Команда не распознана: $command", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun startVoiceRecognitionIfReady() {
-        if (!isVoiceListeningEnabled) return
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
-        ) return
-
-        runCatching { speechRecognizer?.startListening(recognizerIntent) }
-    }
-
-    private fun stopVoiceRecognition() {
-        runCatching {
-            speechRecognizer?.stopListening()
-            speechRecognizer?.cancel()
-        }
-    }
-
-    private fun restartListeningWithDelay() {
-        if (!isVoiceListeningEnabled) return
-        binding.root.postDelayed({
-            startVoiceRecognitionIfReady()
-        }, 450)
     }
 
     private fun displayStep(index: Int) {
@@ -282,8 +291,11 @@ class CookingActivity : AppCompatActivity() {
             binding.tvTimerLabel.text = "Таймер: ${minutes} мин"
 
             val totalTime = minutes * 60 * 1000L
+            timeLeftInMillis = totalTime
+
             timer = object : CountDownTimer(totalTime, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
+                    timeLeftInMillis = millisUntilFinished
                     val secondsLeft = millisUntilFinished / 1000
                     val minutesLeft = secondsLeft / 60
                     val seconds = secondsLeft % 60
@@ -295,6 +307,8 @@ class CookingActivity : AppCompatActivity() {
                     binding.btnStartTimer.isEnabled = true
                     binding.btnStopTimer.isEnabled = false
                     binding.btnPauseTimer.isEnabled = false
+                    timerRunning = false
+                    speak("Время вышло!")
                     Toast.makeText(this@CookingActivity, "Время вышло!", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -309,48 +323,76 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
+    private fun startTimer() {
+        if (timer != null && !timerRunning) {
+            timer = object : CountDownTimer(timeLeftInMillis, 1000) {
+                override fun onTick(millisUntilFinished: Long) {
+                    timeLeftInMillis = millisUntilFinished
+                    val secondsLeft = millisUntilFinished / 1000
+                    val minutesLeft = secondsLeft / 60
+                    val seconds = secondsLeft % 60
+                    binding.tvTimerDisplay.text = String.format("%02d:%02d", minutesLeft, seconds)
+                }
+
+                override fun onFinish() {
+                    binding.tvTimerDisplay.text = "00:00"
+                    binding.btnStartTimer.isEnabled = true
+                    binding.btnStopTimer.isEnabled = false
+                    binding.btnPauseTimer.isEnabled = false
+                    timerRunning = false
+                    speak("Время вышло!")
+                }
+            }
+            timer?.start()
+            timerRunning = true
+            binding.btnStartTimer.isEnabled = false
+            binding.btnPauseTimer.isEnabled = true
+            binding.btnStopTimer.isEnabled = true
+            speak("Таймер запущен")
+        }
+    }
+
+    private fun pauseTimer() {
+        if (timerRunning) {
+            timer?.cancel()
+            timerRunning = false
+            binding.btnStartTimer.isEnabled = true
+            binding.btnPauseTimer.isEnabled = false
+            speak("Таймер на паузе")
+        }
+    }
+
+    private fun stopTimer() {
+        timer?.cancel()
+        timerRunning = false
+        val step = stepsList[currentStepIndex]
+        setupTimer(step.step.timerMinutes)
+        speak("Таймер сброшен")
+    }
+
     private fun setupListeners() {
         binding.btnPrevious.setOnClickListener {
-            if (currentStepIndex > 0) {
-                timer?.cancel()
-                currentStepIndex--
-                displayStep(currentStepIndex)
-            }
+            goToPreviousStep()
         }
 
         binding.btnNext.setOnClickListener {
-            timer?.cancel()
             if (currentStepIndex == stepsList.size - 1) {
                 completeCooking()
             } else {
-                currentStepIndex++
-                displayStep(currentStepIndex)
+                goToNextStep()
             }
         }
 
         binding.btnStartTimer.setOnClickListener {
-            val currentTimer = timer ?: return@setOnClickListener
-            currentTimer.start()
-            binding.btnStartTimer.isEnabled = false
-            binding.btnStopTimer.isEnabled = true
-            binding.btnPauseTimer.isEnabled = true
+            startTimer()
         }
 
         binding.btnPauseTimer.setOnClickListener {
-            timer?.cancel()
-            binding.btnStartTimer.isEnabled = true
-            binding.btnStopTimer.isEnabled = false
-            binding.btnPauseTimer.isEnabled = false
+            pauseTimer()
         }
 
         binding.btnStopTimer.setOnClickListener {
-            timer?.cancel()
-            if (stepsList.isNotEmpty() && currentStepIndex in stepsList.indices) {
-                setupTimer(stepsList[currentStepIndex].step.timerMinutes)
-            }
-            binding.btnStartTimer.isEnabled = true
-            binding.btnStopTimer.isEnabled = false
-            binding.btnPauseTimer.isEnabled = false
+            stopTimer()
         }
     }
 
@@ -361,31 +403,42 @@ class CookingActivity : AppCompatActivity() {
     }
 
     private fun completeCooking() {
-        val recipeId = intent.getLongExtra(EXTRA_RECIPE_ID, -1)
-        val recipeName = intent.getStringExtra(EXTRA_RECIPE_NAME) ?: ""
+        AlertDialog.Builder(this)
+            .setTitle("Завершить приготовление?")
+            .setMessage("Поздравляем с завершением рецепта!")
+            .setPositiveButton("Да") { _, _ ->
+                val recipeId = intent.getLongExtra(EXTRA_RECIPE_ID, -1)
+                val recipeName = intent.getStringExtra(EXTRA_RECIPE_NAME) ?: ""
 
-        lifecycleScope.launch {
-            viewModel.saveToHistory(recipeId, recipeName)
-            val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-            AppStatsManager(this@CookingActivity).registerCookedRecipe(userId, recipeId, recipeName)
+                lifecycleScope.launch {
+                    viewModel.saveToHistory(recipeId, recipeName)
+                    val userId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                    AppStatsManager(this@CookingActivity).registerCookedRecipe(userId, recipeId, recipeName)
 
-            Toast.makeText(
-                this@CookingActivity,
-                "🎉 Поздравляем! Вы приготовили $recipeName",
-                Toast.LENGTH_LONG
-            ).show()
-            finish()
-        }
+                    speak("Поздравляю! Вы приготовили $recipeName")
+
+                    Toast.makeText(
+                        this@CookingActivity,
+                        "🎉 Поздравляем! Вы приготовили $recipeName",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    finish()
+                }
+            }
+            .setNegativeButton("Нет", null)
+            .show()
     }
 
     override fun onResume() {
         super.onResume()
-        startVoiceRecognitionIfReady()
+        if (isVoiceEnabled) {
+            voiceCommandHelper?.startListening()
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        stopVoiceRecognition()
+        voiceCommandHelper?.stopListening()
     }
 
     override fun onRequestPermissionsResult(
@@ -396,11 +449,9 @@ class CookingActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == RECORD_AUDIO_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                initSpeechRecognizer()
-                startVoiceRecognitionIfReady()
+                enableVoiceControl()
             } else {
-                binding.btnVoiceCommand.text = "🎤 Нет доступа к микрофону"
-                binding.btnVoiceCommand.isEnabled = false
+                Toast.makeText(this, "Голосовое управление недоступно", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -408,8 +459,8 @@ class CookingActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         timer?.cancel()
-        stopVoiceRecognition()
-        runCatching { speechRecognizer?.destroy() }
-        speechRecognizer = null
+        voiceCommandHelper?.destroy()
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
     }
 }

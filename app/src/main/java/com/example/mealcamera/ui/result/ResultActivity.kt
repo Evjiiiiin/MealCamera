@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -18,6 +19,7 @@ import com.example.mealcamera.ui.SharedViewModel
 import com.example.mealcamera.ui.catalog.IngredientCatalogActivity
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.home.MainActivity
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -46,10 +48,8 @@ class ResultActivity : AppCompatActivity() {
             val data = result.data
             val selectedNames = data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
 
-            // Получаем текущие ингредиенты из сессии (то, что уже есть в списке)
             val currentIngredientNames = editableIngredientMutableList.map { it.name }.toSet()
 
-            // Создаем новые ингредиенты ТОЛЬКО для тех, которых еще нет в списке
             val newIngredients = selectedNames
                 .filter { name -> !currentIngredientNames.contains(name) }
                 .map { name ->
@@ -62,7 +62,6 @@ class ResultActivity : AppCompatActivity() {
                 }
 
             if (newIngredients.isNotEmpty()) {
-                // Добавляем только новые ингредиенты к существующему списку
                 val updatedList = editableIngredientMutableList.toMutableList()
                 updatedList.addAll(newIngredients)
                 viewModel.addIngredients(updatedList)
@@ -78,23 +77,11 @@ class ResultActivity : AppCompatActivity() {
         binding = ActivityResultBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Получаем активную сессию
-        val session = sharedViewModel.activeSession.value
-        if (session != null && !sharedViewModel.shouldResetSession()) {
-            // Восстанавливаем сессию
-            viewModel.restoreSession(session.ingredients, session.portions)
-        } else {
-            // Если сессия устарела или нет активной сессии, показываем сообщение и закрываем
-            if (session == null) {
-                Toast.makeText(this, "Нет активной сессии", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Сессия устарела. Начните новый подбор.", Toast.LENGTH_LONG).show()
-                sharedViewModel.endSession()
-            }
-            finish()
+        if (!checkUserAndSession()) {
             return
         }
 
+        setupBackPressed()
         setupToolbar()
         setupBottomNavigation()
         setupRecyclerViews()
@@ -104,25 +91,87 @@ class ResultActivity : AppCompatActivity() {
         observeViewModels()
     }
 
+    private fun checkUserAndSession(): Boolean {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val session = sharedViewModel.activeSession.value
+
+        if (session == null) {
+            Toast.makeText(this, "Нет активной сессии", Toast.LENGTH_SHORT).show()
+            finish()
+            return false
+        }
+
+        val sessionUserId = session.userId
+        val currentUserId = currentUser?.uid ?: "guest"
+
+        if (sessionUserId != currentUserId) {
+            Toast.makeText(
+                this,
+                "Сессия принадлежит другому пользователю. Начните новый подбор.",
+                Toast.LENGTH_LONG
+            ).show()
+            sharedViewModel.endSession()
+            finish()
+            return false
+        }
+
+        if (sharedViewModel.shouldResetSession()) {
+            Toast.makeText(this, "Сессия устарела. Начните новый подбор.", Toast.LENGTH_LONG).show()
+            sharedViewModel.endSession()
+            finish()
+            return false
+        }
+
+        viewModel.restoreSession(session.ingredients, session.portions)
+        return true
+    }
+
+    private fun setupBackPressed() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // При нажатии назад возвращаемся на экран камеры
+                finish()
+            }
+        })
+    }
+
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener {
-            finish()
+            finish() // Возврат на экран камеры
         }
     }
 
     private fun setupBottomNavigation() {
+        // Устанавливаем выбранный пункт - камера (так как мы на экране результатов)
         binding.bottomNavigationView.selectedItemId = R.id.navigation_camera
+
         binding.bottomNavigationView.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> {
-                    startActivity(Intent(this, MainActivity::class.java).apply {
+                    // Переход на главный экран (сохраняем сессию)
+                    val intent = Intent(this, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                    })
+                        putExtra("open_from_result", true) // Флаг, что пришли с результатов
+                    }
+                    startActivity(intent)
+                    finish()
                     true
                 }
                 R.id.navigation_camera -> {
+                    // Возврат на экран камеры (закрываем ResultActivity)
+                    finish()
+                    true
+                }
+                R.id.navigation_profile -> {
+                    // Переход в профиль (через главный экран с флагом open_profile)
+                    val intent = Intent(this, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        putExtra("open_profile", true)
+                        putExtra("open_from_result", true)
+                    }
+                    startActivity(intent)
                     finish()
                     true
                 }
@@ -141,14 +190,14 @@ class ResultActivity : AppCompatActivity() {
         binding.twoMissingRecyclerView.adapter = twoMissingAdapter
 
         editableAdapter = EditableIngredientAdapter(
-            editableIngredientMutableList,
-            { ingredient ->
+            ingredients = editableIngredientMutableList,
+            onDeleteClick = { ingredient ->
                 viewModel.removeIngredient(ingredient)
             },
-            { ingredient ->
+            onUpdateClick = { ingredient ->
                 viewModel.updateIngredient(ingredient)
             },
-            this
+            fragmentActivity = this
         )
         binding.editableIngredientsRecyclerView.adapter = editableAdapter
     }
@@ -237,7 +286,9 @@ class ResultActivity : AppCompatActivity() {
         })
     }
 
-    override fun onBackPressed() {
-        super.onBackPressed()
+    override fun onResume() {
+        super.onResume()
+        // При возвращении на экран обновляем выделение в навигации
+        binding.bottomNavigationView.menu.findItem(R.id.navigation_camera).isChecked = true
     }
 }

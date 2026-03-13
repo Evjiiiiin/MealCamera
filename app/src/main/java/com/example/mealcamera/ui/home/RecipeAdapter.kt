@@ -30,7 +30,6 @@ class RecipeAdapter(
         } else {
             favoriteIds.remove(recipeId)
         }
-
         val position = currentList.indexOfFirst { it.recipeId == recipeId }
         if (position != -1) {
             notifyItemChanged(position)

@@ -1,6 +1,7 @@
 package com.example.mealcamera
 
 import android.app.Application
+import android.util.Log
 import com.example.mealcamera.data.AppDatabase
 import com.example.mealcamera.data.FavoriteRepository
 import com.example.mealcamera.data.PrepopulateManager
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
 class MealCameraApplication : Application() {
 
     private val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
-    private val firestoreService: FirestoreService by lazy { FirestoreService() }
+    val firestoreService: FirestoreService by lazy { FirestoreService() }
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
     val recipeRepository: RecipeRepository by lazy {
@@ -29,9 +30,10 @@ class MealCameraApplication : Application() {
         FavoriteRepository(database.favoriteDao(), firestore)
     }
 
-    val sharedViewModel: SharedViewModel by lazy {
-        SharedViewModel(recipeRepository)
-    }
+    // Создаем SharedViewModel как lazy, чтобы избежать циклических зависимостей
+    private val _sharedViewModel by lazy { SharedViewModel(recipeRepository) }
+    val sharedViewModel: SharedViewModel
+        get() = _sharedViewModel
 
     val viewModelFactory: ViewModelFactory by lazy {
         ViewModelFactory(this, recipeRepository, favoriteRepository, sharedViewModel)
@@ -40,18 +42,23 @@ class MealCameraApplication : Application() {
     private val _isAppInitialized = MutableStateFlow(false)
     val isAppInitialized: StateFlow<Boolean> = _isAppInitialized.asStateFlow()
 
+    private val appScope = CoroutineScope(Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
 
-        CoroutineScope(Dispatchers.IO).launch {
+        appScope.launch {
             try {
+                Log.i("MealCameraApplication", "🚀 Initializing app...")
+
                 PrepopulateManager(this@MealCameraApplication, firestoreService)
                     .prepopulateIfNeeded(database.recipeDao())
 
                 recipeRepository.syncRecipesFromCloud()
 
+                Log.i("MealCameraApplication", "✅ App initialization complete!")
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("MealCameraApplication", "❌ Error during app initialization", e)
             } finally {
                 _isAppInitialized.value = true
             }

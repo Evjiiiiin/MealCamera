@@ -6,8 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.example.mealcamera.R  // 👈 ВАЖНО: импорт R
-import com.example.mealcamera.ui.profile.ProfileInfoFragment
+import com.example.mealcamera.R
 import com.example.mealcamera.databinding.FragmentProfileBinding
 import com.example.mealcamera.ui.home.MainActivity
 import com.google.android.material.tabs.TabLayoutMediator
@@ -34,10 +33,8 @@ class ProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        val activity = requireActivity()
-        if (activity is MainActivity) {
-            activity.updateNavigationSelection(R.id.navigation_profile)
-        }
+        // Обновляем навигацию при возвращении на фрагмент
+        (activity as? MainActivity)?.updateNavigationSelection(R.id.navigation_profile)
     }
 
     private fun setupViewPager() {

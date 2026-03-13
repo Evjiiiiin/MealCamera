@@ -7,9 +7,12 @@ import com.example.mealcamera.data.model.Ingredient
 import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.data.model.RecipeIngredientCrossRef
 import com.example.mealcamera.data.model.RecipeStep
+// Импортируем ВСЕ нужные классы из data.remote
 import com.example.mealcamera.data.remote.CloudIngredient
+import com.example.mealcamera.data.remote.CloudIngredientData
 import com.example.mealcamera.data.remote.CloudRecipe
 import com.example.mealcamera.data.remote.FirestoreService
+import com.example.mealcamera.data.remote.StepData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -26,18 +29,15 @@ class PrepopulateManager(
         if (!hasRecipes) {
             Log.i("PrepopulateManager", "🔄 База данных пуста, начинаю заполнение...")
             try {
-                // Загружаем данные из JSON
                 val (ingredients, recipes) = loadDataFromJson()
 
-                // Проверяем, есть ли данные в Firestore
                 val firestoreHasData = firestoreService.hasData()
 
                 if (!firestoreHasData) {
                     Log.i("PrepopulateManager", "📤 Firestore пуст, загружаю начальные данные...")
 
-                    // Конвертируем ингредиенты для Firestore
                     val firestoreIngredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
-                        com.example.mealcamera.data.remote.CloudIngredientData(
+                        CloudIngredientData(
                             name = name,
                             isAlwaysAvailable = isAlwaysAvailable,
                             isCoreIngredient = isCoreIngredient
@@ -45,8 +45,6 @@ class PrepopulateManager(
                     }
 
                     firestoreService.uploadInitialData(firestoreIngredients, recipes)
-
-                    // Если облако пусто (или оффлайн при первом запуске), берём JSON как источник локальных данных
                     saveToLocalDatabase(recipeDao, ingredients, recipes)
                 } else {
                     Log.i("PrepopulateManager", "☁️ Данные уже есть в Firestore, локально ждём синхронизацию из облака")
@@ -63,7 +61,6 @@ class PrepopulateManager(
         val jsonString = loadJsonFromAssets()
         val jsonObject = JSONObject(jsonString)
 
-        // Загрузка ингредиентов
         val ingredientsArray = jsonObject.getJSONArray("ingredients")
         val ingredients = mutableListOf<Triple<String, Boolean, Boolean>>()
 
@@ -76,7 +73,6 @@ class PrepopulateManager(
             ))
         }
 
-        // Загрузка рецептов
         val recipesArray = jsonObject.getJSONArray("recipes")
         val recipes = mutableListOf<CloudRecipe>()
 
@@ -95,7 +91,7 @@ class PrepopulateManager(
                 ))
             }
 
-            val steps = mutableListOf<com.example.mealcamera.data.remote.StepData>()
+            val steps = mutableListOf<StepData>()
             if (recipeObj.has("steps")) {
                 val stepsArray = recipeObj.getJSONArray("steps")
                 for (j in 0 until stepsArray.length()) {
@@ -117,7 +113,7 @@ class PrepopulateManager(
                     val stepImagePath = stepObj.optString("imagePath", "")
                         .ifBlank { buildDefaultStepImagePath(recipeName, j + 1) }
 
-                    steps.add(com.example.mealcamera.data.remote.StepData(
+                    steps.add(StepData(
                         title = stepObj.getString("title"),
                         description = stepObj.getString("description"),
                         timerMinutes = stepObj.optInt("timerMinutes", 0),
@@ -127,7 +123,6 @@ class PrepopulateManager(
                 }
             }
 
-            // Определяем кухню
             val (cuisine, cuisineCode) = detectCuisine(recipeName)
 
             recipes.add(CloudRecipe(
@@ -203,7 +198,6 @@ class PrepopulateManager(
 
         val ingredientNameToId = mutableMapOf<String, Long>()
 
-        // Сохраняем ингредиенты
         ingredients.forEach { (name, isAlwaysAvailable, isCoreIngredient) ->
             val ingredient = Ingredient(
                 name = name,
@@ -214,7 +208,6 @@ class PrepopulateManager(
             ingredientNameToId[name] = id
         }
 
-        // Сохраняем рецепты
         recipes.forEach { cloudRecipe ->
             val recipe = Recipe(
                 firestoreId = null,
@@ -229,7 +222,6 @@ class PrepopulateManager(
             )
             val recipeId = recipeDao.insertRecipe(recipe)
 
-            // Сохраняем связи с ингредиентами (общие)
             cloudRecipe.ingredients.forEach { recipeIngredient ->
                 val ingredientId = ingredientNameToId[recipeIngredient.name]
                 if (ingredientId != null) {
@@ -245,7 +237,6 @@ class PrepopulateManager(
                 }
             }
 
-            // Сохраняем шаги
             cloudRecipe.steps.forEachIndexed { index, stepData ->
                 val step = RecipeStep(
                     recipeId = recipeId,
@@ -257,7 +248,6 @@ class PrepopulateManager(
                 )
                 val stepId = recipeDao.insertStep(step)
 
-                // Сохраняем ингредиенты шага
                 stepData.ingredients.forEach { stepIngredient ->
                     val ingredientId = ingredientNameToId[stepIngredient.name]
                     if (ingredientId != null) {

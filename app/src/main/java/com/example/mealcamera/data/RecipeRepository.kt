@@ -6,6 +6,7 @@ import com.example.mealcamera.data.dao.ShoppingListDao
 import com.example.mealcamera.data.model.*
 import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.data.remote.RecipeData
+import com.example.mealcamera.data.remote.CloudRecipe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,7 +20,7 @@ class RecipeRepository(
 
     val allRecipes: Flow<List<Recipe>> = recipeDao.getAllRecipes()
 
-    suspend fun syncRecipesFromCloud() = withContext(Dispatchers.IO) {
+    suspend fun syncRecipesFromCloud(userAllergens: List<String> = emptyList()) = withContext(Dispatchers.IO) {
         try {
             Log.d("RecipeRepository", "🔄 Starting sync from cloud")
 
@@ -30,7 +31,12 @@ class RecipeRepository(
                 "${it.recipe.name.lowercase()}|${it.recipe.category.lowercase()}" to it.recipe
             }
 
-            val cloudRecipes = firestoreService.getAllRecipes()
+            val cloudRecipes = if (userAllergens.isNotEmpty()) {
+                firestoreService.getRecipesExcludingAllergens(userAllergens)
+            } else {
+                firestoreService.getAllRecipes()
+            }
+
             Log.d("RecipeRepository", "📦 Loaded ${cloudRecipes.size} recipes from cloud")
 
             var addedCount = 0
@@ -40,18 +46,18 @@ class RecipeRepository(
                 val cloudRecipe = cloudData.recipe
                 val recipeKey = "${cloudRecipe.name.lowercase()}|${cloudRecipe.category.lowercase()}"
 
-                val existingByFirestoreId = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
+                val existingByFirestoreId = localRecipes.find { it.recipe.firestoreId == cloudData.id }?.recipe
                 val existingByName = localRecipeMap[recipeKey]
 
                 when {
                     existingByFirestoreId != null -> {
-                        Log.d("RecipeRepository", "   🔄 Updating existing recipe by firestoreId: ${cloudRecipe.name}")
-                        updateExistingRecipe(cloudData, existingByFirestoreId)
+                        Log.d("RecipeRepository", "   🔄 Updating by firestoreId: ${cloudRecipe.name}")
+                        updateExistingRecipe(cloudData, existingByFirestoreId.recipeId)
                         updatedCount++
                     }
 
                     existingByName != null && existingByName.firestoreId == null -> {
-                        Log.d("RecipeRepository", "   🔗 Linking local JSON recipe to firestoreId: ${cloudRecipe.name}")
+                        Log.d("RecipeRepository", "   🔗 Linking local recipe to firestoreId: ${cloudRecipe.name}")
                         val updatedRecipe = existingByName.copy(
                             firestoreId = cloudData.id,
                             name = cloudRecipe.name,
@@ -60,7 +66,9 @@ class RecipeRepository(
                             prepTime = cloudRecipe.prepTime,
                             popularityScore = cloudRecipe.popularityScore,
                             cuisine = cloudRecipe.cuisine,
-                            cuisineCode = cloudRecipe.cuisineCode
+                            cuisineCode = cloudRecipe.cuisineCode,
+                            authorId = cloudRecipe.authorId,
+                            isPublic = cloudRecipe.isPublic
                         )
                         recipeDao.updateRecipe(updatedRecipe)
 
@@ -76,7 +84,7 @@ class RecipeRepository(
                 }
             }
 
-            Log.d("RecipeRepository", "✅ Sync completed: +$addedCount new, 🔄 $updatedCount updated")
+            Log.d("RecipeRepository", "✅ Sync complete: Added=$addedCount, Updated=$updatedCount")
 
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error during sync", e)
@@ -106,18 +114,19 @@ class RecipeRepository(
                     addedCount++
                     Log.d("RecipeRepository", "   ➕ Added new ingredient: ${cloudIngredient.name}")
                 } else if (existing.isAlwaysAvailable != cloudIngredient.isAlwaysAvailable ||
-                    existing.isCoreIngredient != cloudIngredient.isCoreIngredient) {
-                    val updatedIngredient = existing.copy(
+                    existing.isCoreIngredient != cloudIngredient.isCoreIngredient
+                ) {
+                    val updated = existing.copy(
                         isAlwaysAvailable = cloudIngredient.isAlwaysAvailable,
                         isCoreIngredient = cloudIngredient.isCoreIngredient
                     )
-                    recipeDao.updateIngredient(updatedIngredient)
+                    recipeDao.updateIngredient(updated)
                     updatedCount++
-                    Log.d("RecipeRepository", "   🔄 Updated ingredient: ${cloudIngredient.name}")
+                    Log.d("RecipeRepository", "   📝 Updated ingredient: ${cloudIngredient.name}")
                 }
             }
 
-            Log.d("RecipeRepository", "   📊 Ingredients: +$addedCount new, 🔄 $updatedCount updated")
+            Log.d("RecipeRepository", "✅ Ingredients sync: Added=$addedCount, Updated=$updatedCount")
 
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error syncing ingredients", e)
@@ -125,7 +134,7 @@ class RecipeRepository(
     }
 
     private suspend fun insertNewRecipe(cloudData: RecipeData) {
-        Log.d("RecipeRepository", "   📝 Inserting new recipe: ${cloudData.recipe.name}")
+        Log.d("RecipeRepository", "   ➕ Inserting new recipe: ${cloudData.recipe.name}")
 
         val newRecipe = Recipe(
             firestoreId = cloudData.id,
@@ -136,7 +145,9 @@ class RecipeRepository(
             prepTime = cloudData.recipe.prepTime,
             popularityScore = cloudData.recipe.popularityScore,
             cuisine = cloudData.recipe.cuisine,
-            cuisineCode = cloudData.recipe.cuisineCode
+            cuisineCode = cloudData.recipe.cuisineCode,
+            authorId = cloudData.recipe.authorId,
+            isPublic = cloudData.recipe.isPublic
         )
         val localId = recipeDao.insertRecipe(newRecipe)
 
@@ -159,13 +170,15 @@ class RecipeRepository(
             prepTime = cloudData.recipe.prepTime,
             popularityScore = cloudData.recipe.popularityScore,
             cuisine = cloudData.recipe.cuisine,
-            cuisineCode = cloudData.recipe.cuisineCode
+            cuisineCode = cloudData.recipe.cuisineCode,
+            authorId = cloudData.recipe.authorId,
+            isPublic = cloudData.recipe.isPublic
         )
         recipeDao.updateRecipe(updatedRecipe)
 
         updateRecipeIngredientsAndSteps(cloudData, existingId)
 
-        Log.d("RecipeRepository", "   ✅ Successfully updated recipe: ${cloudData.recipe.name}")
+        Log.d("RecipeRepository", "   ✅ Successfully updated recipe with ID: $existingId")
     }
 
     private suspend fun updateRecipeIngredientsAndSteps(cloudData: RecipeData, recipeId: Long) {
@@ -177,69 +190,51 @@ class RecipeRepository(
         saveStepsForRecipe(cloudData, recipeId)
     }
 
-    private suspend fun saveIngredientsForRecipe(
-        cloudData: RecipeData,
-        localId: Long
-    ) {
-        val allIngredients = recipeDao.getAllIngredients()
-        val ingredientNameToId = allIngredients.associateBy { it.name.lowercase() }
-
+    private suspend fun saveIngredientsForRecipe(cloudData: RecipeData, recipeId: Long) {
         cloudData.recipe.ingredients.forEach { cloudIngredient ->
-            val name = cloudIngredient.name
-            if (name.isNotEmpty()) {
-                val ingredientId = ingredientNameToId[name.lowercase()]?.ingredientId
-                    ?: run {
-                        recipeDao.insertIngredient(Ingredient(name = name))
-                    }
+            val ingredient = recipeDao.getIngredientByName(cloudIngredient.name)
+                ?: run {
+                    val newIngredient = Ingredient(name = cloudIngredient.name)
+                    val ingredientId = recipeDao.insertIngredient(newIngredient)
+                    newIngredient.copy(ingredientId = ingredientId)
+                }
 
-                // Безопасное преобразование quantity в строку
-                val quantityStr = cloudIngredient.quantity.toString()
+            val crossRef = RecipeIngredientCrossRef(
+                recipeId = recipeId,
+                ingredientId = ingredient.ingredientId,
+                quantity = cloudIngredient.quantity,
+                unit = cloudIngredient.unit
+            )
+            recipeDao.insertRecipeIngredientCrossRef(crossRef)
 
-                val crossRef = RecipeIngredientCrossRef(
-                    recipeId = localId,
-                    ingredientId = ingredientId,
-                    quantity = quantityStr,
-                    unit = cloudIngredient.unit
-                )
-                recipeDao.insertRecipeIngredientCrossRef(crossRef)
-
-                Log.d("RecipeRepository", "      Saved ingredient: $name = $quantityStr ${cloudIngredient.unit}")
-            }
+            Log.d("RecipeRepository", "      Saved ingredient: ${ingredient.name} = ${cloudIngredient.quantity} ${cloudIngredient.unit}")
         }
     }
 
-    private suspend fun saveStepsForRecipe(
-        cloudData: RecipeData,
-        localId: Long
-    ) {
-        val allIngredients = recipeDao.getAllIngredients()
-        val ingredientNameToId = allIngredients.associateBy { it.name.lowercase() }
-
-        cloudData.recipe.steps.forEachIndexed { index, stepData ->
+    private suspend fun saveStepsForRecipe(cloudData: RecipeData, recipeId: Long) {
+        cloudData.recipe.steps.forEachIndexed { index, cloudStep ->
             val step = RecipeStep(
-                recipeId = localId,
+                recipeId = recipeId,
                 stepNumber = index + 1,
-                title = stepData.title,
-                instruction = stepData.description,
-                timerMinutes = stepData.timerMinutes,
-                imagePath = stepData.imagePath
+                title = cloudStep.title,
+                instruction = cloudStep.description,
+                timerMinutes = cloudStep.timerMinutes,
+                imagePath = cloudStep.imagePath
             )
             val stepId = recipeDao.insertStep(step)
 
-            stepData.ingredients.forEach { cloudIngredient ->
-                val ingredientName = cloudIngredient.name
-                val ingredientId = ingredientNameToId[ingredientName.lowercase()]?.ingredientId
+            cloudStep.ingredients.forEach { cloudIngredient ->
+                val ingredient = recipeDao.getIngredientByName(cloudIngredient.name)
                     ?: run {
-                        recipeDao.insertIngredient(Ingredient(name = ingredientName))
+                        val newIngredient = Ingredient(name = cloudIngredient.name)
+                        val ingredientId = recipeDao.insertIngredient(newIngredient)
+                        newIngredient.copy(ingredientId = ingredientId)
                     }
-
-                // Безопасное преобразование quantity в строку
-                val quantityStr = cloudIngredient.quantity.toString()
 
                 val stepIngredient = StepIngredient(
                     stepId = stepId,
-                    ingredientId = ingredientId,
-                    quantity = quantityStr,
+                    ingredientId = ingredient.ingredientId,
+                    quantity = cloudIngredient.quantity,
                     unit = cloudIngredient.unit
                 )
                 recipeDao.insertStepIngredient(stepIngredient)
@@ -310,4 +305,50 @@ class RecipeRepository(
 
     suspend fun getRecipeIngredientCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef? =
         recipeDao.getCrossRef(recipeId, ingredientId)
+
+    // ========== SHOPPING LIST ==========
+    suspend fun getShoppingList(): Flow<List<ShoppingListItem>> = shoppingListDao.getAllItems()
+
+    suspend fun addToShoppingList(item: ShoppingListItem) {
+        shoppingListDao.insert(item)
+    }
+
+    suspend fun removeFromShoppingList(itemId: Long) {
+        shoppingListDao.delete(itemId)
+    }
+
+    suspend fun clearShoppingList() {
+        shoppingListDao.deleteAll()
+    }
+
+    suspend fun deleteCheckedItems() {
+        shoppingListDao.deleteCheckedItems()
+    }
+
+    // ========== ПОЛЬЗОВАТЕЛЬСКИЕ РЕЦЕПТЫ ==========
+    suspend fun addUserRecipe(recipe: CloudRecipe, authorId: String, isPublic: Boolean): String? {
+        return firestoreService.addUserRecipe(recipe, authorId, isPublic)
+    }
+
+    suspend fun getUserRecipes(userId: String): List<RecipeData> {
+        return firestoreService.getUserRecipes(userId)
+    }
+
+    suspend fun getPublicRecipes(): List<RecipeData> {
+        return firestoreService.getPublicRecipes()
+    }
+
+    suspend fun syncUserRecipes(userId: String) = withContext(Dispatchers.IO) {
+        try {
+            val userRecipes = firestoreService.getUserRecipes(userId)
+            userRecipes.forEach { recipeData ->
+                val existing = recipeDao.getRecipeIdByFirestoreId(recipeData.id)
+                if (existing == null) {
+                    insertNewRecipe(recipeData)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RecipeRepository", "Error syncing user recipes", e)
+        }
+    }
 }

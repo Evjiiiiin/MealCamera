@@ -29,6 +29,7 @@ import com.example.mealcamera.util.toBitmapSafe
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.random.Random
 
 class ScanActivity : AppCompatActivity() {
 
@@ -58,25 +59,31 @@ class ScanActivity : AppCompatActivity() {
             val selectedNames = data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
 
             // Получаем текущие ингредиенты из временной корзины
-            val currentIngredients = sharedViewModel.temporaryIngredients.value
+            val currentIngredients = sharedViewModel.temporaryIngredients.value.toMutableList()
             val currentNames = currentIngredients.map { it.name }.toSet()
 
-            // Добавляем только новые ингредиенты
-            val newIngredients = selectedNames
-                .filter { name -> !currentNames.contains(name) }
-                .map { name ->
+            // Фильтруем только новые
+            val namesToAdd = selectedNames.filter { name -> !currentNames.contains(name) }
+
+            if (namesToAdd.isNotEmpty()) {
+                // Создаем ингредиенты с РАЗНЫМИ timestamp
+                val newIngredients = namesToAdd.map { name ->
                     ScannedIngredient(
                         name = name,
                         imagePath = "",
                         quantity = "1",
                         unit = UnitHelper.getDefaultUnit(name),
-                        timestamp = System.currentTimeMillis()
+                        timestamp = System.currentTimeMillis() + Random.nextLong(1000)
                     )
                 }
 
-            if (newIngredients.isNotEmpty()) {
+                // ИСПРАВЛЕНО: используем addToTemporary
                 sharedViewModel.addToTemporary(newIngredients)
-                Toast.makeText(this, "Добавлено: ${newIngredients.joinToString { it.name }}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Добавлено: ${newIngredients.joinToString { it.name }}",
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 Toast.makeText(this, "Все ингредиенты уже добавлены", Toast.LENGTH_SHORT).show()
             }
@@ -87,12 +94,6 @@ class ScanActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityScanBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // Проверяем, есть ли активная сессия
-        if (sharedViewModel.isSessionActive() && !sharedViewModel.shouldResetSession()) {
-            // Если есть активная сессия, показываем диалог
-            showActiveSessionDialog()
-        }
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -111,25 +112,9 @@ class ScanActivity : AppCompatActivity() {
         setupClickListeners()
     }
 
-    private fun showActiveSessionDialog() {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Активная сессия")
-            .setMessage("У вас есть незавершённый подбор рецептов. Хотите продолжить или начать новый?")
-            .setPositiveButton("Продолжить") { _, _ ->
-                // Переходим в ResultActivity с сохранённой сессией
-                startActivity(Intent(this, ResultActivity::class.java))
-                finish()
-            }
-            .setNegativeButton("Новый подбор") { _, _ ->
-                // Очищаем сессию и начинаем заново
-                sharedViewModel.endSession()
-            }
-            .setCancelable(false)
-            .show()
-    }
-
     private fun setupRecyclerView() {
         scannedAdapter = ScannedIngredientAdapter { ingredient ->
+            // ИСПРАВЛЕНО: используем removeFromTemporary
             sharedViewModel.removeFromTemporary(ingredient)
         }
         binding.scannedIngredientsRecyclerView.layoutManager =
@@ -141,6 +126,7 @@ class ScanActivity : AppCompatActivity() {
         binding.bottomPanel.visibility = View.VISIBLE
 
         lifecycleScope.launch {
+            // ИСПРАВЛЕНО: используем temporaryIngredients
             sharedViewModel.temporaryIngredients.collect { ingredients ->
                 scannedAdapter.submitList(ingredients)
                 binding.btnShowResults.isEnabled = ingredients.isNotEmpty()
@@ -158,12 +144,15 @@ class ScanActivity : AppCompatActivity() {
 
     private fun setupClickListeners() {
         binding.btnShowResults.setOnClickListener {
+            // ИСПРАВЛЕНО: используем temporaryIngredients
             val scannedIngredients = sharedViewModel.temporaryIngredients.value
             if (scannedIngredients.isNotEmpty()) {
-                // Начинаем новую сессию с выбранными ингредиентами
+                // Начинаем сессию с выбранными ингредиентами
                 sharedViewModel.startSession(scannedIngredients)
 
-                val intent = Intent(this, ResultActivity::class.java)
+                val intent = Intent(this, ResultActivity::class.java).apply {
+                    putStringArrayListExtra(EXTRA_DETECTED_INGREDIENTS, ArrayList(scannedIngredients.map { it.name }))
+                }
                 startActivity(intent)
             } else {
                 Toast.makeText(this, "Добавьте хотя бы один ингредиент", Toast.LENGTH_SHORT).show()
@@ -172,6 +161,7 @@ class ScanActivity : AppCompatActivity() {
 
         binding.btnAddManually.setOnClickListener {
             val intent = Intent(this, IngredientCatalogActivity::class.java)
+            // ИСПРАВЛЕНО: используем temporaryIngredients
             val selectedNames = sharedViewModel.temporaryIngredients.value.map { it.name }
             intent.putStringArrayListExtra("selected_names", ArrayList(selectedNames))
             manualSelectionLauncher.launch(intent)
@@ -218,6 +208,7 @@ class ScanActivity : AppCompatActivity() {
             Toast.makeText(this, "Обнаружено:\n$message", Toast.LENGTH_LONG).show()
 
             viewModel.getIngredientsFromDetection(detectedFoods, capturedBitmap) { newIngredients ->
+                // ИСПРАВЛЕНО: используем addToTemporary
                 sharedViewModel.addToTemporary(newIngredients)
                 Toast.makeText(this, "Добавлено: ${newIngredients.joinToString { it.name }}", Toast.LENGTH_SHORT).show()
             }

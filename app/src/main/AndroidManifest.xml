@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".MealCameraApplication"
@@ -13,9 +14,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MealCamera">
+        android:theme="@style/Theme.MealCamera"
+        android:enableOnBackInvokedCallback="true">
 
-        <!-- 1. Заставка (Splash) -->
+        <!-- SplashActivity (Launcher) -->
         <activity
             android:name=".ui.splash.SplashActivity"
             android:exported="true"
@@ -32,9 +34,10 @@
             android:name=".ui.catalog.IngredientCatalogActivity"
             android:exported="false"
             android:label="Выбор ингредиентов"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.MealCamera" />
+            android:parentActivityName=".ui.scan.ScanActivity"
+            android:screenOrientation="portrait" />
 
+        <!-- Аутентификация -->
         <activity
             android:name=".ui.auth.LoginActivity"
             android:exported="false"
@@ -45,35 +48,49 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- Новый экран выбора аллергенов -->
         <activity
             android:name=".ui.auth.AllergenSelectionActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- Главная -->
         <activity
             android:name=".ui.home.MainActivity"
             android:exported="false"
             android:launchMode="singleTop" />
 
+        <!-- Сканер -->
         <activity
             android:name=".ui.scan.ScanActivity"
+            android:exported="false"
             android:screenOrientation="portrait"
             android:parentActivityName=".ui.home.MainActivity" />
 
+        <!-- Результаты -->
         <activity
             android:name=".ui.result.ResultActivity"
+            android:exported="false"
             android:parentActivityName=".ui.scan.ScanActivity" />
 
+        <!-- Детали рецепта -->
         <activity
             android:name=".ui.detail.RecipeDetailActivity"
+            android:exported="false"
             android:parentActivityName=".ui.home.MainActivity" />
 
-
+        <!-- Готовка -->
         <activity
             android:name=".ui.cooking.CookingActivity"
+            android:exported="false"
             android:screenOrientation="portrait"
             android:parentActivityName=".ui.detail.RecipeDetailActivity" />
+
+        <!-- ДОБАВЛЕНО: Добавление рецепта -->
+        <activity
+            android:name=".ui.addrecipe.AddRecipeActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.profile.ProfileFragment"
+            android:screenOrientation="portrait" />
 
     </application>
 </manifest>

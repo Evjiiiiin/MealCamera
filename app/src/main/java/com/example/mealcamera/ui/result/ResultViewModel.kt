@@ -41,7 +41,6 @@ class ResultViewModel(
         findRecipes(ingredients)
     }
 
-    // ⚠️ ИСПРАВЛЕНО: принимаем ПОЛНЫЙ обновленный список
     fun addIngredients(updatedIngredients: List<EditableIngredient>) {
         _editableIngredients.value = updatedIngredients
         findRecipes(updatedIngredients)
@@ -69,7 +68,6 @@ class ResultViewModel(
         val updatedList = _editableIngredients.value.filter { it.id != ingredient.id }
         _editableIngredients.value = updatedList
 
-        // Находим соответствующий ScannedIngredient по имени
         val scannedIngredients = sharedViewModel.temporaryIngredients.value
         val matchingIngredient = scannedIngredients.find { it.name == ingredient.name }
 

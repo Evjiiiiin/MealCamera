@@ -2,6 +2,7 @@ package com.example.mealcamera.ui.home
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -15,6 +16,7 @@ import com.example.mealcamera.databinding.ActivityMainBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.example.mealcamera.ui.profile.ProfileFragment
 import com.example.mealcamera.ui.scan.ScanActivity
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -51,15 +53,64 @@ class MainActivity : AppCompatActivity() {
         observeViewModel()
         observeFavorites()
         observeFavoriteChanges()
+        loadRecipesWithAllergens()
 
-        if (intent.getBooleanExtra("open_profile", false)) {
-            showProfile()
+        // Обработка флагов из Intent
+        handleIntentFlags(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntentFlags(intent)
+    }
+
+    private fun handleIntentFlags(intent: Intent) {
+        when {
+            intent.getBooleanExtra("open_profile", false) -> {
+                // Если пришли с флагом открытия профиля
+                showProfile()
+            }
+            intent.getBooleanExtra("open_from_result", false) -> {
+                // Если пришли с экрана результатов, просто показываем главный экран
+                if (isProfileVisible) {
+                    hideProfile()
+                }
+            }
+        }
+    }
+
+    private fun loadRecipesWithAllergens() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            viewModel.refreshRecipes()
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                val firestoreService = (application as MealCameraApplication).firestoreService
+                val userAllergens = firestoreService.getUserAllergens(userId)
+
+                Log.d("MainActivity", "✅ Loaded allergens for user: ${userAllergens.size}")
+
+                val recipeRepository = (application as MealCameraApplication).recipeRepository
+                recipeRepository.syncRecipesFromCloud(userAllergens)
+
+                viewModel.refreshRecipes()
+            } catch (e: Exception) {
+                Log.e("MainActivity", "❌ Error loading allergens: ${e.message}")
+                viewModel.refreshRecipes()
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        binding.bottomNavigationView.menu.findItem(R.id.navigation_home).isChecked = true
+        // При возвращении на главный экран обновляем навигацию
+        if (!isProfileVisible) {
+            binding.bottomNavigationView.menu.findItem(R.id.navigation_home).isChecked = true
+        }
     }
 
     fun updateNavigationSelection(itemId: Int) {
@@ -67,14 +118,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showProfile() {
-        binding.bottomNavigationView.selectedItemId = R.id.navigation_profile
+        // Показываем профиль
         binding.mainContentLayer.visibility = View.GONE
+        binding.fragmentContainer.visibility = View.VISIBLE
+
         if (supportFragmentManager.findFragmentById(R.id.fragment_container) == null) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, ProfileFragment())
                 .commit()
         }
+
         isProfileVisible = true
+        updateNavigationSelection(R.id.navigation_profile)
+    }
+
+    private fun hideProfile() {
+        // Скрываем профиль, показываем основной контент
+        binding.mainContentLayer.visibility = View.VISIBLE
+        binding.fragmentContainer.visibility = View.GONE
+
+        supportFragmentManager.findFragmentById(R.id.fragment_container)?.let {
+            supportFragmentManager.beginTransaction().remove(it).commit()
+        }
+
+        isProfileVisible = false
+        updateNavigationSelection(R.id.navigation_home)
     }
 
     private fun setupGreeting() {
@@ -144,80 +212,52 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSearch() {
-        binding.searchEditText.doAfterTextChanged { text ->
-            viewModel.setSearchQuery(text?.toString().orEmpty())
+        binding.searchEditText.doAfterTextChanged { query ->
+            viewModel.setSearchQuery(query?.toString() ?: "")
         }
     }
 
     private fun setupFilters() {
         // Фильтр по категориям
-        binding.chipAll.isChecked = true
-        viewModel.setCategoryFilter("Все")
-
-        binding.filterChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            val category = when (checkedIds.firstOrNull()) {
-                R.id.chipBreakfast -> "Завтрак"
-                R.id.chipLunch -> "Обед"
-                R.id.chipDinner -> "Ужин"
-                R.id.chipAll -> "Все"
-                else -> "Все"
-            }
+        binding.filterChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+            val selectedChip = group.findViewById<com.google.android.material.chip.Chip>(
+                if (checkedIds.isNotEmpty()) checkedIds[0] else R.id.chipAll
+            )
+            val category = selectedChip?.text.toString()
             viewModel.setCategoryFilter(category)
         }
 
         // Фильтр по кухням
-        binding.chipAllCuisines.isChecked = true
-        viewModel.setCuisineFilter("Все кухни")
-
-        binding.cuisineChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
-            val cuisine = when (checkedIds.firstOrNull()) {
-                R.id.chipRussian -> "Русская"
-                R.id.chipItalian -> "Итальянская"
-                R.id.chipSpanish -> "Испанская"
-                R.id.chipFrench -> "Французская"
-                R.id.chipAmerican -> "Американская"
-                R.id.chipAsian -> "Азиатская"
-                R.id.chipMediterranean -> "Средиземноморская"
-                R.id.chipAllCuisines -> "Все кухни"
-                else -> "Все кухни"
-            }
+        binding.cuisineChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+            val selectedChip = group.findViewById<com.google.android.material.chip.Chip>(
+                if (checkedIds.isNotEmpty()) checkedIds[0] else R.id.chipAllCuisines
+            )
+            val cuisine = selectedChip?.text.toString()
             viewModel.setCuisineFilter(cuisine)
         }
     }
 
     private fun setupBottomNavigation() {
-        binding.bottomNavigationView.setOnItemSelectedListener { item ->
-            when (item.itemId) {
+        binding.bottomNavigationView.setOnItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
                 R.id.navigation_home -> {
                     if (isProfileVisible) {
-                        binding.mainContentLayer.visibility = View.VISIBLE
-                        supportFragmentManager.findFragmentById(R.id.fragment_container)?.let { fragment ->
-                            supportFragmentManager.beginTransaction().remove(fragment).commit()
-                        }
-                        isProfileVisible = false
+                        hideProfile()
+                    } else {
+                        // Если уже на главной, ничего не делаем
                     }
                     true
                 }
-
                 R.id.navigation_camera -> {
                     startActivity(Intent(this, ScanActivity::class.java))
-                    false
+                    true
                 }
-
                 R.id.navigation_profile -> {
                     if (!isProfileVisible) {
-                        binding.mainContentLayer.visibility = View.GONE
-
-                        if (supportFragmentManager.findFragmentById(R.id.fragment_container) == null) {
-                            supportFragmentManager.beginTransaction()
-                                .replace(R.id.fragment_container, ProfileFragment())
-                                .commit()
-                        }
-                        isProfileVisible = true
+                        showProfile()
                     }
                     true
                 }
-
                 else -> false
             }
         }
@@ -227,9 +267,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 recipeAdapter.submitList(state.recipes)
-
                 binding.swipeRefreshLayout.isRefreshing = state.isRefreshing
-
                 state.error?.let { errorMessage ->
                     Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_SHORT).show()
                 }

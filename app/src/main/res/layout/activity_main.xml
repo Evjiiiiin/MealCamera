@@ -7,206 +7,208 @@
     android:layout_height="match_parent"
     tools:context=".ui.home.MainActivity">
 
-    <!-- Контейнер для фрагментов -->
+    <!-- Контейнер для фрагментов (профиль/избранное) -->
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/nav_card"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Основной контент (главный экран) -->
+    <ScrollView
+        android:id="@+id/mainContentLayer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        android:visibility="visible"
         app:layout_constraintBottom_toTopOf="@id/nav_card"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ScrollView
-            android:id="@+id/mainContentLayer"
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fillViewport="true">
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <TextView
+                android:id="@+id/greetingTextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginEnd="16dp"
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:text="Доброе утро" />
+
+            <EditText
+                android:id="@+id/searchEditText"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginEnd="16dp"
+                android:background="@drawable/search_background"
+                android:hint="Поиск рецептов..."
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/greetingTextView" />
+
+            <!-- Фильтр по категориям -->
+            <HorizontalScrollView
+                android:id="@+id/chipsScrollView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingBottom="16dp">
+                android:layout_marginTop="16dp"
+                android:scrollbars="none"
+                app:layout_constraintTop_toBottomOf="@id/searchEditText">
 
-                <TextView
-                    android:id="@+id/greetingTextView"
-                    android:layout_width="0dp"
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/filterChipGroup"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginEnd="16dp"
-                    android:textAppearance="@style/TextAppearance.MaterialComponents.Headline5"
-                    android:textStyle="bold"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    tools:text="Доброе утро" />
-
-                <EditText
-                    android:id="@+id/searchEditText"
-                    android:layout_width="0dp"
-                    android:layout_height="50dp"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginTop="24dp"
-                    android:layout_marginEnd="16dp"
-                    android:background="@drawable/search_background"
-                    android:hint="Поиск рецептов..."
-                    android:importantForAutofill="no"
-                    android:inputType="text"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/greetingTextView" />
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
 
-                <!-- Фильтр по категориям (Завтрак, Обед, Ужин) -->
-                <HorizontalScrollView
-                    android:id="@+id/chipsScrollView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:scrollbars="none"
-                    app:layout_constraintTop_toBottomOf="@id/searchEditText">
-
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/filterChipGroup"
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAll"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        app:singleSelection="true"
-                        app:selectionRequired="true">
+                        android:text="Все"
+                        android:checked="true" />
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipAll"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Все"
-                            android:checked="true" />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipBreakfast"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Завтрак" />
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipBreakfast"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Завтрак" />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipLunch"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Обед" />
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipLunch"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Обед" />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipDinner"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Ужин" />
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
 
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipDinner"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Ужин" />
+            <!-- Фильтр по кухням -->
+            <HorizontalScrollView
+                android:id="@+id/cuisineScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:scrollbars="none"
+                app:layout_constraintTop_toBottomOf="@id/chipsScrollView">
 
-                    </com.google.android.material.chip.ChipGroup>
-                </HorizontalScrollView>
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/cuisineChipGroup"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    app:singleSelection="true"
+                    app:selectionRequired="true">
 
-                <!-- Фильтр по кухням (только текст) -->
-                <HorizontalScrollView
-                    android:id="@+id/cuisineScrollView"
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAllCuisines"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Все кухни"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipRussian"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Русская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipItalian"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Итальянская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipSpanish"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Испанская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipFrench"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Французская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAmerican"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Американская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipAsian"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Азиатская" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipMediterranean"
+                        style="@style/Widget.MaterialComponents.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Средиземноморская" />
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
+
+            <!-- SwipeRefreshLayout -->
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/swipeRefreshLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/cuisineScrollView">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recipesRecyclerView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:scrollbars="none"
-                    app:layout_constraintTop_toBottomOf="@id/chipsScrollView">
-
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/cuisineChipGroup"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp"
-                        app:singleSelection="true"
-                        app:selectionRequired="true">
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipAllCuisines"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Все кухни"
-                            android:checked="true" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipRussian"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Русская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipItalian"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Итальянская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipSpanish"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Испанская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipFrench"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Французская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipAmerican"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Американская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipAsian"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Азиатская" />
-
-                        <com.google.android.material.chip.Chip
-                            android:id="@+id/chipMediterranean"
-                            style="@style/Widget.MaterialComponents.Chip.Filter"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Средиземноморская" />
-
-                    </com.google.android.material.chip.ChipGroup>
-                </HorizontalScrollView>
-
-                <!-- SwipeRefreshLayout для pull-to-refresh -->
-                <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-                    android:id="@+id/swipeRefreshLayout"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintTop_toBottomOf="@id/cuisineScrollView">
-
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/recipesRecyclerView"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:clipToPadding="false"
-                        android:padding="8dp" />
-
-                </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-        </ScrollView>
-    </FrameLayout>
+                    android:clipToPadding="false"
+                    android:padding="8dp" />
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
 
     <!-- Нижняя навигация -->
     <com.google.android.material.card.MaterialCardView

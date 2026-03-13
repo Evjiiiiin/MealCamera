@@ -81,6 +81,8 @@
       "prepTime": "10 мин",
       "imagePath": "placeholder_breakfast_1.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Яйцо", "quantity": 3, "unit": "шт."},
         {"name": "Молоко", "quantity": 50, "unit": "мл"},
@@ -145,6 +147,8 @@
       "prepTime": "10 мин",
       "imagePath": "placeholder_breakfast_2.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Яйцо", "quantity": 2, "unit": "шт."},
         {"name": "Бекон", "quantity": 100, "unit": "гр"},
@@ -207,6 +211,8 @@
       "prepTime": "30 мин",
       "imagePath": "placeholder_breakfast_3.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Мука", "quantity": 200, "unit": "гр"},
         {"name": "Молоко", "quantity": 300, "unit": "мл"},
@@ -272,6 +278,8 @@
       "prepTime": "20 мин",
       "imagePath": "placeholder_breakfast_4.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Сыр", "quantity": 200, "unit": "гр"},
         {"name": "Мука", "quantity": 50, "unit": "гр"},
@@ -334,6 +342,8 @@
       "prepTime": "45 мин",
       "imagePath": "placeholder_lunch_1.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Куриное филе", "quantity": 300, "unit": "гр"},
         {"name": "Картофель", "quantity": 2, "unit": "шт."},
@@ -403,6 +413,8 @@
       "prepTime": "60 мин",
       "imagePath": "placeholder_lunch_2.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Свекла", "quantity": 1, "unit": "шт."},
         {"name": "Капуста", "quantity": 200, "unit": "гр"},
@@ -480,6 +492,8 @@
       "prepTime": "20 мин",
       "imagePath": "placeholder_dinner_1.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Макароны", "quantity": 200, "unit": "гр"},
         {"name": "Бекон", "quantity": 150, "unit": "гр"},
@@ -538,6 +552,8 @@
       "prepTime": "30 мин",
       "imagePath": "placeholder_lunch_3.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Гречка", "quantity": 200, "unit": "гр"},
         {"name": "Грибы", "quantity": 200, "unit": "гр"},
@@ -586,6 +602,8 @@
       "prepTime": "90 мин",
       "imagePath": "placeholder_dinner_2.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Свинина", "quantity": 300, "unit": "гр"},
         {"name": "Картофель", "quantity": 4, "unit": "шт."},
@@ -641,6 +659,8 @@
       "prepTime": "50 мин",
       "imagePath": "placeholder_dessert_1.jpg",
       "popularityScore": 0,
+      "authorId": "admin",
+      "isPublic": true,
       "ingredients": [
         {"name": "Яблоко", "quantity": 3, "unit": "шт."},
         {"name": "Мука", "quantity": 150, "unit": "гр"},

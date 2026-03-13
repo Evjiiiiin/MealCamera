@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.model.EditableIngredient
 import com.example.mealcamera.data.model.ScannedIngredient
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -17,7 +18,7 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     private val _temporaryIngredients = MutableStateFlow<List<ScannedIngredient>>(emptyList())
     val temporaryIngredients = _temporaryIngredients.asStateFlow()
 
-    // Активная сессия для ResultActivity (сохраняется)
+    // Активная сессия для ResultActivity (привязана к userId)
     private val _activeSession = MutableStateFlow<SessionData?>(null)
     val activeSession = _activeSession.asStateFlow()
 
@@ -25,6 +26,7 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     val favoriteChanged = _favoriteChanged.asSharedFlow()
 
     data class SessionData(
+        val userId: String,                    // Добавлено: привязка к пользователю
         val ingredients: List<EditableIngredient>,
         val portions: Int,
         val lastUpdated: Long = System.currentTimeMillis()
@@ -55,10 +57,12 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     // ========== МЕТОДЫ ДЛЯ АКТИВНОЙ СЕССИИ (ResultActivity) ==========
 
     fun startSession(ingredients: List<ScannedIngredient>) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
+
         // Преобразуем ScannedIngredient в EditableIngredient для сессии
         val editableIngredients = ingredients.mapIndexed { index, scanned ->
             EditableIngredient(
-                id = scanned.timestamp, // Используем timestamp как ID
+                id = scanned.timestamp,
                 name = scanned.name,
                 quantity = "1",
                 unit = scanned.unit
@@ -66,16 +70,19 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         }
 
         _activeSession.value = SessionData(
+            userId = currentUserId,
             ingredients = editableIngredients,
             portions = 1
         )
 
-        // Очищаем временную корзину после старта сессии
         clearTemporary()
     }
 
     fun updateSession(ingredients: List<EditableIngredient>, portions: Int) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
+
         _activeSession.value = SessionData(
+            userId = currentUserId,
             ingredients = ingredients,
             portions = portions,
             lastUpdated = System.currentTimeMillis()
@@ -86,7 +93,6 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         val currentSession = _activeSession.value ?: return
         val currentIngredients = currentSession.ingredients.toMutableList()
 
-        // Добавляем только новые ингредиенты (по имени)
         newIngredients.forEach { newIng ->
             if (currentIngredients.none { it.name == newIng.name }) {
                 currentIngredients.add(newIng)
@@ -104,7 +110,13 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         clearTemporary()
     }
 
-    fun isSessionActive(): Boolean = _activeSession.value != null
+    fun isSessionActive(): Boolean {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
+        val session = _activeSession.value
+
+        // Сессия активна только если принадлежит текущему пользователю
+        return session != null && session.userId == currentUserId && !shouldResetSession()
+    }
 
     fun getSessionAge(): Long {
         return _activeSession.value?.let {
@@ -112,11 +124,15 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         } ?: Long.MAX_VALUE
     }
 
-    // ========== МЕТОДЫ ДЛЯ ПРОВЕРКИ СОСТОЯНИЯ ==========
-
     fun shouldResetSession(): Boolean {
         // Сбрасываем сессию если она старше 30 минут
         return getSessionAge() > 30 * 60 * 1000
+    }
+
+    // Проверка соответствия пользователя
+    fun isSessionForCurrentUser(): Boolean {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
+        return _activeSession.value?.userId == currentUserId
     }
 
     // ========== ИЗБРАННОЕ ==========

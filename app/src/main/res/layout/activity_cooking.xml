@@ -14,6 +14,20 @@
         app:titleTextColor="@android:color/white"
         app:navigationIcon="?attr/homeAsUpIndicator" />
 
+    <!-- Индикатор голосового управления (появляется на 3 секунды) -->
+    <TextView
+        android:id="@+id/voiceIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:padding="8dp"
+        android:layout_margin="8dp"
+        android:text="🎤 Микрофон активен"
+        android:textColor="@color/white"
+        android:background="@color/color_primary"
+        android:visibility="gone"
+        android:elevation="4dp"/>
+
     <!-- Прогресс -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -110,14 +124,6 @@
                     android:lineSpacingExtra="4dp" />
 
             </LinearLayout>
-
-            <Button
-                android:id="@+id/btnVoiceCommand"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="🎤 Голосовая команда"
-                android:layout_marginBottom="12dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
             <!-- Таймер -->
             <LinearLayout
