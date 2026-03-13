@@ -7,15 +7,12 @@ import com.example.mealcamera.data.model.Ingredient
 import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.data.model.RecipeIngredientCrossRef
 import com.example.mealcamera.data.model.RecipeStep
-// Импортируем ВСЕ нужные классы из data.remote
 import com.example.mealcamera.data.remote.CloudIngredient
 import com.example.mealcamera.data.remote.CloudIngredientData
 import com.example.mealcamera.data.remote.CloudRecipe
 import com.example.mealcamera.data.remote.FirestoreService
-import com.example.mealcamera.data.remote.StepData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
@@ -24,58 +21,60 @@ class PrepopulateManager(
     private val firestoreService: FirestoreService
 ) {
 
-    suspend fun prepopulateIfNeeded(recipeDao: RecipeDao) {
-        val hasRecipes = recipeDao.getAllRecipesWithIngredients().isNotEmpty()
-        if (!hasRecipes) {
-            Log.i("PrepopulateManager", "🔄 База данных пуста, начинаю заполнение...")
-            try {
-                val (ingredients, recipes) = loadDataFromJson()
+    suspend fun prepopulateIfNeeded(recipeDao: RecipeDao) = withContext(Dispatchers.IO) {
+        try {
+            val hasCloudData = firestoreService.hasData()
+            val localRecipeCount = recipeDao.getRecipeCount()
 
-                val firestoreHasData = firestoreService.hasData()
-
-                if (!firestoreHasData) {
-                    Log.i("PrepopulateManager", "📤 Firestore пуст, загружаю начальные данные...")
-
-                    val firestoreIngredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
-                        CloudIngredientData(
-                            name = name,
-                            isAlwaysAvailable = isAlwaysAvailable,
-                            isCoreIngredient = isCoreIngredient
-                        )
-                    }
-
-                    firestoreService.uploadInitialData(firestoreIngredients, recipes)
-                    saveToLocalDatabase(recipeDao, ingredients, recipes)
-                } else {
-                    Log.i("PrepopulateManager", "☁️ Данные уже есть в Firestore, локально ждём синхронизацию из облака")
-                }
-
-                Log.i("PrepopulateManager", "✅ База данных успешно заполнена")
-            } catch (e: Exception) {
-                Log.e("PrepopulateManager", "❌ Ошибка при заполнении базы данных", e)
+            if (localRecipeCount > 0) {
+                Log.d("PrepopulateManager", "Локальная БД уже содержит данные ($localRecipeCount рецептов)")
+                return@withContext
             }
+
+            if (hasCloudData) {
+                Log.d("PrepopulateManager", "В Firestore уже есть данные — пропускаем локальную prepopulate из JSON")
+                return@withContext
+            }
+
+            Log.d("PrepopulateManager", "Заполняем локальную БД из JSON и загружаем в Firestore")
+            val (ingredients, recipes) = parseJsonRecipes()
+
+            saveToLocalDatabase(recipeDao, ingredients, recipes)
+            firestoreService.uploadInitialData(
+                ingredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
+                    CloudIngredientData(
+                        id = name,
+                        name = name,
+                        isAlwaysAvailable = isAlwaysAvailable,
+                        isCoreIngredient = isCoreIngredient
+                    )
+                },
+                recipes = recipes
+            )
+        } catch (e: Exception) {
+            Log.e("PrepopulateManager", "Ошибка prepopulate", e)
         }
     }
 
-    private suspend fun loadDataFromJson(): Pair<List<Triple<String, Boolean, Boolean>>, List<CloudRecipe>> {
-        val jsonString = loadJsonFromAssets()
-        val jsonObject = JSONObject(jsonString)
+    private fun parseJsonRecipes(): Pair<List<Triple<String, Boolean, Boolean>>, List<CloudRecipe>> {
+        val json = loadJsonFromAssets()
+        val root = JSONObject(json)
 
-        val ingredientsArray = jsonObject.getJSONArray("ingredients")
         val ingredients = mutableListOf<Triple<String, Boolean, Boolean>>()
-
+        val ingredientsArray = root.getJSONArray("ingredients")
         for (i in 0 until ingredientsArray.length()) {
             val ingredientObj = ingredientsArray.getJSONObject(i)
-            ingredients.add(Triple(
-                ingredientObj.getString("name"),
-                ingredientObj.optBoolean("isAlwaysAvailable", false),
-                ingredientObj.optBoolean("isCoreIngredient", true)
-            ))
+            ingredients.add(
+                Triple(
+                    ingredientObj.getString("name"),
+                    ingredientObj.optBoolean("isAlwaysAvailable", false),
+                    ingredientObj.optBoolean("isCoreIngredient", true)
+                )
+            )
         }
 
-        val recipesArray = jsonObject.getJSONArray("recipes")
         val recipes = mutableListOf<CloudRecipe>()
-
+        val recipesArray = root.getJSONArray("recipes")
         for (i in 0 until recipesArray.length()) {
             val recipeObj = recipesArray.getJSONObject(i)
             val recipeName = recipeObj.getString("name")
@@ -83,15 +82,17 @@ class PrepopulateManager(
             val recipeIngredients = mutableListOf<CloudIngredient>()
             val recipeIngredientsArray = recipeObj.getJSONArray("ingredients")
             for (j in 0 until recipeIngredientsArray.length()) {
-                val ingRef = recipeIngredientsArray.getJSONObject(j)
-                recipeIngredients.add(CloudIngredient(
-                    name = ingRef.getString("name"),
-                    quantity = ingRef.getString("quantity"),
-                    unit = ingRef.optString("unit", "")
-                ))
+                val ingObj = recipeIngredientsArray.getJSONObject(j)
+                recipeIngredients.add(
+                    CloudIngredient(
+                        name = ingObj.getString("name"),
+                        quantity = ingObj.getString("quantity"),
+                        unit = ingObj.optString("unit", "")
+                    )
+                )
             }
 
-            val steps = mutableListOf<StepData>()
+            val steps = mutableListOf<com.example.mealcamera.data.remote.StepData>()
             if (recipeObj.has("steps")) {
                 val stepsArray = recipeObj.getJSONArray("steps")
                 for (j in 0 until stepsArray.length()) {
@@ -102,41 +103,48 @@ class PrepopulateManager(
                         val stepIngredientsArray = stepObj.getJSONArray("ingredients")
                         for (k in 0 until stepIngredientsArray.length()) {
                             val stepIngObj = stepIngredientsArray.getJSONObject(k)
-                            stepIngredients.add(CloudIngredient(
-                                name = stepIngObj.getString("name"),
-                                quantity = stepIngObj.getString("quantity"),
-                                unit = stepIngObj.optString("unit", "")
-                            ))
+                            stepIngredients.add(
+                                CloudIngredient(
+                                    name = stepIngObj.getString("name"),
+                                    quantity = stepIngObj.getString("quantity"),
+                                    unit = stepIngObj.optString("unit", "")
+                                )
+                            )
                         }
                     }
 
                     val stepImagePath = stepObj.optString("imagePath", "")
                         .ifBlank { buildDefaultStepImagePath(recipeName, j + 1) }
 
-                    steps.add(StepData(
-                        title = stepObj.getString("title"),
-                        description = stepObj.getString("description"),
-                        timerMinutes = stepObj.optInt("timerMinutes", 0),
-                        imagePath = stepImagePath,
-                        ingredients = stepIngredients
-                    ))
+                    steps.add(
+                        com.example.mealcamera.data.remote.StepData(
+                            title = stepObj.getString("title"),
+                            description = stepObj.getString("description"),
+                            timerMinutes = stepObj.optInt("timerMinutes", 0),
+                            imagePath = stepImagePath,
+                            ingredients = stepIngredients
+                        )
+                    )
                 }
             }
 
+            // Определяем кухню по названию рецепта
             val (cuisine, cuisineCode) = detectCuisine(recipeName)
 
-            recipes.add(CloudRecipe(
-                name = recipeName,
-                description = recipeObj.getString("description"),
-                imagePath = recipeObj.optString("imagePath", ""),
-                category = recipeObj.getString("category"),
-                prepTime = recipeObj.getString("prepTime"),
-                popularityScore = recipeObj.optInt("popularityScore", 0),
-                cuisine = cuisine,
-                cuisineCode = cuisineCode,
-                ingredients = recipeIngredients,
-                steps = steps
-            ))
+            recipes.add(
+                CloudRecipe(
+                    name = recipeName,
+                    description = recipeObj.getString("description"),
+                    imagePath = recipeObj.getString("imagePath"),
+                    category = recipeObj.getString("category"),
+                    prepTime = recipeObj.getString("prepTime"),
+                    popularityScore = recipeObj.optInt("popularityScore", 0),
+                    cuisine = cuisine,
+                    cuisineCode = cuisineCode,
+                    ingredients = recipeIngredients,
+                    steps = steps
+                )
+            )
         }
 
         return Pair(ingredients, recipes)
@@ -198,6 +206,7 @@ class PrepopulateManager(
 
         val ingredientNameToId = mutableMapOf<String, Long>()
 
+        // Сохраняем ингредиенты
         ingredients.forEach { (name, isAlwaysAvailable, isCoreIngredient) ->
             val ingredient = Ingredient(
                 name = name,
@@ -208,6 +217,7 @@ class PrepopulateManager(
             ingredientNameToId[name] = id
         }
 
+        // Сохраняем рецепты
         recipes.forEach { cloudRecipe ->
             val recipe = Recipe(
                 firestoreId = null,
@@ -222,6 +232,7 @@ class PrepopulateManager(
             )
             val recipeId = recipeDao.insertRecipe(recipe)
 
+            // Сохраняем связи с ингредиентами (общие)
             cloudRecipe.ingredients.forEach { recipeIngredient ->
                 val ingredientId = ingredientNameToId[recipeIngredient.name]
                 if (ingredientId != null) {
@@ -237,6 +248,7 @@ class PrepopulateManager(
                 }
             }
 
+            // Сохраняем шаги
             cloudRecipe.steps.forEachIndexed { index, stepData ->
                 val step = RecipeStep(
                     recipeId = recipeId,
@@ -248,6 +260,7 @@ class PrepopulateManager(
                 )
                 val stepId = recipeDao.insertStep(step)
 
+                // Сохраняем ингредиенты шага
                 stepData.ingredients.forEach { stepIngredient ->
                     val ingredientId = ingredientNameToId[stepIngredient.name]
                     if (ingredientId != null) {

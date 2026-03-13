@@ -1,5 +1,7 @@
 package com.example.mealcamera.data.util
 
+import java.util.Locale
+
 object UnitHelper {
 
     // ========== ОСНОВНЫЕ МЕТОДЫ ==========
@@ -44,7 +46,7 @@ object UnitHelper {
         return if (quantity % 1 == 0.0) {
             quantity.toInt().toString()
         } else {
-            String.format("%.1f", quantity).replace(',', '.')
+            String.format(Locale.US, "%.1f", quantity)
         }
     }
 
@@ -84,9 +86,8 @@ object UnitHelper {
 
     private fun isPieceBased(name: String): Boolean {
         val pieceBased = listOf(
-            "яйцо", "лимон", "яблоко", "банан", "помидор", "огурец",
-            "картофель", "лук", "морковь", "перец", "чеснок", "зубчик",
-            "авокадо", "апельсин"
+            "яйцо", "яблоко", "банан", "лук", "морковь", "картофель",
+            "помидор", "огурец", "перец", "чеснок", "лимон"
         )
         return pieceBased.any { name.contains(it) }
     }

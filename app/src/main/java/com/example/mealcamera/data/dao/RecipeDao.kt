@@ -41,9 +41,6 @@ interface RecipeDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIngredient(ingredient: Ingredient): Long
 
-    @Update
-    suspend fun updateIngredient(ingredient: Ingredient)  // ← ДОБАВЛЕН ЭТОТ МЕТОД
-
     @Query("SELECT * FROM ingredients")
     suspend fun getAllIngredients(): List<Ingredient>
 

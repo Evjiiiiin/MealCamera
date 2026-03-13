@@ -1,99 +1,95 @@
 package com.example.mealcamera.data.local
 
 import android.content.Context
+import android.content.SharedPreferences
+import org.json.JSONArray
+import org.json.JSONObject
 
 class AppStatsManager(context: Context) {
 
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     data class RecentCookedRecipe(
+        val recipeId: Long,
         val name: String,
         val cookedAtMillis: Long
     )
 
-    fun registerCookedRecipe(userId: String?, recipeId: Long) {
-        registerCookedRecipe(userId, recipeId, "Без названия")
-    }
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("app_stats", Context.MODE_PRIVATE)
 
     fun registerCookedRecipe(userId: String?, recipeId: Long, recipeName: String) {
-        val userSuffix = userId ?: "guest"
-        val uniqueKey = uniqueCookedRecipesKey(userSuffix)
-        val currentIds = prefs.getStringSet(uniqueKey, emptySet()).orEmpty().toMutableSet()
-        currentIds.add(recipeId.toString())
+        if (recipeId <= 0L) return
 
-        val updatedRecent = buildUpdatedRecentList(userId, recipeName)
+        val userSuffix = userId.orEmpty()
+        val countKey = "cooked_count_$userSuffix"
+        val uniqueKey = "cooked_unique_$userSuffix"
+        val recentKey = "cooked_recent_$userSuffix"
 
-        prefs.edit()
-            .putStringSet(uniqueKey, currentIds)
-            .putInt(cookedRecipesKey(userId), prefs.getInt(cookedRecipesKey(userId), 0) + 1)
-            .putString(recentCookedRecipesKey(userId), updatedRecent)
-            .apply()
+        val currentCount = prefs.getInt(countKey, 0)
+        prefs.edit().putInt(countKey, currentCount + 1).apply()
+
+        val uniqueSet = prefs.getStringSet(uniqueKey, emptySet())?.toMutableSet() ?: mutableSetOf()
+        uniqueSet.add(recipeId.toString())
+        prefs.edit().putStringSet(uniqueKey, uniqueSet).apply()
+
+        val recentList = getRecentCookedRecipes(userId).toMutableList()
+        recentList.add(
+            0,
+            RecentCookedRecipe(
+                recipeId = recipeId,
+                name = recipeName,
+                cookedAtMillis = System.currentTimeMillis()
+            )
+        )
+
+        val trimmed = recentList.take(10)
+        val jsonArray = JSONArray()
+        trimmed.forEach { item ->
+            val obj = JSONObject()
+                .put("recipeId", item.recipeId)
+                .put("name", item.name)
+                .put("cookedAtMillis", item.cookedAtMillis)
+            jsonArray.put(obj)
+        }
+        prefs.edit().putString(recentKey, jsonArray.toString()).apply()
     }
 
     fun getCookedRecipesCount(userId: String?): Int {
-        return prefs.getInt(cookedRecipesKey(userId), 0)
+        val userSuffix = userId.orEmpty()
+        return prefs.getInt("cooked_count_$userSuffix", 0)
     }
 
     fun getUniqueCookedRecipesCount(userId: String?): Int {
-        val userSuffix = userId ?: "guest"
-        return prefs.getStringSet(uniqueCookedRecipesKey(userSuffix), emptySet())?.size ?: 0
+        val userSuffix = userId.orEmpty()
+        return prefs.getStringSet("cooked_unique_$userSuffix", emptySet())?.size ?: 0
     }
 
     fun getRecentCookedRecipes(userId: String?): List<RecentCookedRecipe> {
-        val raw = prefs.getString(recentCookedRecipesKey(userId), "").orEmpty()
-        if (raw.isBlank()) return emptyList()
+        val userSuffix = userId.orEmpty()
+        val raw = prefs.getString("cooked_recent_$userSuffix", null) ?: return emptyList()
 
-        return raw.split(ENTRY_SEPARATOR)
-            .mapNotNull { token ->
-                val delimiterIndex = token.indexOf(FIELD_SEPARATOR)
-                if (delimiterIndex <= 0 || delimiterIndex >= token.lastIndex) return@mapNotNull null
-
-                val timePart = token.substring(0, delimiterIndex)
-                val namePart = token.substring(delimiterIndex + 1)
-                val millis = timePart.toLongOrNull() ?: return@mapNotNull null
-                if (namePart.isBlank()) return@mapNotNull null
-
-                RecentCookedRecipe(name = namePart, cookedAtMillis = millis)
-            }
+        return runCatching {
+            val arr = JSONArray(raw)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    add(
+                        RecentCookedRecipe(
+                            recipeId = obj.optLong("recipeId", -1L),
+                            name = obj.optString("name", ""),
+                            cookedAtMillis = obj.optLong("cookedAtMillis", 0L)
+                        )
+                    )
+                }
+            }.filter { it.recipeId > 0L && it.name.isNotBlank() }
+        }.getOrDefault(emptyList())
     }
 
-    private fun buildUpdatedRecentList(userId: String?, recipeName: String): String {
-        val current = getRecentCookedRecipes(userId).toMutableList()
-        current.add(0, RecentCookedRecipe(recipeName.ifBlank { "Без названия" }, System.currentTimeMillis()))
-
-        while (current.size > MAX_RECENT_ITEMS) {
-            current.removeAt(current.lastIndex)
-        }
-
-        return current.joinToString(ENTRY_SEPARATOR) { item ->
-            "${item.cookedAtMillis}$FIELD_SEPARATOR${sanitizeRecipeName(item.name)}"
-        }
-    }
-
-    private fun sanitizeRecipeName(name: String): String {
-        return name
-            .replace(ENTRY_SEPARATOR, " ")
-            .replace(FIELD_SEPARATOR, " ")
-            .trim()
-            .ifBlank { "Без названия" }
-    }
-
-    companion object {
-        private const val PREFS_NAME = "meal_camera_stats"
-        private const val MAX_RECENT_ITEMS = 5
-        private const val ENTRY_SEPARATOR = "||"
-        private const val FIELD_SEPARATOR = "::"
-
-        private fun cookedRecipesKey(userId: String?): String {
-            return "cooked_recipes_${userId ?: "guest"}"
-        }
-
-        private fun uniqueCookedRecipesKey(userSuffix: String): String {
-            return "unique_cooked_recipes_$userSuffix"
-        }
-
-        private fun recentCookedRecipesKey(userId: String?): String {
-            return "recent_cooked_recipes_${userId ?: "guest"}"
-        }
+    fun clearAll(userId: String?) {
+        val userSuffix = userId.orEmpty()
+        prefs.edit()
+            .remove("cooked_count_$userSuffix")
+            .remove("cooked_unique_$userSuffix")
+            .remove("cooked_recent_$userSuffix")
+            .apply()
     }
 }

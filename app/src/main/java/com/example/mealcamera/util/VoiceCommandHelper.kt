@@ -19,28 +19,43 @@ class VoiceCommandHelper(
         "следующий" to "next",
         "дальше" to "next",
         "вперед" to "next",
-        "след" to "next",
+        "следующий шаг" to "next",
+
         "назад" to "previous",
         "предыдущий" to "previous",
-        "пред" to "previous",
+        "предыдущий шаг" to "previous",
+
         "старт" to "start_timer",
         "запусти таймер" to "start_timer",
-        "поехали" to "start_timer",
+        "поставь таймер" to "start_timer",
+        "запуск таймера" to "start_timer",
+
         "пауза" to "pause_timer",
+        "пауза таймер" to "pause_timer",
         "останови таймер" to "pause_timer",
+
         "стоп" to "stop_timer",
         "сброс" to "stop_timer",
-        "остановить" to "stop_timer",
+        "сбрось таймер" to "stop_timer",
+
         "повтори" to "repeat",
-        "еще раз" to "repeat",
+        "повтори шаг" to "repeat",
+        "прочитай шаг" to "repeat",
+        "зачитай шаг" to "repeat",
+
         "что дальше" to "next_step",
-        "следующий шаг" to "next_step",
+        "следующий после" to "next_step",
+
         "ингредиенты" to "ingredients",
+        "зачитай ингредиенты" to "ingredients",
+        "прочитай ингредиенты" to "ingredients",
         "что нужно" to "ingredients",
         "какие продукты" to "ingredients",
+
         "завершить" to "finish",
         "готово" to "finish",
         "закончить" to "finish",
+
         "помощь" to "help",
         "команды" to "help",
         "что ты умеешь" to "help"
@@ -78,7 +93,6 @@ class VoiceCommandHelper(
                     }
 
                     if (isListening) {
-                        // Не показываем Toast для ошибки 8, просто перезапускаем
                         if (error != SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
                             Toast.makeText(context, "Голос: $errorMessage", Toast.LENGTH_SHORT).show()
                         }
@@ -152,7 +166,7 @@ class VoiceCommandHelper(
             • назад / предыдущий
             • старт / пауза / стоп (таймер)
             • ингредиенты / что нужно
-            • повтори / еще раз
+            • повтори / прочитай шаг
             • готово / завершить
             • помощь / команды
         """.trimIndent()
@@ -189,12 +203,18 @@ class VoiceCommandHelper(
     }
 
     private fun restartListening() {
-        stopListening()
-        if (isListening) {
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                startListening()
-            }, 500)
+        if (!isListening) return
+
+        try {
+            speechRecognizer?.cancel()
+        } catch (_: Exception) {
         }
+
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (isListening) {
+                startListening()
+            }
+        }, 500)
     }
 
     fun destroy() {

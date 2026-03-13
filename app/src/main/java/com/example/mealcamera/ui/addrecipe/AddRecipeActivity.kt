@@ -1,15 +1,14 @@
 package com.example.mealcamera.ui.addrecipe
 
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.mealcamera.R
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.data.remote.CloudIngredient
 import com.example.mealcamera.data.remote.CloudRecipe

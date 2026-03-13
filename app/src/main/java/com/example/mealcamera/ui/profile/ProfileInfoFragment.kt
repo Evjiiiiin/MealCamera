@@ -10,6 +10,8 @@ import androidx.fragment.app.Fragment
 import com.example.mealcamera.data.local.AppStatsManager
 import com.example.mealcamera.databinding.FragmentProfileInfoBinding
 import com.example.mealcamera.ui.auth.LoginActivity
+import com.example.mealcamera.ui.addrecipe.AddRecipeActivity
+import com.example.mealcamera.ui.shopping.ShoppingListActivity
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,6 +53,14 @@ class ProfileInfoFragment : Fragment() {
 
         binding.btnEditProfile.setOnClickListener {
             Toast.makeText(context, "Редактирование профиля скоро появится!", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnShoppingList.setOnClickListener {
+            startActivity(Intent(requireContext(), ShoppingListActivity::class.java))
+        }
+
+        binding.btnAddRecipe.setOnClickListener {
+            startActivity(Intent(requireContext(), AddRecipeActivity::class.java))
         }
 
         binding.btnLogout.setOnClickListener {

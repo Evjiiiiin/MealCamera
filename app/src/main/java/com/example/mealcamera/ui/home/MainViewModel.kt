@@ -63,14 +63,12 @@ class MainViewModel(private val repository: RecipeRepository) : ViewModel() {
         viewModelScope.launch {
             _isRefreshing.value = true
             _error.value = null
-
-            try {
+            runCatching {
                 repository.syncRecipesFromCloud()
-            } catch (e: Exception) {
-                _error.value = "Ошибка обновления: ${e.message}"
-            } finally {
-                _isRefreshing.value = false
+            }.onFailure { throwable ->
+                _error.value = throwable.message ?: "Не удалось обновить рецепты"
             }
+            _isRefreshing.value = false
         }
     }
 
@@ -84,5 +82,9 @@ class MainViewModel(private val repository: RecipeRepository) : ViewModel() {
 
     fun setCuisineFilter(cuisine: String) {
         _cuisineFilter.value = cuisine
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }

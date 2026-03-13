@@ -35,7 +35,8 @@
             android:exported="false"
             android:label="Выбор ингредиентов"
             android:parentActivityName=".ui.scan.ScanActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.MealCamera" />
 
         <!-- Аутентификация -->
         <activity
@@ -85,11 +86,17 @@
             android:screenOrientation="portrait"
             android:parentActivityName=".ui.detail.RecipeDetailActivity" />
 
-        <!-- ДОБАВЛЕНО: Добавление рецепта -->
+        <!-- Список покупок -->
+        <activity
+            android:name=".ui.shopping.ShoppingListActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.home.MainActivity" />
+
+        <!-- Добавление рецепта -->
         <activity
             android:name=".ui.addrecipe.AddRecipeActivity"
             android:exported="false"
-            android:parentActivityName=".ui.profile.ProfileFragment"
+            android:parentActivityName=".ui.home.MainActivity"
             android:screenOrientation="portrait" />
 
     </application>

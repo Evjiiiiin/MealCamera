@@ -128,6 +128,14 @@
             android:layout_marginBottom="24dp" />
 
         <Button
+            android:id="@+id/btnShoppingList"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Список покупок"
+            android:layout_marginBottom="12dp" />
+
+        <Button
             android:id="@+id/btnAddRecipe"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
