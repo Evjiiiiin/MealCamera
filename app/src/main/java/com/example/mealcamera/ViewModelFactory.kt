@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.mealcamera.data.FavoriteRepository
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.ui.SharedViewModel
+import com.example.mealcamera.ui.addrecipe.AddRecipeViewModel
 import com.example.mealcamera.ui.cooking.CookingViewModel
 import com.example.mealcamera.ui.detail.RecipeDetailViewModel
 import com.example.mealcamera.ui.home.MainViewModel
-import com.example.mealcamera.ui.profile.FavoritesViewModel
+import com.example.mealcamera.ui.profile.ProfileViewModel
 import com.example.mealcamera.ui.result.ResultViewModel
 import com.example.mealcamera.ui.scan.ScanViewModel
+import com.example.mealcamera.util.FirebaseStorageHelper
 
 class ViewModelFactory(
     private val application: Application,
@@ -24,13 +26,13 @@ class ViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
             modelClass.isAssignableFrom(MainViewModel::class.java) ->
-                MainViewModel(recipeRepository) as T
+                MainViewModel(recipeRepository, favoriteRepository) as T
 
             modelClass.isAssignableFrom(RecipeDetailViewModel::class.java) ->
                 RecipeDetailViewModel(recipeRepository, favoriteRepository, sharedViewModel) as T
 
             modelClass.isAssignableFrom(ResultViewModel::class.java) ->
-                ResultViewModel(recipeRepository, sharedViewModel) as T  // ← ИСПРАВЛЕНО: добавлен sharedViewModel
+                ResultViewModel(recipeRepository, sharedViewModel) as T
 
             modelClass.isAssignableFrom(ScanViewModel::class.java) ->
                 ScanViewModel(application) as T
@@ -38,11 +40,14 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(SharedViewModel::class.java) ->
                 sharedViewModel as T
 
-            modelClass.isAssignableFrom(FavoritesViewModel::class.java) ->
-                FavoritesViewModel(favoriteRepository) as T
-
             modelClass.isAssignableFrom(CookingViewModel::class.java) ->
                 CookingViewModel(recipeRepository) as T
+
+            modelClass.isAssignableFrom(AddRecipeViewModel::class.java) ->
+                AddRecipeViewModel(recipeRepository, FirebaseStorageHelper()) as T
+
+            modelClass.isAssignableFrom(ProfileViewModel::class.java) ->
+                ProfileViewModel(application, recipeRepository, favoriteRepository) as T
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

@@ -44,7 +44,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Редактировать профиль"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="16dp" />
+
+        <!-- Кнопка для редактирования аллергенов -->
+        <Button
+            android:id="@+id/btnEditAllergens"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Аллергены"
+            android:layout_marginBottom="16dp" />
 
         <!-- Статистика -->
         <TextView
@@ -126,22 +135,6 @@
             android:text="Пока нет приготовленных блюд"
             android:lineSpacingExtra="2dp"
             android:layout_marginBottom="24dp" />
-
-        <Button
-            android:id="@+id/btnShoppingList"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Список покупок"
-            android:layout_marginBottom="12dp" />
-
-        <Button
-            android:id="@+id/btnAddRecipe"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Добавить свой рецепт"
-            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/btnLogout"

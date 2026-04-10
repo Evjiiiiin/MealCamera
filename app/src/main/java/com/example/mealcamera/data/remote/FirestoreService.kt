@@ -2,6 +2,9 @@ package com.example.mealcamera.data.remote
 
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class FirestoreService {
@@ -9,6 +12,19 @@ class FirestoreService {
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val recipesCollection = db.collection("recipes")
     private val ingredientsCollection = db.collection("ingredients")
+
+    private fun anyToString(value: Any?): String {
+        return when (value) {
+            null -> ""
+            is String -> value
+            is Number -> {
+                val asDouble = value.toDouble()
+                if (asDouble % 1.0 == 0.0) asDouble.toInt().toString() else asDouble.toString()
+            }
+            is Boolean -> value.toString()
+            else -> value.toString()
+        }
+    }
 
     // ========== ИНГРЕДИЕНТЫ ==========
 
@@ -111,8 +127,8 @@ class FirestoreService {
                         ingredientsField.forEach { item ->
                             if (item is Map<*, *>) {
                                 val ingName = item["name"] as? String ?: ""
-                                val quantity = item["quantity"] as? String ?: ""
-                                val unit = item["unit"] as? String ?: ""
+                                val quantity = anyToString(item["quantity"])
+                                val unit = anyToString(item["unit"])
                                 if (ingName.isNotEmpty()) {
                                     ingredientsList.add(CloudIngredient(ingName, quantity, unit))
                                 }
@@ -136,8 +152,8 @@ class FirestoreService {
                                                 ingredients.add(
                                                     CloudIngredient(
                                                         name = ingredientName,
-                                                        quantity = ingredient["quantity"] as? String ?: "",
-                                                        unit = ingredient["unit"] as? String ?: ""
+                                                        quantity = anyToString(ingredient["quantity"]),
+                                                        unit = anyToString(ingredient["unit"])
                                                     )
                                                 )
                                             }
@@ -149,7 +165,7 @@ class FirestoreService {
                                     StepData(
                                         title = step["title"] as? String ?: "",
                                         description = step["description"] as? String ?: "",
-                                        timerMinutes = (step["timerMinutes"] as? Long)?.toInt() ?: 0,
+                                        timerMinutes = (step["timerMinutes"] as? Number)?.toInt() ?: 0,
                                         imagePath = step["imagePath"] as? String ?: "",
                                         ingredients = ingredients
                                     )
@@ -356,6 +372,49 @@ class FirestoreService {
             Log.e("FirestoreService", "Error checking data", e)
             false
         }
+    }
+
+    // ========== ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ==========
+
+    /**
+     * Получить список аллергенов пользователя
+     */
+    suspend fun getUserAllergens(userId: String): List<String> {
+        return try {
+            val doc = db.collection("users").document(userId).get().await()
+            val allergensObj = doc.get("allergens")
+            when (allergensObj) {
+                is List<*> -> allergensObj.filterIsInstance<String>()
+                else -> emptyList()
+            }
+        } catch (e: Exception) {
+            Log.e("FirestoreService", "Error getting allergens for user $userId", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Получить Flow аллергенов пользователя (в реальном времени)
+     */
+    fun getUserAllergensFlow(userId: String): Flow<List<String>> = callbackFlow {
+        val listener = db.collection("users").document(userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirestoreService", "Error listening for allergens", error)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    val allergensObj = snapshot.get("allergens")
+                    val allergens = when (allergensObj) {
+                        is List<*> -> allergensObj.filterIsInstance<String>()
+                        else -> emptyList()
+                    }
+                    trySend(allergens)
+                } else {
+                    trySend(emptyList())
+                }
+            }
+        awaitClose { listener.remove() }
     }
 }
 

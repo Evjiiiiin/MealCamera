@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.databinding.ActivityAllergenSelectionBinding
 import com.example.mealcamera.ui.home.MainActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -25,7 +26,6 @@ class AllergenSelectionActivity : AppCompatActivity() {
         binding = ActivityAllergenSelectionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Загружаем сохраненные аллергены, если они есть
         loadUserAllergens()
 
         binding.btnContinue.setOnClickListener {
@@ -39,13 +39,16 @@ class AllergenSelectionActivity : AppCompatActivity() {
 
     private fun loadUserAllergens() {
         val userId = auth.currentUser?.uid ?: return
-
         lifecycleScope.launch {
             try {
                 val document = firestore.collection("users").document(userId).get().await()
-                val allergens = document.get("allergens") as? List<String> ?: emptyList()
+                val rawAllergens = document.get("allergens")
+                val allergens = if (rawAllergens is List<*>) {
+                    rawAllergens.filterIsInstance<String>()
+                } else {
+                    emptyList()
+                }
 
-                // Отмечаем чекбоксы на основе загруженных аллергенов
                 binding.cbDairy.isChecked = allergens.contains("Молочные продукты")
                 binding.cbMeat.isChecked = allergens.contains("Мясо")
                 binding.cbGrains.isChecked = allergens.contains("Крупы")
@@ -95,12 +98,15 @@ class AllergenSelectionActivity : AppCompatActivity() {
                     "Аллергены сохранены",
                     Toast.LENGTH_SHORT
                 ).show()
+
+                (application as MealCameraApplication).sharedViewModel.notifyAllergensChanged()
                 openMain()
 
             } catch (e: Exception) {
+                val errorMsg = e.message ?: "Unknown error"
                 Toast.makeText(
                     this@AllergenSelectionActivity,
-                    "Ошибка сохранения: ${e.message}",
+                    "Ошибка сохранения: $errorMsg",
                     Toast.LENGTH_SHORT
                 ).show()
                 Log.e("AllergenSelection", "Error saving allergens", e)

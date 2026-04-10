@@ -15,12 +15,12 @@ interface ShoppingListDao {
     @Update
     suspend fun updateItem(item: ShoppingListItem)
 
-    @Query("SELECT * FROM shopping_list WHERE LOWER(name) = LOWER(:name) AND LOWER(unit) = LOWER(:unit) LIMIT 1")
-    suspend fun getItemByNameAndUnit(name: String, unit: String): ShoppingListItem?
+    @Query("SELECT * FROM shopping_list WHERE LOWER(name) = LOWER(:name) AND LOWER(unit) = LOWER(:unit) AND userId = :userId LIMIT 1")
+    suspend fun getItemByNameAndUnit(userId: String, name: String, unit: String): ShoppingListItem?
 
-    @Query("SELECT * FROM shopping_list ORDER BY isChecked ASC, name ASC")
-    fun getAllItems(): Flow<List<ShoppingListItem>>
+    @Query("SELECT * FROM shopping_list WHERE userId = :userId ORDER BY isChecked ASC, name ASC")
+    fun getAllItems(userId: String): Flow<List<ShoppingListItem>>
 
-    @Query("DELETE FROM shopping_list WHERE isChecked = 1")
-    suspend fun deleteCheckedItems()
+    @Query("DELETE FROM shopping_list WHERE isChecked = 1 AND userId = :userId")
+    suspend fun deleteCheckedItems(userId: String)
 }

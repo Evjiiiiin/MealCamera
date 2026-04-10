@@ -29,12 +29,11 @@
             </intent-filter>
         </activity>
 
-        <!-- Каталог ингредиентов -->
+        <!-- Каталог ингредиентов (Оставляем как вспомогательное окно) -->
         <activity
             android:name=".ui.catalog.IngredientCatalogActivity"
             android:exported="false"
             android:label="Выбор ингредиентов"
-            android:parentActivityName=".ui.scan.ScanActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.MealCamera" />
 
@@ -54,49 +53,22 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
-        <!-- Главная -->
+        <!-- ЕДИНСТВЕННАЯ ГЛАВНАЯ ACTIVITY (Single Activity Host) -->
         <activity
             android:name=".ui.home.MainActivity"
             android:exported="false"
-            android:launchMode="singleTop" />
-
-        <!-- Сканер -->
-        <activity
-            android:name=".ui.scan.ScanActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:parentActivityName=".ui.home.MainActivity" />
-
-        <!-- Результаты -->
-        <activity
-            android:name=".ui.result.ResultActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.scan.ScanActivity" />
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustPan" />
 
         <!-- Детали рецепта -->
         <activity
             android:name=".ui.detail.RecipeDetailActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.home.MainActivity" />
+            android:exported="false" />
 
         <!-- Готовка -->
         <activity
             android:name=".ui.cooking.CookingActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:parentActivityName=".ui.detail.RecipeDetailActivity" />
-
-        <!-- Список покупок -->
-        <activity
-            android:name=".ui.shopping.ShoppingListActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.home.MainActivity" />
-
-        <!-- Добавление рецепта -->
-        <activity
-            android:name=".ui.addrecipe.AddRecipeActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.home.MainActivity"
             android:screenOrientation="portrait" />
 
     </application>

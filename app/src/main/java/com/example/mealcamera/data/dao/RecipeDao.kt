@@ -93,6 +93,10 @@ interface RecipeDao {
     suspend fun getAllRecipesWithIngredients(): List<RecipeWithIngredients>
 
     @Transaction
+    @Query("SELECT * FROM recipes")
+    fun getAllRecipesWithIngredientsFlow(): Flow<List<RecipeWithIngredients>>
+
+    @Transaction
     @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
     fun getRecipeWithIngredientsById(recipeId: Long): Flow<RecipeWithIngredients>
 

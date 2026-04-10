@@ -21,7 +21,7 @@ import com.example.mealcamera.data.model.*
         FavoriteRecipe::class,
         StepIngredient::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,20 +35,24 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Добавляем новые колонки, если их нет
                 try {
                     db.execSQL("ALTER TABLE recipes ADD COLUMN authorId TEXT DEFAULT 'admin'")
                 } catch (e: Exception) { }
-
                 try {
                     db.execSQL("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1")
                 } catch (e: Exception) { }
-
-                // Создаем индексы
                 try {
                     db.execSQL("CREATE INDEX IF NOT EXISTS index_recipes_authorId ON recipes(authorId)")
                     db.execSQL("CREATE INDEX IF NOT EXISTS index_recipes_isPublic ON recipes(isPublic)")
                 } catch (e: Exception) { }
+            }
+        }
+
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE shopping_list ADD COLUMN userId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_shopping_list_userId ON shopping_list(userId)")
             }
         }
 
@@ -59,7 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "meal_camera_database"
                 )
-                    .addMigrations(MIGRATION_11_12)
+                    .addMigrations(MIGRATION_11_12, MIGRATION_12_13) // 👈 добавляем обе миграции
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

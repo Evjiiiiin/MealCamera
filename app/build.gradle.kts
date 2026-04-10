@@ -68,6 +68,12 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.constraintlayout)
+    // Добавляем явно CoordinatorLayout для исправления ошибки компиляции
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
+
+    // Navigation
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
 
     // Testing
     testImplementation(libs.junit)

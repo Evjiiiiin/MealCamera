@@ -16,12 +16,16 @@ class IngredientCatalogActivity : AppCompatActivity() {
     private lateinit var adapter: IngredientAdapter
     private val selectedNames = mutableSetOf<String>()
 
+    // Локальная функция нормализации
+    private fun normalize(name: String): String {
+        return name.trim().lowercase().replace("ё", "е")
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityIngredientCatalogBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Получаем уже выбранные ингредиенты из Intent
         val preSelectedNames = intent.getStringArrayListExtra("selected_names") ?: arrayListOf()
         selectedNames.addAll(preSelectedNames)
 
@@ -37,7 +41,6 @@ class IngredientCatalogActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Выбор ингредиентов"
         binding.toolbar.setNavigationOnClickListener {
-            // Возвращаем результат с текущим выделением
             returnResult()
         }
     }
@@ -53,7 +56,6 @@ class IngredientCatalogActivity : AppCompatActivity() {
                 }
             }
         )
-
         binding.rvIngredients.layoutManager = LinearLayoutManager(this)
         binding.rvIngredients.adapter = adapter
     }
@@ -68,7 +70,8 @@ class IngredientCatalogActivity : AppCompatActivity() {
 
     private fun setupSearch() {
         binding.etSearch.doOnTextChanged { text, _, _, _ ->
-            adapter.filter(text.toString())
+            val query = text?.toString().orEmpty()
+            adapter.filter(query)
         }
     }
 
@@ -79,8 +82,10 @@ class IngredientCatalogActivity : AppCompatActivity() {
     }
 
     private fun returnResult() {
+        // Нормализуем имена перед отправкой
+        val normalizedNames = selectedNames.map { normalize(it) }.distinct()
         val intent = Intent().apply {
-            putStringArrayListExtra("selected_names", ArrayList(selectedNames))
+            putStringArrayListExtra("selected_names", ArrayList(normalizedNames))
         }
         setResult(RESULT_OK, intent)
         finish()

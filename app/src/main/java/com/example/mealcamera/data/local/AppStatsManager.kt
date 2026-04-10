@@ -2,6 +2,7 @@ package com.example.mealcamera.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -25,11 +26,9 @@ class AppStatsManager(context: Context) {
         val recentKey = "cooked_recent_$userSuffix"
 
         val currentCount = prefs.getInt(countKey, 0)
-        prefs.edit().putInt(countKey, currentCount + 1).apply()
-
+        
         val uniqueSet = prefs.getStringSet(uniqueKey, emptySet())?.toMutableSet() ?: mutableSetOf()
         uniqueSet.add(recipeId.toString())
-        prefs.edit().putStringSet(uniqueKey, uniqueSet).apply()
 
         val recentList = getRecentCookedRecipes(userId).toMutableList()
         recentList.add(
@@ -50,7 +49,12 @@ class AppStatsManager(context: Context) {
                 .put("cookedAtMillis", item.cookedAtMillis)
             jsonArray.put(obj)
         }
-        prefs.edit().putString(recentKey, jsonArray.toString()).apply()
+
+        prefs.edit {
+            putInt(countKey, currentCount + 1)
+            putStringSet(uniqueKey, uniqueSet)
+            putString(recentKey, jsonArray.toString())
+        }
     }
 
     fun getCookedRecipesCount(userId: String?): Int {
@@ -82,14 +86,5 @@ class AppStatsManager(context: Context) {
                 }
             }.filter { it.recipeId > 0L && it.name.isNotBlank() }
         }.getOrDefault(emptyList())
-    }
-
-    fun clearAll(userId: String?) {
-        val userSuffix = userId.orEmpty()
-        prefs.edit()
-            .remove("cooked_count_$userSuffix")
-            .remove("cooked_unique_$userSuffix")
-            .remove("cooked_recent_$userSuffix")
-            .apply()
     }
 }

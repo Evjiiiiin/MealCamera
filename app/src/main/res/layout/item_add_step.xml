@@ -4,19 +4,19 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="8dp"
-    android:layout_marginBottom="8dp">
+    android:layout_marginBottom="8dp"
+    android:background="@drawable/rounded_edittext_background">
 
+    <!-- Заголовок шага и кнопка удаления -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
         <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutStepTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -30,15 +30,14 @@
             android:id="@+id/btnRemoveStep"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_gravity="center_vertical"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_close"
             android:tint="@color/red_error"
             android:contentDescription="Remove step" />
     </LinearLayout>
 
+    <!-- Описание шага -->
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layoutStepDescription"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
@@ -53,8 +52,8 @@
             android:hint="Описание шага" />
     </com.google.android.material.textfield.TextInputLayout>
 
+    <!-- Таймер шага -->
     <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layoutStepTimer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
@@ -67,4 +66,46 @@
             android:hint="Таймер (минуты)"
             android:inputType="number" />
     </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Фото шага -->
+    <Button
+        android:id="@+id/btnSelectStepImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Выбрать фото для шага"
+        android:textSize="12sp" />
+
+    <ImageView
+        android:id="@+id/ivStepPreview"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:layout_marginTop="4dp"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        android:src="@drawable/ic_recipe_placeholder" />
+
+    <!-- Ингредиенты шага -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Ингредиенты для этого шага:"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/stepIngredientsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <Button
+        android:id="@+id/btnAddStepIngredient"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="+ Добавить ингредиент"
+        android:textSize="12sp" />
+
 </LinearLayout>

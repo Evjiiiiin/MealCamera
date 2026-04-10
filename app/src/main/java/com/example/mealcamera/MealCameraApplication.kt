@@ -11,9 +11,6 @@ import com.example.mealcamera.ui.SharedViewModel
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class MealCameraApplication : Application() {
@@ -30,7 +27,6 @@ class MealCameraApplication : Application() {
         FavoriteRepository(database.favoriteDao(), firestore)
     }
 
-    // Создаем SharedViewModel как lazy, чтобы избежать циклических зависимостей
     private val _sharedViewModel by lazy { SharedViewModel(recipeRepository) }
     val sharedViewModel: SharedViewModel
         get() = _sharedViewModel
@@ -38,9 +34,6 @@ class MealCameraApplication : Application() {
     val viewModelFactory: ViewModelFactory by lazy {
         ViewModelFactory(this, recipeRepository, favoriteRepository, sharedViewModel)
     }
-
-    private val _isAppInitialized = MutableStateFlow(false)
-    val isAppInitialized: StateFlow<Boolean> = _isAppInitialized.asStateFlow()
 
     private val appScope = CoroutineScope(Dispatchers.IO)
 
@@ -59,8 +52,6 @@ class MealCameraApplication : Application() {
                 Log.i("MealCameraApplication", "✅ App initialization complete!")
             } catch (e: Exception) {
                 Log.e("MealCameraApplication", "❌ Error during app initialization", e)
-            } finally {
-                _isAppInitialized.value = true
             }
         }
     }

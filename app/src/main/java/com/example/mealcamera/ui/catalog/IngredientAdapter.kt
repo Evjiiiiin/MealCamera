@@ -7,12 +7,20 @@ import com.example.mealcamera.data.model.Ingredient
 import com.example.mealcamera.databinding.ItemIngredientSelectableBinding
 
 class IngredientAdapter(
-    private val selectedNames: Set<String>, // Передаём выбранные имена
+    private val selectedNames: Set<String>,
     private val onSelectionChanged: (String, Boolean) -> Unit
 ) : RecyclerView.Adapter<IngredientAdapter.IngredientViewHolder>() {
 
     private var items = listOf<Ingredient>()
     private var filteredItems = listOf<Ingredient>()
+
+    private fun normalize(name: String): String {
+        return name.trim().lowercase().replace("ё", "е")
+    }
+
+    // Кэшируем нормализованные выбранные имена для быстрого поиска
+    private val normalizedSelectedNames: Set<String>
+        get() = selectedNames.map { normalize(it) }.toSet()
 
     class IngredientViewHolder(val binding: ItemIngredientSelectableBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -24,8 +32,9 @@ class IngredientAdapter(
     }
 
     fun filter(query: String) {
+        val normalizedQuery = normalize(query)
         filteredItems = if (query.isEmpty()) items
-        else items.filter { it.name.contains(query, ignoreCase = true) }
+        else items.filter { normalize(it.name).contains(normalizedQuery) }
         notifyDataSetChanged()
     }
 
@@ -37,14 +46,14 @@ class IngredientAdapter(
 
     override fun onBindViewHolder(holder: IngredientViewHolder, position: Int) {
         val ingredient = filteredItems[position]
+        val normalizedName = normalize(ingredient.name)
 
         holder.binding.cbIngredient.text = ingredient.name
-
-        // Отключаем слушатель перед установкой значения
         holder.binding.cbIngredient.setOnCheckedChangeListener(null)
-        holder.binding.cbIngredient.isChecked = selectedNames.contains(ingredient.name)
-
-        // Устанавливаем новый слушатель
+        
+        // Исправлено: ищем по нормализованному имени
+        holder.binding.cbIngredient.isChecked = normalizedSelectedNames.contains(normalizedName)
+        
         holder.binding.cbIngredient.setOnCheckedChangeListener { _, isChecked ->
             onSelectionChanged(ingredient.name, isChecked)
         }

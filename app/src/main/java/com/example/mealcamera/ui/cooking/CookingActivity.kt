@@ -10,6 +10,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -105,55 +106,84 @@ class CookingActivity : AppCompatActivity() {
     }
 
     private fun setupVoiceCommands() {
-        binding.btnVoiceCommand.text = "🎤 Голос: ВКЛ (фраза: 'Окей Сплэш')"
-        binding.btnVoiceCommand.setOnClickListener {
-            isVoiceListeningEnabled = !isVoiceListeningEnabled
-            if (isVoiceListeningEnabled) {
-                binding.btnVoiceCommand.text = "🎤 Голос: ВКЛ (фраза: 'Окей Сплэш')"
-                startVoiceRecognitionIfReady()
+        binding.switchVoice.setOnCheckedChangeListener { _, isChecked ->
+            isVoiceListeningEnabled = isChecked
+            if (isChecked) {
+                checkVoicePermissionAndStart()
             } else {
-                binding.btnVoiceCommand.text = "🎤 Голос: ВЫЛ"
+                binding.tvVoiceStatus.text = "Голосовое управление выключено"
                 stopVoiceRecognition()
+                binding.listeningIndicator.visibility = View.GONE
             }
         }
 
+        checkVoicePermissionAndStart()
+    }
+
+    private fun checkVoicePermissionAndStart() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             == PackageManager.PERMISSION_GRANTED
         ) {
             initSpeechRecognizer()
             startVoiceRecognitionIfReady()
+            binding.tvVoiceStatus.text = "Голосовое управление активно"
+            binding.switchVoice.isChecked = true
         } else {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                RECORD_AUDIO_REQUEST_CODE
-            )
+            showVoiceRationaleDialog()
         }
     }
 
+    private fun showVoiceRationaleDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Голосовое управление")
+            .setMessage("Чтобы вы могли переключать шаги рецепта голосом, не касаясь экрана грязными руками, приложению нужен доступ к микрофону.")
+            .setPositiveButton("Понятно") { _, _ ->
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.RECORD_AUDIO),
+                    RECORD_AUDIO_REQUEST_CODE
+                )
+            }
+            .setNegativeButton("Позже") { _, _ ->
+                binding.tvVoiceStatus.text = "Голосовое управление выключено"
+                binding.switchVoice.isChecked = false
+                isVoiceListeningEnabled = false
+            }
+            .show()
+    }
+
     private fun initSpeechRecognizer() {
+        if (speechRecognizer != null) return
+
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            binding.btnVoiceCommand.text = "🎤 Голос не поддерживается"
-            binding.btnVoiceCommand.isEnabled = false
+            binding.tvVoiceStatus.text = "Голос не поддерживается"
+            binding.switchVoice.isEnabled = false
             return
         }
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) = Unit
+                override fun onReadyForSpeech(params: Bundle?) {
+                    if (isVoiceListeningEnabled) {
+                        binding.listeningIndicator.visibility = View.VISIBLE
+                    }
+                }
+
                 override fun onBeginningOfSpeech() = Unit
                 override fun onRmsChanged(rmsdB: Float) = Unit
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
-                override fun onEndOfSpeech() = Unit
+                override fun onEndOfSpeech() {
+                    binding.listeningIndicator.visibility = View.GONE
+                }
 
                 override fun onError(error: Int) {
+                    binding.listeningIndicator.visibility = View.GONE
                     restartListeningWithDelay()
                 }
 
                 override fun onResults(results: Bundle?) {
-                    val matches = results
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
+                    binding.listeningIndicator.visibility = View.GONE
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
                     if (matches.isNotEmpty()) {
                         handleVoiceTranscript(matches.first())
                     }
@@ -161,9 +191,7 @@ class CookingActivity : AppCompatActivity() {
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        .orEmpty()
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION).orEmpty()
                     if (matches.isNotEmpty()) {
                         handleVoiceTranscript(matches.first())
                     }
@@ -186,10 +214,7 @@ class CookingActivity : AppCompatActivity() {
         val wakePhrase = WAKE_PHRASES.firstOrNull { normalized.contains(it) } ?: return
 
         val commandText = normalized.substringAfter(wakePhrase, "").trim()
-        if (commandText.isBlank()) {
-            Toast.makeText(this, "Слушаю команду после фразы 'Окей Сплэш'", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (commandText.isBlank()) return
 
         handleVoiceCommand(commandText)
     }
@@ -203,7 +228,7 @@ class CookingActivity : AppCompatActivity() {
             command.contains("стоп") || command.contains("останов") -> binding.btnStopTimer.performClick()
             command.contains("заверш") || command.contains("готово") -> completeCooking()
             command.contains("повтори") -> displayStep(currentStepIndex)
-            else -> Toast.makeText(this, "Команда не распознана: $command", Toast.LENGTH_SHORT).show()
+            else -> { /* Пропускаем неизвестные команды */ }
         }
     }
 
@@ -227,7 +252,7 @@ class CookingActivity : AppCompatActivity() {
         if (!isVoiceListeningEnabled) return
         binding.root.postDelayed({
             startVoiceRecognitionIfReady()
-        }, 450)
+        }, 500)
     }
 
     private fun displayStep(index: Int) {
@@ -396,9 +421,12 @@ class CookingActivity : AppCompatActivity() {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 initSpeechRecognizer()
                 startVoiceRecognitionIfReady()
+                binding.tvVoiceStatus.text = "Голосовое управление активно"
+                binding.switchVoice.isChecked = true
             } else {
-                binding.btnVoiceCommand.text = "🎤 Нет доступа к микрофону"
-                binding.btnVoiceCommand.isEnabled = false
+                binding.tvVoiceStatus.text = "Нет доступа к микрофону"
+                binding.switchVoice.isChecked = false
+                isVoiceListeningEnabled = false
             }
         }
     }

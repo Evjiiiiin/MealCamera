@@ -8,7 +8,6 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.example.mealcamera.R
 import com.example.mealcamera.databinding.FragmentProfileBinding
-import com.example.mealcamera.ui.home.MainActivity
 import com.google.android.material.tabs.TabLayoutMediator
 
 class ProfileFragment : Fragment() {
@@ -27,15 +26,11 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupViewPager()
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Обновляем навигацию при возвращении на фрагмент
-        (activity as? MainActivity)?.updateNavigationSelection(R.id.navigation_profile)
-    }
+    // ИСПРАВЛЕНО: Удален onResume, который принудительно переключал меню на профиль.
+    // Это вызывало "прыжок" навигации при возврате на главный экран.
 
     private fun setupViewPager() {
         val adapter = ProfilePagerAdapter(this)
@@ -45,18 +40,20 @@ class ProfileFragment : Fragment() {
             tab.text = when (position) {
                 0 -> "Профиль"
                 1 -> "Избранное"
+                2 -> "Мои рецепты"
                 else -> ""
             }
         }.attach()
     }
 
     inner class ProfilePagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
-        override fun getItemCount(): Int = 2
+        override fun getItemCount(): Int = 3
 
         override fun createFragment(position: Int): Fragment {
             return when (position) {
                 0 -> ProfileInfoFragment()
                 1 -> FavoritesFragment()
+                2 -> MyRecipesFragment()
                 else -> ProfileInfoFragment()
             }
         }

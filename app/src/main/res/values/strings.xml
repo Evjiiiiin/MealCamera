@@ -1,5 +1,14 @@
 <resources>
-    <string name="app_name">Splash</string>    <!-- ДОБАВЬТЕ ЭТИ СТРОКИ -->
+    <string name="app_name">MealCamera</string>
     <string name="app_logo">Логотип приложения</string>
     <string name="scanned_ingredient_image">Изображение отсканированного ингредиента</string>
+    <string name="delete">Удалить</string>
+    
+    <!-- Строки для камеры и сессии -->
+    <string name="camera_permission_denied">Нужен доступ к камере для сканирования продуктов</string>
+    <string name="delete_session_title">Удалить сессию?</string>
+    <string name="delete_session_message">Все отсканированные продукты будут удалены. Вы уверены?</string>
+    <string name="yes_delete">Да, удалить</string>
+    <string name="cancel">Отмена</string>
+    <string name="added_format">Добавлено: %1$s</string>
 </resources>

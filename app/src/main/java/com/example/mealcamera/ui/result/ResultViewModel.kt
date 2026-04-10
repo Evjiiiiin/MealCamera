@@ -5,13 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.model.EditableIngredient
 import com.example.mealcamera.data.model.RecipeResult
-import com.example.mealcamera.data.model.ScannedIngredient
+import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.ui.SharedViewModel
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class ResultViewModel(
     private val repository: RecipeRepository,
@@ -33,18 +37,28 @@ class ResultViewModel(
     private val _portions = MutableStateFlow(1)
     val portions: StateFlow<Int> = _portions.asStateFlow()
 
+    private val _errorEvents = MutableSharedFlow<String>()
+    val errorEvents = _errorEvents.asSharedFlow()
+
+    private val firestoreService = FirestoreService()
+    private val auth = FirebaseAuth.getInstance()
     private val processedRecipeNames = mutableSetOf<String>()
 
+    private fun normalize(text: String): String = text.trim().lowercase(Locale.ROOT).replace("ё", "е")
+
     fun restoreSession(ingredients: List<EditableIngredient>, savedPortions: Int) {
-        _editableIngredients.value = ingredients
+        _editableIngredients.value = ingredients.map { it.copy() }
         _portions.value = savedPortions
-        findRecipes(ingredients)
+        findRecipes(_editableIngredients.value)
     }
 
-    fun addIngredients(updatedIngredients: List<EditableIngredient>) {
-        _editableIngredients.value = updatedIngredients
-        findRecipes(updatedIngredients)
-        sharedViewModel.updateSession(updatedIngredients, _portions.value)
+    fun updateIngredient(updatedIngredient: EditableIngredient) {
+        val currentList = _editableIngredients.value.map {
+            if (it.id == updatedIngredient.id) updatedIngredient.copy() else it
+        }
+        _editableIngredients.value = currentList
+        findRecipes(currentList)
+        sharedViewModel.updateSession(currentList, _portions.value)
     }
 
     fun setPortions(newValue: Int) {
@@ -55,119 +69,128 @@ class ResultViewModel(
         }
     }
 
-    fun updateIngredient(updatedIngredient: EditableIngredient) {
-        val updatedList = _editableIngredients.value.map {
-            if (it.id == updatedIngredient.id) updatedIngredient else it
-        }
-        _editableIngredients.value = updatedList
-        findRecipes(updatedList)
-        sharedViewModel.updateSession(updatedList, _portions.value)
-    }
-
-    fun removeIngredient(ingredient: EditableIngredient) {
-        val updatedList = _editableIngredients.value.filter { it.id != ingredient.id }
-        _editableIngredients.value = updatedList
-
-        val scannedIngredients = sharedViewModel.temporaryIngredients.value
-        val matchingIngredient = scannedIngredients.find { it.name == ingredient.name }
-
-        matchingIngredient?.let {
-            sharedViewModel.removeFromTemporary(it)
-        }
-
-        findRecipes(updatedList)
-        sharedViewModel.updateSession(updatedList, _portions.value)
-    }
-
     fun findRecipes(updatedIngredients: List<EditableIngredient>) {
-        _editableIngredients.value = updatedIngredients.map { it.copy() }
-
         processedRecipeNames.clear()
-
         viewModelScope.launch {
             try {
-                val userIngredientsMap = updatedIngredients
-                    .associateBy { it.name.trim().lowercase() }
+                val userId = auth.currentUser?.uid
+                val userAllergens = if (userId != null) {
+                    try { firestoreService.getUserAllergens(userId) } catch (_: Exception) { emptyList() }
+                } else emptyList()
+                
+                val expandedAllergens = repository.expandAllergens(userAllergens).map { normalize(it) }
+                val userIngredientsMap = updatedIngredients.associateBy { normalize(it.name) }
+                
+                val allDbIngredients = repository.getAllDbIngredients()
+                val alwaysAvailableNames = allDbIngredients
+                    .filter { it.isAlwaysAvailable }
+                    .map { normalize(it.name) }
+                    .toSet()
 
                 val allRecipesWithIngredients = repository.getAllRecipesWithIngredients()
-                val alwaysAvailableIds = repository.getAllDbIngredients()
-                    .filter { it.isAlwaysAvailable }
-                    .map { it.ingredientId }
-                    .toSet()
 
                 val perfect = mutableListOf<RecipeResult>()
                 val oneMissing = mutableListOf<RecipeResult>()
                 val twoMissing = mutableListOf<RecipeResult>()
 
-                allRecipesWithIngredients.forEach { recipeWithIngredients ->
+                allRecipesWithIngredients.forEach recipes@{ recipeWithIngredients ->
                     val recipe = recipeWithIngredients.recipe
-
                     val recipeKey = "${recipe.name.lowercase()}|${recipe.category.lowercase()}"
-                    if (processedRecipeNames.contains(recipeKey)) {
-                        return@forEach
-                    }
+                    
+                    if (processedRecipeNames.contains(recipeKey)) return@recipes
+                    if (recipe.name.isBlank()) return@recipes
 
-                    if (recipe.name.isBlank() || recipe.name.contains("Новый рецепт", ignoreCase = true)) {
-                        return@forEach
+                    val hasAllergen = expandedAllergens.any { allergen -> 
+                        normalize(recipe.name).contains(allergen) || 
+                        recipeWithIngredients.ingredients.any { normalize(it.name).contains(allergen) }
                     }
+                    if (hasAllergen) return@recipes
 
                     processedRecipeNames.add(recipeKey)
+                    val missingDescriptions = mutableListOf<String>()
+                    var missingCount = 0
 
-                    val currentRecipeDetailedMissingIngredients = mutableListOf<String>()
-                    var actualMissingCount = 0
+                    recipeWithIngredients.ingredients.forEach ingredients@{ recipeIng ->
+                        val normalizedRecipeIngName = normalize(recipeIng.name)
+                        
+                        if (alwaysAvailableNames.contains(normalizedRecipeIngName)) return@ingredients
 
-                    recipeWithIngredients.ingredients.forEach { ingredientInRecipe ->
-                        val recipeIngredientName = ingredientInRecipe.name.trim().lowercase()
+                        val userIng = userIngredientsMap[normalizedRecipeIngName]
+                        if (userIng == null) {
+                            missingDescriptions.add(recipeIng.name)
+                            missingCount++
+                        } else {
+                            val crossRef = repository.getRecipeIngredientCrossRef(recipe.recipeId, recipeIng.ingredientId)
+                            val baseQtyStr = crossRef?.quantity ?: "0"
+                            val baseQty = baseQtyStr.toDoubleOrNull() ?: getApproximateWeight(normalizedRecipeIngName)
+                            val requiredQty = baseQty * _portions.value
+                            val recipeUnit = crossRef?.unit?.ifBlank { "г" } ?: "г"
 
-                        val crossRef = repository.getRecipeIngredientCrossRef(recipe.recipeId, ingredientInRecipe.ingredientId)
+                            val userQtyNum = userIng.quantity.toDoubleOrNull() ?: 1.0
+                            val userQtyBase = UnitHelper.toBaseUnit(userQtyNum, userIng.unit)
+                            val requiredQtyBase = UnitHelper.toBaseUnit(requiredQty, recipeUnit)
 
-                        val baseRequiredQuantity = try {
-                            crossRef?.quantity?.toDoubleOrNull() ?: 0.0
-                        } catch (e: NumberFormatException) {
-                            0.0
-                        }
-
-                        val recipeRequiredQuantity = baseRequiredQuantity * _portions.value
-
-                        if (ingredientInRecipe.ingredientId !in alwaysAvailableIds) {
-                            val userProvidedIngredient = userIngredientsMap[recipeIngredientName]
-
-                            if (userProvidedIngredient == null) {
-                                currentRecipeDetailedMissingIngredients.add(ingredientInRecipe.name)
-                                actualMissingCount++
+                            val isEnough = if (userIng.unit == "шт" && (recipeUnit != "шт" && recipeUnit != "штука")) {
+                                // Если у пользователя штуки, а в рецепте вес
+                                (userQtyNum * getApproximateWeight(normalizedRecipeIngName)) >= requiredQtyBase
                             } else {
-                                val userProvidedQuantity = userProvidedIngredient.quantity.toDoubleOrNull() ?: 0.0
+                                userQtyBase >= (requiredQtyBase - 0.01)
+                            }
 
-                                if (userProvidedQuantity < recipeRequiredQuantity) {
-                                    val difference = recipeRequiredQuantity - userProvidedQuantity
-                                    val unitToDisplay = userProvidedIngredient.unit.ifBlank {
-                                        UnitHelper.getDefaultUnit(userProvidedIngredient.name)
-                                    }
-                                    currentRecipeDetailedMissingIngredients.add(
-                                        "не хватает ${UnitHelper.formatQuantity(difference)} ${ingredientInRecipe.name} (${unitToDisplay})"
-                                    )
-                                    actualMissingCount++
-                                }
+                            if (!isEnough) {
+                                val diffBase = requiredQtyBase - userQtyBase
+                                val diffFormatted = UnitHelper.formatQuantity(UnitHelper.convert(diffBase, "г", recipeUnit))
+                                missingDescriptions.add("нужно еще $diffFormatted $recipeUnit ${recipeIng.name}")
+                                missingCount++
                             }
                         }
                     }
 
-                    when (actualMissingCount) {
-                        0 -> perfect.add(RecipeResult(recipe, currentRecipeDetailedMissingIngredients))
-                        1 -> oneMissing.add(RecipeResult(recipe, currentRecipeDetailedMissingIngredients))
-                        2 -> twoMissing.add(RecipeResult(recipe, currentRecipeDetailedMissingIngredients))
+                    when (missingCount) {
+                        0 -> perfect.add(RecipeResult(recipe, missingDescriptions))
+                        1 -> oneMissing.add(RecipeResult(recipe, missingDescriptions))
+                        2 -> twoMissing.add(RecipeResult(recipe, missingDescriptions))
                     }
                 }
 
-                _perfectRecipes.value = perfect
-                _oneMissingRecipes.value = oneMissing
-                _twoMissingRecipes.value = twoMissing
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _perfectRecipes.value = emptyList()
-                _oneMissingRecipes.value = emptyList()
-                _twoMissingRecipes.value = emptyList()
+                _perfectRecipes.value = perfect.sortedByDescending { it.recipe.popularityScore }
+                _oneMissingRecipes.value = oneMissing.sortedByDescending { it.recipe.popularityScore }
+                _twoMissingRecipes.value = twoMissing.sortedByDescending { it.recipe.popularityScore }
+
+            } catch (_: Exception) {
+                _errorEvents.emit("Ошибка при поиске рецептов")
             }
         }
+    }
+
+    private fun getApproximateWeight(name: String): Double {
+        return when {
+            name.contains("яйцо") -> 50.0
+            name.contains("чеснок") -> 5.0
+            name.contains("лук") -> 100.0
+            name.contains("картофель") -> 150.0
+            name.contains("томат") || name.contains("помидор") -> 120.0
+            name.contains("лимон") -> 100.0
+            name.contains("яблоко") -> 180.0
+            else -> 100.0
+        }
+    }
+
+    fun removeIngredient(ingredient: EditableIngredient) {
+        val updatedList = _editableIngredients.value.filter { it.id != ingredient.id }
+        _editableIngredients.value = updatedList
+        
+        sharedViewModel.temporaryIngredients.value.find { normalize(it.name) == normalize(ingredient.name) }?.let {
+            sharedViewModel.removeFromTemporary(it)
+        }
+        
+        findRecipes(updatedList)
+        sharedViewModel.updateSession(updatedList, _portions.value)
+    }
+
+    fun addIngredients(updatedIngredients: List<EditableIngredient>) {
+        _editableIngredients.value = updatedIngredients
+        findRecipes(updatedIngredients)
+        sharedViewModel.updateSession(updatedIngredients, _portions.value)
     }
 }

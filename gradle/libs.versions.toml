@@ -19,6 +19,7 @@ coroutines = "1.8.1"
 glide = "4.16.0"
 lifecycle = "2.8.4"
 camerax = "1.4.0"
+navigation = "2.7.7"
 
 [libraries]
 # --- Firebase библиотеки ---
@@ -53,6 +54,9 @@ camerax-extensions = { group = "androidx.camera", name = "camera-extensions", ve
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigation" }
+androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

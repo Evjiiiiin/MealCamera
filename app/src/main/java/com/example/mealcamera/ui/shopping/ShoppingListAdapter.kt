@@ -30,19 +30,23 @@ class ShoppingListAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: ShoppingListItem) {
-            binding.tvIngredientName.text = item.name
+            binding.tvItemName.text = item.name
             val unitText = item.unit.ifBlank { "шт" }
-            binding.tvIngredientQuantity.text = "${item.quantity} $unitText".trim()
+            binding.tvQuantity.text = item.quantity
+            binding.tvUnit.text = unitText
+            binding.checkbox.isChecked = item.isChecked
 
-            binding.cbDone.setOnCheckedChangeListener(null)
-            binding.cbDone.isChecked = item.isChecked
-            binding.cbDone.setOnCheckedChangeListener { _, isChecked ->
+            binding.checkbox.setOnCheckedChangeListener { _, isChecked ->
                 onCheckedChanged(item, isChecked)
+            }
+            binding.btnRemove.setOnClickListener {
+                // Удаление через отметку checked
+                onCheckedChanged(item, true)
             }
         }
     }
 
-    companion object DiffCallback : DiffUtil.ItemCallback<ShoppingListItem>() {
+    object DiffCallback : DiffUtil.ItemCallback<ShoppingListItem>() {
         override fun areItemsTheSame(oldItem: ShoppingListItem, newItem: ShoppingListItem): Boolean =
             oldItem.id == newItem.id
 

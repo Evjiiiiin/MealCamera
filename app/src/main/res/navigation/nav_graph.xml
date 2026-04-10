@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.example.mealcamera.ui.home.HomeFragment"
+        android:label="Главная"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/navigation_shopping_list"
+        android:name="com.example.mealcamera.ui.shopping.ShoppingListFragment"
+        android:label="Список покупок"
+        tools:layout="@layout/activity_shopping_list" />
+
+    <fragment
+        android:id="@+id/navigation_camera"
+        android:name="com.example.mealcamera.ui.scan.ScanFragment"
+        android:label="Сканер"
+        tools:layout="@layout/activity_scan" />
+
+    <fragment
+        android:id="@+id/navigation_result"
+        android:name="com.example.mealcamera.ui.result.ResultFragment"
+        android:label="Результаты"
+        tools:layout="@layout/activity_result" />
+
+    <fragment
+        android:id="@+id/navigation_add_recipe"
+        android:name="com.example.mealcamera.ui.addrecipe.AddRecipeFragment"
+        android:label="Новый рецепт"
+        tools:layout="@layout/activity_add_recipe">
+        <argument
+            android:name="edit_recipe_id"
+            app:argType="long"
+            android:defaultValue="-1L" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.example.mealcamera.ui.profile.ProfileFragment"
+        android:label="Профиль"
+        tools:layout="@layout/fragment_profile" />
+        
+    <fragment
+        android:id="@+id/navigation_recipe_detail"
+        android:name="com.example.mealcamera.ui.detail.RecipeDetailFragment"
+        android:label="Рецепт"
+        tools:layout="@layout/activity_recipe_detail">
+        <argument
+            android:name="recipeId"
+            app:argType="long" />
+    </fragment>
+
+</navigation>

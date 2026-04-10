@@ -1,88 +1,96 @@
 package com.example.mealcamera.ui.home
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.Recipe
+import com.example.mealcamera.data.model.RecipeResult
 import com.example.mealcamera.databinding.ItemRecipeCardBinding
 
 class RecipeAdapter(
     private val onItemClick: (Recipe) -> Unit,
     private val onFavoriteClick: (Recipe, Boolean) -> Unit
-) : ListAdapter<Recipe, RecipeAdapter.ViewHolder>(RecipeDiffCallback()) {
+) : ListAdapter<Any, RecipeAdapter.RecipeViewHolder>(DiffCallback()) {
 
-    private val favoriteIds = mutableSetOf<Long>()
+    private var favoriteIds: Set<Long> = emptySet()
 
     fun setFavoriteIds(ids: Set<Long>) {
-        favoriteIds.clear()
-        favoriteIds.addAll(ids)
+        favoriteIds = ids
         notifyDataSetChanged()
     }
 
-    fun updateFavoriteStatus(recipeId: Long, isFavorite: Boolean) {
-        if (isFavorite) {
-            favoriteIds.add(recipeId)
-        } else {
-            favoriteIds.remove(recipeId)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecipeViewHolder {
+        val binding = ItemRecipeCardBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return RecipeViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: RecipeViewHolder, position: Int) {
+        val item = getItem(position)
+        when (item) {
+            is Recipe -> holder.bind(item, null)
+            is RecipeResult -> holder.bind(item.recipe, item.missingIngredients)
         }
-        val position = currentList.indexOfFirst { it.recipeId == recipeId }
-        if (position != -1) {
-            notifyItemChanged(position)
-        }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemRecipeCardBinding.inflate(
-            LayoutInflater.from(parent.context), parent, false
-        )
-        return ViewHolder(binding)
-    }
-
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
-    }
-
-    inner class ViewHolder(private val binding: ItemRecipeCardBinding) :
+    inner class RecipeViewHolder(private val binding: ItemRecipeCardBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        @Suppress("UNUSED_PARAMETER")
-        fun bind(recipe: Recipe) {
+        fun bind(recipe: Recipe, missingIngredients: List<String>?) {
             binding.recipeNameTextView.text = recipe.name
             binding.recipeTypeTextView.text = recipe.category
 
-            Glide.with(binding.root.context)
-                .load(recipe.imagePath)
-                .centerCrop()
-                .placeholder(R.drawable.ic_recipe_placeholder)
-                .into(binding.recipeImageView)
+            val missingText = binding.tvMissingIngredients
+            if (!missingIngredients.isNullOrEmpty()) {
+                missingText.visibility = View.VISIBLE
+                // ИСПРАВЛЕНО: Текст теперь информативнее (количество + продукт)
+                missingText.text = "Не хватает: " + missingIngredients.joinToString(", ")
+            } else {
+                missingText.visibility = View.GONE
+            }
 
             val isFavorite = favoriteIds.contains(recipe.recipeId)
-            binding.btnFavorite.setImageDrawable(
-                ContextCompat.getDrawable(
-                    binding.root.context,
-                    if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline
-                )
+            binding.btnFavorite.setImageResource(
+                if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline
             )
 
-            binding.root.setOnClickListener { onItemClick(recipe) }
+            Glide.with(binding.recipeImageView)
+                .load(recipe.imagePath)
+                .placeholder(R.drawable.ic_recipe_placeholder)
+                .error(R.drawable.ic_recipe_placeholder)
+                .into(binding.recipeImageView)
 
-            binding.btnFavorite.setOnClickListener {
-                val newState = !isFavorite
-                onFavoriteClick(recipe, newState)
-            }
+            binding.root.setOnClickListener { onItemClick(recipe) }
+            binding.btnFavorite.setOnClickListener { onFavoriteClick(recipe, !isFavorite) }
         }
     }
 
-    class RecipeDiffCallback : DiffUtil.ItemCallback<Recipe>() {
-        override fun areItemsTheSame(oldItem: Recipe, newItem: Recipe) =
-            oldItem.recipeId == newItem.recipeId
+    class DiffCallback : DiffUtil.ItemCallback<Any>() {
+        override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
+            val oldId = when(oldItem) {
+                is Recipe -> oldItem.recipeId
+                is RecipeResult -> oldItem.recipe.recipeId
+                else -> -1L
+            }
+            val newId = when(newItem) {
+                is Recipe -> newItem.recipeId
+                is RecipeResult -> newItem.recipe.recipeId
+                else -> -1L
+            }
+            return oldId == newId && oldId != -1L
+        }
 
-        override fun areContentsTheSame(oldItem: Recipe, newItem: Recipe) =
-            oldItem == newItem
+        override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
+            return if (oldItem is RecipeResult && newItem is RecipeResult) {
+                oldItem.recipe == newItem.recipe && oldItem.missingIngredients == newItem.missingIngredients
+            } else {
+                oldItem == newItem
+            }
+        }
     }
 }

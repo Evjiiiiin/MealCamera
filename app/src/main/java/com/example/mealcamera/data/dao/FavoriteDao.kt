@@ -22,4 +22,7 @@ interface FavoriteDao {
 
     @Query("SELECT * FROM favorites WHERE userId = :userId")
     suspend fun getAllFavorites(userId: String): List<FavoriteRecipe>
+
+    @Query("SELECT recipeId FROM favorites WHERE userId = :userId")
+    fun getFavoriteIdsFlow(userId: String): Flow<List<Long>>
 }

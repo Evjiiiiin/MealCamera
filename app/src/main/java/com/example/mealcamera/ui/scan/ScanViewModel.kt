@@ -21,6 +21,11 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing = _isProcessing.asStateFlow()
 
+    // Локальная функция нормализации
+    private fun normalize(name: String): String {
+        return name.trim().lowercase().replace("ё", "е")
+    }
+
     fun processImageWithBitmap(bitmap: Bitmap, onResult: (List<DetectedFood>) -> Unit) {
         viewModelScope.launch {
             setProcessing(true)
@@ -35,13 +40,6 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- ИСПРАВЛЕНО: Добавлен недостающий метод ---
-    /**
-     * Преобразует результат детекции в список ScannedIngredient.
-     * @param detectedFoods Список распознанных моделью объектов.
-     * @param capturedBitmap Снимок для создания миниатюры.
-     * @param onResult Лямбда, которая вернет готовый список.
-     */
     fun getIngredientsFromDetection(
         detectedFoods: List<DetectedFood>,
         capturedBitmap: Bitmap,
@@ -49,12 +47,13 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             val newIngredients = detectedFoods.map { food ->
+                val normalizedName = normalize(food.name)
                 val imagePath = imageStorage.saveImage(capturedBitmap, "thumb_${UUID.randomUUID()}.jpg")
                 ScannedIngredient(
-                    name = food.name,
+                    name = normalizedName,
                     imagePath = imagePath,
-                    quantity = "1", // Значение по умолчанию
-                    unit = "шт"     // Значение по умолчанию
+                    quantity = "1",
+                    unit = "шт"
                 )
             }
             onResult(newIngredients)

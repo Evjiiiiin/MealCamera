@@ -5,73 +5,83 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="8dp"
-    android:layout_marginEnd="8dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
-    android:minWidth="170dp"
+    android:layout_margin="6dp"
     app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
+    app:cardElevation="3dp"
     app:cardBackgroundColor="?android:attr/colorBackground">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:paddingBottom="12dp">
 
         <ImageView
             android:id="@+id/recipeImageView"
-            android:layout_width="0dp"
-            android:layout_height="150dp"
+            android:layout_width="match_parent"
+            android:layout_height="130dp"
             android:scaleType="centerCrop"
-            tools:src="@tools:sample/backgrounds/scenic"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            tools:src="@tools:sample/backgrounds/scenic" />
 
-        <!-- КНОПКА ИЗБРАННОГО - УБЕДИТЕСЬ, ЧТО ОНА ЕСТЬ -->
         <ImageButton
             android:id="@+id/btnFavorite"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_favorite_outline"
-            android:tint="@color/color_primary"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/circle_background"
+            android:backgroundTint="#80FFFFFF"
             android:padding="8dp"
-            android:elevation="4dp"
-            app:layout_constraintTop_toTopOf="parent"
+            android:src="@drawable/ic_favorite_outline"
             app:layout_constraintEnd_toEndOf="parent"
-            android:layout_margin="8dp" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/color_primary" />
 
         <TextView
             android:id="@+id/recipeNameTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="16dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle1"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="12dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Subtitle2"
             android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
-            tools:text="Название блюда"
-            app:layout_constraintTop_toBottomOf="@id/recipeImageView"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"/>
+            app:layout_constraintTop_toBottomOf="@id/recipeImageView"
+            tools:text="Название блюда очень длинное для проверки" />
 
         <TextView
             android:id="@+id/recipeTypeTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="12dp"
-            android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
             android:textColor="?android:attr/textColorSecondary"
-            tools:text="Завтрак"
-            app:layout_constraintTop_toBottomOf="@id/recipeNameTextView"
-            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"/>
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/recipeNameTextView"
+            tools:text="Завтрак" />
+
+        <TextView
+            android:id="@+id/tvMissingIngredients"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="12dp"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Caption"
+            android:textColor="#FF5252"
+            android:textStyle="italic"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/recipeTypeTextView"
+            tools:text="Не хватает: молоко"
+            tools:visibility="visible" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

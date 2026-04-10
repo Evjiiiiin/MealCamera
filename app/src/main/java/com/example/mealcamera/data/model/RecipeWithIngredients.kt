@@ -4,10 +4,6 @@ import androidx.room.Embedded
 import androidx.room.Junction
 import androidx.room.Relation
 
-/**
- * Сущность для получения рецепта со списком базовых ингредиентов (без quantity/unit)
- * Используется для общих запросов, где нужны только ID ингредиентов
- */
 data class RecipeWithIngredients(
     @Embedded val recipe: Recipe,
 

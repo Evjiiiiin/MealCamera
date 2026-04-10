@@ -10,12 +10,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
 import com.example.mealcamera.databinding.FragmentFavoritesBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
-import com.example.mealcamera.ui.home.MainActivity
 import kotlinx.coroutines.launch
 
 class FavoritesFragment : Fragment() {
@@ -23,7 +23,7 @@ class FavoritesFragment : Fragment() {
     private var _binding: FragmentFavoritesBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: FavoritesViewModel by viewModels {
+    private val viewModel: ProfileViewModel by viewModels {
         (requireActivity().application as MealCameraApplication).viewModelFactory
     }
 
@@ -34,12 +34,8 @@ class FavoritesFragment : Fragment() {
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             viewModel.loadFavorites()
-            val activity = requireActivity()
-            if (activity is MainActivity) {
-                activity.refreshFavorites()
-                // 👇 ВАЖНО: Убеждаемся, что навигация показывает правильную вкладку
-                activity.updateNavigationSelection(R.id.navigation_profile)
-            }
+            // Навигация теперь управляется NavController
+            findNavController().navigate(R.id.navigation_profile)
         }
     }
 
@@ -54,7 +50,6 @@ class FavoritesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupRecyclerView()
         observeData()
     }
@@ -68,17 +63,9 @@ class FavoritesFragment : Fragment() {
                 detailActivityResult.launch(intent)
             },
             onFavoriteClick = { recipe ->
-                lifecycleScope.launch {
-                    val favoriteRepository = (requireActivity().application as MealCameraApplication).favoriteRepository
-                    favoriteRepository.toggleFavorite(recipe)
-                    Toast.makeText(requireContext(), "Удалено из избранного", Toast.LENGTH_SHORT).show()
-                    viewModel.loadFavorites()
-
-                    val activity = requireActivity()
-                    if (activity is MainActivity) {
-                        activity.refreshFavorites()
-                    }
-                }
+                viewModel.toggleFavorite(recipe)
+                Toast.makeText(requireContext(), "Изменено", Toast.LENGTH_SHORT).show()
+                // Данные обновятся автоматически через Flow в ViewModel
             }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -97,15 +84,6 @@ class FavoritesFragment : Fragment() {
                     adapter.submitList(recipes)
                 }
             }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // 👇 При возврате к фрагменту обновляем навигацию
-        val activity = requireActivity()
-        if (activity is MainActivity) {
-            activity.updateNavigationSelection(R.id.navigation_profile)
         }
     }
 

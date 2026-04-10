@@ -6,35 +6,89 @@ import com.example.mealcamera.data.FavoriteRepository
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.model.IngredientWithDetails
 import com.example.mealcamera.data.model.Recipe
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.firstOrNull
+import com.example.mealcamera.data.model.RecipeStep
+import com.example.mealcamera.ui.SharedViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RecipeDetailViewModel(
-    private val recipeRepository: RecipeRepository,
-    private val favoriteRepository: FavoriteRepository
+    private val repository: RecipeRepository,
+    private val favoriteRepository: FavoriteRepository,
+    private val sharedViewModel: SharedViewModel
 ) : ViewModel() {
 
-    fun getRecipeById(recipeId: Long): Flow<Recipe> = recipeRepository.getRecipeById(recipeId)
+    private val _recipeId = MutableStateFlow<Long?>(null)
+    private val _portions = MutableStateFlow(1)
+    private val _isFavorite = MutableStateFlow(false)
 
-    fun getIngredientsForRecipe(recipeId: Long): Flow<List<IngredientWithDetails>> =
-        recipeRepository.getIngredientsForRecipe(recipeId)
+    val recipe: StateFlow<Recipe?> = _recipeId
+        .filterNotNull()
+        .flatMapLatest { id -> repository.getRecipeById(id) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
 
-    fun toggleFavorite(recipeId: Long) {
+    val portions: StateFlow<Int> = _portions.asStateFlow()
+
+    val ingredients: StateFlow<List<IngredientWithDetails>> = combine(
+        _recipeId.filterNotNull(),
+        _portions
+    ) { id, portions -> id to portions }
+        .flatMapLatest { (id, portions) ->
+            repository.getScaledIngredientsForRecipe(id, portions)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val steps: StateFlow<List<RecipeStep>> = _recipeId
+        .filterNotNull()
+        .flatMapLatest { id -> repository.getStepsForRecipe(id) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+
+    fun loadRecipe(recipeId: Long) {
+        _recipeId.value = recipeId
         viewModelScope.launch {
-            val recipe = recipeRepository.getRecipeById(recipeId).firstOrNull() ?: return@launch
-
-            val isFavorite = favoriteRepository.isFavorite(recipeId)
-            if (isFavorite) {
-                favoriteRepository.removeFromFavorites(recipeId)
-            } else {
-                favoriteRepository.addToFavorites(recipeId)
-            }
-
-            recipeRepository.incrementRecipePopularity(recipe.recipeId)
+            _isFavorite.value = favoriteRepository.isFavorite(recipeId)
+            repository.incrementRecipePopularity(recipeId)
         }
     }
 
-    suspend fun getRecipeByIdOnce(recipeId: Long): Recipe? =
-        recipeRepository.getRecipeById(recipeId).firstOrNull()
+    fun setPortions(count: Int) {
+        if (count in 1..10) {
+            _portions.value = count
+        }
+    }
+
+    fun toggleFavorite(recipeId: Long) {
+        viewModelScope.launch {
+            val recipe = repository.getRecipeById(recipeId).firstOrNull() ?: return@launch
+            val newState = !_isFavorite.value
+            favoriteRepository.toggleFavorite(recipe)
+            _isFavorite.value = newState
+            sharedViewModel.notifyFavoriteChanged(recipeId, newState)
+        }
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            val recipe = recipe.value ?: return@launch
+            val newState = !_isFavorite.value
+            favoriteRepository.toggleFavorite(recipe)
+            _isFavorite.value = newState
+            sharedViewModel.notifyFavoriteChanged(recipe.recipeId, newState)
+        }
+    }
 }

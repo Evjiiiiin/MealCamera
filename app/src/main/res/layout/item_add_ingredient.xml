@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
+    android:gravity="center_vertical"
     android:padding="8dp">
 
     <com.google.android.material.textfield.TextInputLayout
@@ -36,20 +38,37 @@
             android:inputType="numberDecimal" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layoutIngredientUnit"
+    <LinearLayout
+        android:id="@+id/unit_container"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/rounded_edittext_background"
+        android:clickable="true"
+        android:focusable="true"
+        android:paddingHorizontal="8dp"
         android:layout_marginEnd="4dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        android:layout_marginTop="6dp">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etIngredientUnit"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tvIngredientUnit"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:hint="Ед." />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:layout_weight="1"
+            android:text="г"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="14sp"
+            android:maxLines="1" />
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_arrow_drop_down"
+            app:tint="?android:attr/textColorSecondary" />
+
+    </LinearLayout>
 
     <ImageButton
         android:id="@+id/btnRemoveIngredient"
@@ -58,6 +77,6 @@
         android:layout_gravity="center_vertical"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_close"
-        android:tint="@color/red_error"
+        app:tint="@color/red_error"
         android:contentDescription="Remove ingredient" />
 </LinearLayout>

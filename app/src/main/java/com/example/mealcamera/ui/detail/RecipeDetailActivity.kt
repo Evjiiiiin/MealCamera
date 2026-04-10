@@ -6,12 +6,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
-import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.databinding.ActivityRecipeDetailBinding
 import com.example.mealcamera.ui.cooking.CookingActivity
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class RecipeDetailActivity : AppCompatActivity() {
@@ -32,6 +33,9 @@ class RecipeDetailActivity : AppCompatActivity() {
         (application as MealCameraApplication).recipeRepository
     }
 
+    private val currentUserId: String?
+        get() = FirebaseAuth.getInstance().currentUser?.uid
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRecipeDetailBinding.inflate(layoutInflater)
@@ -45,39 +49,52 @@ class RecipeDetailActivity : AppCompatActivity() {
 
         setupToolbar()
         setupIngredientsList()
-        observeRecipe(recipeId)
-        observeIngredients(recipeId)
+        observeViewModel()
         setupButtons()
+
+        viewModel.loadRecipe(recipeId)
     }
 
     private fun setupToolbar() {
-        setSupportActionBar(binding.toolbarDetail)
+        setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbarDetail.setNavigationOnClickListener { finish() }
+        binding.toolbar.setNavigationOnClickListener { finish() }
     }
 
     private fun setupIngredientsList() {
         ingredientsAdapter = IngredientsAdapter()
+        binding.rvIngredients.layoutManager = LinearLayoutManager(this)
         binding.rvIngredients.adapter = ingredientsAdapter
     }
 
-    private fun observeRecipe(recipeId: Long) {
+    private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.getRecipeById(recipeId).collect { recipe ->
-                bindRecipe(recipe)
+            viewModel.recipe.collect { recipe ->
+                if (recipe != null) bindRecipe(recipe)
             }
         }
-    }
 
-    private fun observeIngredients(recipeId: Long) {
         lifecycleScope.launch {
-            viewModel.getIngredientsForRecipe(recipeId).collect { ingredients ->
+            viewModel.ingredients.collect { ingredients ->
                 ingredientsAdapter.submitList(ingredients)
             }
         }
+
+        lifecycleScope.launch {
+            viewModel.portions.collect { portions ->
+                binding.tvPortionsValue.text = portions.toString()
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.isFavorite.collect { isFavorite ->
+                val icon = if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline
+                binding.btnAddToFavorites.setImageResource(icon)
+            }
+        }
     }
 
-    private fun bindRecipe(recipe: Recipe) {
+    private fun bindRecipe(recipe: com.example.mealcamera.data.model.Recipe) {
         supportActionBar?.title = recipe.name
         binding.tvRecipeName.text = recipe.name
         binding.tvDescription.text = recipe.description
@@ -94,7 +111,7 @@ class RecipeDetailActivity : AppCompatActivity() {
         binding.btnStartCooking.setOnClickListener {
             val recipeId = intent.getLongExtra(EXTRA_RECIPE_ID, -1L)
             val recipeName = binding.tvRecipeName.text.toString()
-            val portions = binding.sliderPortions.value.toInt()
+            val portions = viewModel.portions.value
 
             val intent = Intent(this, CookingActivity::class.java).apply {
                 putExtra(CookingActivity.EXTRA_RECIPE_ID, recipeId)
@@ -111,19 +128,26 @@ class RecipeDetailActivity : AppCompatActivity() {
 
         binding.btnAddToShoppingList.setOnClickListener {
             val recipeId = intent.getLongExtra(EXTRA_RECIPE_ID, -1L)
+            val portions = viewModel.portions.value
+            val userId = currentUserId ?: "guest"
             lifecycleScope.launch {
-                val recipe = viewModel.getRecipeByIdOnce(recipeId) ?: return@launch
-                repository.addIngredientsToShoppingList(recipe.recipeId)
+                repository.addScaledIngredientsToShoppingList(recipeId, portions, userId)
                 Toast.makeText(
                     this@RecipeDetailActivity,
-                    "Ингредиенты добавлены в список покупок",
+                    "Ингредиенты добавлены в список покупок с учетом $portions порций",
                     Toast.LENGTH_SHORT
                 ).show()
             }
         }
 
-        binding.sliderPortions.addOnChangeListener { _, value, _ ->
-            binding.tvPortionsValue.text = "${value.toInt()} порц."
+        binding.btnMinusPortion.setOnClickListener {
+            val current = viewModel.portions.value
+            if (current > 1) viewModel.setPortions(current - 1)
+        }
+
+        binding.btnPlusPortion.setOnClickListener {
+            val current = viewModel.portions.value
+            if (current < 10) viewModel.setPortions(current + 1)
         }
     }
 }
