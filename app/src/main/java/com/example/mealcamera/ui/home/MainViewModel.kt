@@ -59,9 +59,11 @@ class MainViewModel(
     ) { recipesWithIngs, query, category, cuisine, allergens ->
         
         val expandedAllergens = repository.expandAllergens(allergens).map { normalize(it) }
+        val normalizedQuery = normalize(query)
 
         recipesWithIngs.asSequence()
             .filter { item ->
+                // 1. Фильтрация по аллергенам
                 if (expandedAllergens.isEmpty()) true
                 else {
                     val inMainInfo = expandedAllergens.any { allergen -> 
@@ -75,13 +77,21 @@ class MainViewModel(
                     !(inMainInfo || inIngredients)
                 }
             }
-            .map { it.recipe }
-            .filter { recipe ->
-                val matchesQuery = normalize(recipe.name).contains(normalize(query))
-                val matchesCategory = category == "Все" || recipe.category.equals(category, ignoreCase = true)
-                val matchesCuisine = cuisine == "Все кухни" || recipe.cuisine.equals(cuisine, ignoreCase = true)
+            .filter { item ->
+                // 2. Расширенный поиск: название ИЛИ ингредиенты
+                val matchesQuery = if (normalizedQuery.isEmpty()) true else {
+                    val inName = normalize(item.recipe.name).contains(normalizedQuery)
+                    val inIngredients = item.ingredients.any { normalize(it.name).contains(normalizedQuery) }
+                    inName || inIngredients
+                }
+
+                // 3. Фильтрация по категории и кухне
+                val matchesCategory = category == "Все" || item.recipe.category.equals(category, ignoreCase = true)
+                val matchesCuisine = cuisine == "Все кухни" || item.recipe.cuisine.equals(cuisine, ignoreCase = true)
+                
                 matchesQuery && matchesCategory && matchesCuisine
             }
+            .map { it.recipe }
             .distinctBy { "${it.name.lowercase()}|${it.category.lowercase()}" }
             .toList()
     }

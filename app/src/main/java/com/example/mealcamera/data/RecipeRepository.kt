@@ -36,6 +36,22 @@ class RecipeRepository(
             Log.d("RecipeRepository", "🔄 Starting sync from cloud")
             syncIngredientsFromCloud()
             val cloudRecipes = firestoreService.getAllRecipes()
+            
+            // 1. Получаем список всех firestoreId из облака
+            val cloudIds = cloudRecipes.map { it.id }.toSet()
+
+            // 2. Получаем все локальные рецепты, у которых есть firestoreId
+            val localRecipes = recipeDao.getAllRecipes().first()
+            
+            // 3. Удаляем локальные рецепты, которых больше нет в облаке
+            localRecipes.forEach { local ->
+                if (local.firestoreId != null && !cloudIds.contains(local.firestoreId)) {
+                    Log.d("RecipeRepository", "🗑 Deleting recipe not found in cloud: ${local.name}")
+                    recipeDao.deleteRecipe(local.recipeId)
+                }
+            }
+
+            // 4. Обновляем или добавляем рецепты из облака
             cloudRecipes.forEach { cloudData ->
                 val existingIdByFirestore = recipeDao.getRecipeIdByFirestoreId(cloudData.id)
                 val existingByNameAndCategory = recipeDao.getRecipeByNameAndCategory(
