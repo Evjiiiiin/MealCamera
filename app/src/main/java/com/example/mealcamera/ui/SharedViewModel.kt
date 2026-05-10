@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
 
@@ -26,6 +27,8 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     private val _allergensChanged = MutableSharedFlow<Unit>()
     val allergensChanged = _allergensChanged.asSharedFlow()
 
+    private fun normalize(text: String): String = text.trim().lowercase(Locale.ROOT).replace("ё", "е")
+
     data class SessionData(
         val userId: String,
         val ingredients: List<EditableIngredient>,
@@ -36,7 +39,8 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     fun addToTemporary(newIngredients: List<ScannedIngredient>) {
         val current = _temporaryIngredients.value.toMutableList()
         newIngredients.forEach { newIng ->
-            if (current.none { it.name.equals(newIng.name, ignoreCase = true) }) {
+            val normNew = normalize(newIng.name)
+            if (current.none { normalize(it.name) == normNew }) {
                 current.add(newIng)
             }
         }
@@ -50,7 +54,8 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
     }
 
     fun removeFromTemporary(ingredient: ScannedIngredient) {
-        _temporaryIngredients.value = _temporaryIngredients.value.filter { it.name != ingredient.name }
+        val normTarget = normalize(ingredient.name)
+        _temporaryIngredients.value = _temporaryIngredients.value.filter { normalize(it.name) != normTarget }
         syncSessionWithTemporary()
     }
 
@@ -67,8 +72,10 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         _activeSession.value = null
     }
 
-    fun startSession(_ingredients: List<ScannedIngredient>) {
-        // Используем текущий сейф для старта
+    fun startSession(ingredients: List<ScannedIngredient>) {
+        if (ingredients.isNotEmpty()) {
+            setTemporaryIngredients(ingredients)
+        }
         syncSessionWithTemporary()
     }
 
@@ -76,7 +83,6 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
         _activeSession.value = SessionData(currentUserId, ingredients, portions)
         
-        // Синхронизируем обратно в temporary для камеры
         _temporaryIngredients.value = ingredients.map {
             ScannedIngredient(it.name, "", it.quantity, it.unit, it.id)
         }

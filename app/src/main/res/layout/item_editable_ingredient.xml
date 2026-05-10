@@ -8,87 +8,67 @@
             type="com.example.mealcamera.data.model.EditableIngredient" />
     </data>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingVertical="4dp">
 
         <TextView
             android:id="@+id/ingredient_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
             android:text="@{ingredient.name}"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="@color/text_main"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="@+id/ingredient_quantity_layout"
-            app:layout_constraintEnd_toStartOf="@+id/ingredient_quantity_layout"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/ingredient_quantity_layout" />
+            android:layout_marginEnd="8dp" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/ingredient_quantity_layout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="72dp"
+            style="@style/Widget_MealCamera_TextInputLayout"
+            android:layout_width="70dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:hint="Кол-во"
-            app:boxStrokeColor="?android:attr/textColorSecondary"
-            app:hintTextColor="?android:attr/textColorSecondary"
-            app:layout_constraintEnd_toStartOf="@+id/unit_container"
-            app:layout_constraintTop_toTopOf="parent">
+            android:layout_marginEnd="4dp"
+            android:hint="Кол-во">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/ingredient_quantity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="numberDecimal"
+                android:paddingHorizontal="8dp"
                 android:singleLine="true"
-                android:text="@={ingredient.quantity}"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:textSize="16sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <LinearLayout
-            android:id="@+id/unit_container"
-            android:layout_width="72dp"
-            android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="?attr/selectableItemBackground"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingHorizontal="8dp"
-            android:layout_marginEnd="8dp"
-            app:layout_constraintEnd_toStartOf="@+id/btnRemoveIngredient"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/unit_layout"
+            style="@style/Widget_MealCamera_TextInputLayout_ExposedDropdownMenu"
+            android:layout_width="110dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:hint="Мера">
 
-            <TextView
-                android:id="@+id/ingredient_unit"
-                android:layout_width="wrap_content"
+            <AutoCompleteTextView
+                android:id="@+id/unit_auto_complete"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@{ingredient.unit}"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="16sp"
-                android:maxLines="1"
-                android:drawableEnd="@drawable/ic_arrow_drop_down"
-                android:drawablePadding="4dp" />
-
-        </LinearLayout>
+                android:inputType="none"
+                android:paddingHorizontal="8dp"
+                android:textSize="16sp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <ImageButton
             android:id="@+id/btnRemoveIngredient"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Удалить ингредиент"
-            android:padding="8dp"
-            android:src="@drawable/ic_close"
-            android:tint="@color/color_primary"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:src="@drawable/ic_close_outlined"
+            app:tint="@color/red_error"
+            android:contentDescription="Удалить" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 </layout>

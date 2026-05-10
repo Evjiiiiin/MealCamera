@@ -40,18 +40,19 @@ class MealCameraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        // Отложенный запуск тяжелых операций, чтобы не блокировать UI
         appScope.launch {
             try {
-                Log.i("MealCameraApplication", "🚀 Initializing app...")
+                Log.i("MealCameraApplication", "🚀 Начало инициализации данных...")
+                val prepopulateManager = PrepopulateManager(this@MealCameraApplication, firestoreService)
+                prepopulateManager.prepopulateIfNeeded(database.recipeDao())
 
-                PrepopulateManager(this@MealCameraApplication, firestoreService)
-                    .prepopulateIfNeeded(database.recipeDao())
-
+                Log.i("MealCameraApplication", "🔄 Синхронизация рецептов с облаком...")
                 recipeRepository.syncRecipesFromCloud()
 
-                Log.i("MealCameraApplication", "✅ App initialization complete!")
+                Log.i("MealCameraApplication", "✅ Инициализация завершена успешно!")
             } catch (e: Exception) {
-                Log.e("MealCameraApplication", "❌ Error during app initialization", e)
+                Log.e("MealCameraApplication", "❌ Ошибка при инициализации", e)
             }
         }
     }

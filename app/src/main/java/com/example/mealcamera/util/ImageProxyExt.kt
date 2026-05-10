@@ -1,28 +1,37 @@
 package com.example.mealcamera.util
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
+import android.graphics.*
 import androidx.camera.core.ImageProxy
-import java.nio.ByteBuffer
+import java.io.ByteArrayOutputStream
 
-// Переименовано из toBitmap() в toBitmapSafe() чтобы избежать конфликта
 fun ImageProxy.toBitmapSafe(): Bitmap {
-    val planeProxy = planes[0]
-    val buffer: ByteBuffer = planeProxy.buffer
-    val bytes = ByteArray(buffer.remaining())
-    buffer.get(bytes)
+    val yBuffer = planes[0].buffer // Y
+    val uBuffer = planes[1].buffer // U
+    val vBuffer = planes[2].buffer // V
+
+    val ySize = yBuffer.remaining()
+    val uSize = uBuffer.remaining()
+    val vSize = vBuffer.remaining()
+
+    val nv21 = ByteArray(ySize + uSize + vSize)
+
+    yBuffer.get(nv21, 0, ySize)
+    vBuffer.get(nv21, ySize, vSize)
+    uBuffer.get(nv21, ySize + vSize, uSize)
+
+    val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+    val out = ByteArrayOutputStream()
+    yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
+    val imageBytes = out.toByteArray()
+    val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 
     val rotationDegrees = imageInfo.rotationDegrees
-
-    val originalBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
     return if (rotationDegrees != 0) {
-        val matrix = Matrix().apply {
-            postRotate(rotationDegrees.toFloat())
-        }
-        Bitmap.createBitmap(originalBitmap, 0, 0, originalBitmap.width, originalBitmap.height, matrix, true)
+        val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        bitmap.recycle() // Fix: recycle original bitmap
+        rotatedBitmap
     } else {
-        originalBitmap
+        bitmap
     }
 }

@@ -1,16 +1,18 @@
 package com.example.mealcamera.ui.profile
 
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.os.bundleOf
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavOptions
+import androidx.navigation.Navigation
 import androidx.navigation.fragment.findNavController
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
@@ -42,22 +44,34 @@ class MyRecipesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         observeViewModel()
+        setupEmptyState()
     }
 
     private fun setupRecyclerView() {
         adapter = MyRecipesAdapter(
             onDeleteClick = { recipe -> showDeleteConfirmation(recipe) },
             onEditClick = { recipe ->
-                // Навигация через NavController во фрагмент добавления/редактирования
-                findNavController().navigate(
-                    R.id.navigation_add_recipe,
-                    bundleOf("edit_recipe_id" to recipe.recipeId)
-                )
+                Log.d("MyRecipes", "Редактирование рецепта ID=${recipe.recipeId}, name=${recipe.name}")
+                val bundle = Bundle().apply {
+                    putLong("edit_recipe_id", recipe.recipeId)
+                }
+                val navOptions = NavOptions.Builder()
+                    .setEnterAnim(R.anim.slide_in_right)
+                    .setExitAnim(R.anim.slide_out_left)
+                    .setPopEnterAnim(R.anim.slide_in_left)
+                    .setPopExitAnim(R.anim.slide_out_right)
+                    .build()
+                // Используем корневой NavController активности
+                Navigation.findNavController(requireActivity(), R.id.nav_host_fragment)
+                    .navigate(R.id.navigation_add_recipe, bundle, navOptions)
             },
             onItemClick = { recipe ->
-                startActivity(Intent(requireContext(), RecipeDetailActivity::class.java).apply {
+                val intent = Intent(requireContext(), RecipeDetailActivity::class.java).apply {
                     putExtra(RecipeDetailActivity.EXTRA_RECIPE_ID, recipe.recipeId)
-                })
+                }
+                startActivity(intent)
+                @Suppress("DEPRECATION")
+                requireActivity().overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left)
             }
         )
         binding.rvMyRecipes.adapter = adapter
@@ -76,14 +90,25 @@ class MyRecipesFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.myRecipes.collect { recipes ->
                 adapter.submitList(recipes)
-                binding.tvEmptyState.visibility = if (recipes.isEmpty()) View.VISIBLE else View.GONE
+                if (recipes.isEmpty()) {
+                    binding.emptyState.visibility = View.VISIBLE
+                } else {
+                    binding.emptyState.visibility = View.GONE
+                }
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.deleteStatus.collect { success ->
-                if (success) Toast.makeText(requireContext(), "Рецепт удален", Toast.LENGTH_SHORT).show()
+                if (success) Toast.makeText(requireContext(), "Рецепт удалён", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun setupEmptyState() {
+        binding.btnCreateRecipe.setOnClickListener {
+            Navigation.findNavController(requireActivity(), R.id.nav_host_fragment)
+                .navigate(R.id.navigation_add_recipe)
         }
     }
 

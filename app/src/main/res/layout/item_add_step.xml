@@ -1,111 +1,121 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="8dp"
-    android:layout_marginBottom="8dp"
-    android:background="@drawable/rounded_edittext_background">
+    android:layout_marginBottom="12dp"
+    style="@style/Widget_MealCamera_Card">
 
-    <!-- Заголовок шага и кнопка удаления -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget_MealCamera_TextInputLayout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etStepTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Заголовок шага" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <ImageButton
+                android:id="@+id/btnRemoveStep"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close_outlined"
+                app:tint="@color/red_error"
+                android:contentDescription="Удалить шаг" />
+        </LinearLayout>
+
+        <!-- Единообразное поле для фото шага -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/stepImageCard"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            style="@style/Widget_MealCamera_Card"
+            app:cardBackgroundColor="@color/surface_card_variant">
+            <FrameLayout android:layout_width="match_parent" android:layout_height="match_parent">
+                <ImageView
+                    android:id="@+id/ivStepImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_recipe_placeholder" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSelectStepImage"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="Добавить фото" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="0dp"
+            style="@style/Widget_MealCamera_TextInputLayout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
+            android:layout_marginTop="8dp">
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etStepTitle"
+                android:id="@+id/etStepDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Заголовок шага" />
+                android:minLines="2"
+                android:gravity="top"
+                android:hint="Описание шага" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <ImageButton
-            android:id="@+id/btnRemoveStep"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_close"
-            android:tint="@color/red_error"
-            android:contentDescription="Remove step" />
+        <!-- Поле для таймера -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilStepTimer"
+            style="@style/Widget_MealCamera_TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            android:hint="Таймер (минуты)">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etStepTimer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnToggleTimer"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+ Таймер" />
+
+        <LinearLayout
+            android:id="@+id/stepIngredientsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAddStepIngredient"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="+ Добавить ингредиент" />
     </LinearLayout>
-
-    <!-- Описание шага -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etStepDescription"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minLines="2"
-            android:gravity="top"
-            android:hint="Описание шага" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Таймер шага -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etStepTimer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Таймер (минуты)"
-            android:inputType="number" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Фото шага -->
-    <Button
-        android:id="@+id/btnSelectStepImage"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="Выбрать фото для шага"
-        android:textSize="12sp" />
-
-    <ImageView
-        android:id="@+id/ivStepPreview"
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:layout_marginTop="4dp"
-        android:scaleType="centerCrop"
-        android:visibility="gone"
-        android:src="@drawable/ic_recipe_placeholder" />
-
-    <!-- Ингредиенты шага -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="Ингредиенты для этого шага:"
-        android:textSize="14sp"
-        android:textStyle="bold" />
-
-    <LinearLayout
-        android:id="@+id/stepIngredientsContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical" />
-
-    <Button
-        android:id="@+id/btnAddStepIngredient"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="+ Добавить ингредиент"
-        android:textSize="12sp" />
-
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -12,7 +12,20 @@
           "package_name": "com.example.mealcamera"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "819919828811-e4j8n6mf5445tl22brhn80h54c9am9du.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.mealcamera",
+            "certificate_hash": "554f78086fff37105fa6a5f5cc8539b7431cd3eb"
+          }
+        },
+        {
+          "client_id": "819919828811-fhda6ripqgfdj3t4evtgkieloj0n7ffr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCfwpV49vlOSyfs_79vQFv1DvJ0A-OTPXU"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "819919828811-fhda6ripqgfdj3t4evtgkieloj0n7ffr.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

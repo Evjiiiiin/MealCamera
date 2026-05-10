@@ -1,33 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Основные цвета приложения -->
-    <color name="color_primary">#FF9800</color>
-    <color name="color_primary_variant">#F57C00</color>
-    <color name="color_secondary">#80CBC4</color>
-    <color name="color_secondary_variant">#00796B</color>
+    <!-- Основная палитра -->
+    <color name="color_primary">#EA674B</color>
+    <color name="color_primary_variant">#D1563D</color>
+    <color name="color_on_primary">#FFFFFF</color>
+    <color name="color_primary_container">#FFEDE7</color>
 
-    <!-- Фон -->
-    <color name="background_light">#F5F5F5</color>
-    <color name="background_light_gray">#F5F5F5</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="black">#FF000000</color>
-    <color name="grey">#8A8A8A</color>
-    <color name="gray_text">#8A8A8A</color>
+    <color name="background_main">#F8F9FA</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="surface_card_variant">#F1F0F5</color>
+    
+    <!-- Эффект стекла (полупрозрачный фон меню) -->
+    <color name="nav_glass_background">#CCF8F9FA</color>
+    
+    <color name="text_main">#1A1C1E</color>
+    <color name="text_secondary">#666666</color>
+    <color name="gray_text">#9E9E9E</color>
 
-    <!-- Тексты -->
-    <color name="text_primary">#DE000000</color>
-    <color name="text_primary_light">#DE000000</color>
-    <color name="text_secondary">#8A000000</color>
-    <color name="text_secondary_light">#8A000000</color>
+    <color name="icon_tint">#19323C</color>
+    
+    <color name="border_light">#E0E0E0</color>
+    <color name="placeholder">#BDBDBD</color>
 
-    <!-- Ошибки -->
-    <color name="red_error">#D32F2F</color>
+    <color name="red_error">#B00020</color>
+    <color name="search_border">#E0E0E0</color>
 
-    <!-- Обводка для поиска -->
-    <color name="search_border">#20000000</color>
-
-    <!-- Дополнительные цвета для иконок -->
-    <color name="icon_color_primary">@color/color_primary</color>
-    <color name="icon_color_white">@color/white</color>
-    <color name="icon_color_grey">@color/grey</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
 </resources>

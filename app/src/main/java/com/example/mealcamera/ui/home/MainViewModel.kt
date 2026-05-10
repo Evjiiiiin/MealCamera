@@ -4,8 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.FavoriteRepository
 import com.example.mealcamera.data.RecipeRepository
+import com.example.mealcamera.data.model.FilterState
+import com.example.mealcamera.data.model.Ingredient
 import com.example.mealcamera.data.model.Recipe
+import com.example.mealcamera.data.model.RecipeWithIngredients
 import com.example.mealcamera.data.remote.FirestoreService
+import com.example.mealcamera.util.PrepTimeParser
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -27,10 +31,12 @@ class MainViewModel(
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
-    private val _categoryFilter = MutableStateFlow("Все")
-    private val _cuisineFilter = MutableStateFlow("Все кухни")
+    private val _filterState = MutableStateFlow(FilterState())
     private val _isRefreshing = MutableStateFlow(false)
     private val _userAllergens = MutableStateFlow<List<String>>(emptyList())
+
+    // Публичный геттер для текущего состояния фильтров (используется в HomeFragment)
+    val currentFilterState: FilterState get() = _filterState.value
 
     private val firestoreService = FirestoreService()
     private val auth = FirebaseAuth.getInstance()
@@ -53,43 +59,56 @@ class MainViewModel(
     private val filteredRecipesFlow: Flow<List<Recipe>> = combine(
         repository.allRecipesWithIngredientsFlow(),
         _searchQuery,
-        _categoryFilter,
-        _cuisineFilter,
+        _filterState,
         _userAllergens
-    ) { recipesWithIngs, query, category, cuisine, allergens ->
-        
+    ) { recipesWithIngs: List<RecipeWithIngredients>, query: String, filter: FilterState, allergens: List<String> ->
+
         val expandedAllergens = repository.expandAllergens(allergens).map { normalize(it) }
         val normalizedQuery = normalize(query)
 
         recipesWithIngs.asSequence()
-            .filter { item ->
-                // 1. Фильтрация по аллергенам
+            .filter { item: RecipeWithIngredients ->
                 if (expandedAllergens.isEmpty()) true
                 else {
-                    val inMainInfo = expandedAllergens.any { allergen -> 
-                        normalize(item.recipe.name).contains(allergen) || 
-                        normalize(item.recipe.description).contains(allergen)
+                    val inMainInfo = expandedAllergens.any { allergen: String ->
+                        normalize(item.recipe.name).contains(allergen as CharSequence) ||
+                                normalize(item.recipe.description).contains(allergen as CharSequence)
                     }
-                    val inIngredients = item.ingredients.any { ing ->
+                    val inIngredients = item.ingredients.any { ing: Ingredient ->
                         val normalizedIng = normalize(ing.name)
-                        expandedAllergens.any { allergen -> normalizedIng.contains(allergen) }
+                        expandedAllergens.any { allergen: String -> normalizedIng.contains(allergen as CharSequence) }
                     }
                     !(inMainInfo || inIngredients)
                 }
             }
-            .filter { item ->
-                // 2. Расширенный поиск: название ИЛИ ингредиенты
+            .filter { item: RecipeWithIngredients ->
                 val matchesQuery = if (normalizedQuery.isEmpty()) true else {
-                    val inName = normalize(item.recipe.name).contains(normalizedQuery)
-                    val inIngredients = item.ingredients.any { normalize(it.name).contains(normalizedQuery) }
+                    val inName = normalize(item.recipe.name).contains(normalizedQuery as CharSequence)
+                    val inIngredients = item.ingredients.any { ing: Ingredient -> normalize(ing.name).contains(normalizedQuery as CharSequence) }
                     inName || inIngredients
                 }
-
-                // 3. Фильтрация по категории и кухне
-                val matchesCategory = category == "Все" || item.recipe.category.equals(category, ignoreCase = true)
-                val matchesCuisine = cuisine == "Все кухни" || item.recipe.cuisine.equals(cuisine, ignoreCase = true)
-                
-                matchesQuery && matchesCategory && matchesCuisine
+                matchesQuery
+            }
+            .filter { item: RecipeWithIngredients ->
+                val matchesCategory = filter.selectedCategories.isEmpty() ||
+                        filter.selectedCategories.any { it.equals(item.recipe.category, ignoreCase = true) }
+                matchesCategory
+            }
+            .filter { item: RecipeWithIngredients ->
+                val matchesCuisine = filter.selectedCuisines.isEmpty() ||
+                        filter.selectedCuisines.any { it.equals(item.recipe.cuisine, ignoreCase = true) }
+                matchesCuisine
+            }
+            .filter { item: RecipeWithIngredients ->
+                val prepMinutes = PrepTimeParser.parseToMinutes(item.recipe.prepTime)
+                filter.prepTimeRange?.let { range ->
+                    prepMinutes in range.start.toInt()..range.endInclusive.toInt()
+                } ?: true
+            }
+            .filter { item: RecipeWithIngredients ->
+                filter.caloriesRange?.let { range ->
+                    item.recipe.calories in range.start.toInt()..range.endInclusive.toInt()
+                } ?: true
             }
             .map { it.recipe }
             .distinctBy { "${it.name.lowercase()}|${it.category.lowercase()}" }
@@ -101,8 +120,8 @@ class MainViewModel(
         favoriteRepository.getFavoriteRecipeIds(),
         _isRefreshing,
         _searchQuery,
-        _categoryFilter,
-        _cuisineFilter
+        _filterState.map { it.selectedCategories.firstOrNull() ?: "Все" },
+        _filterState.map { it.selectedCuisines.firstOrNull() ?: "Все кухни" }
     ) { args: Array<Any> ->
         @Suppress("UNCHECKED_CAST")
         MainUiState(
@@ -119,10 +138,14 @@ class MainViewModel(
         initialValue = MainUiState()
     )
 
+    fun setFilters(filterState: FilterState) {
+        _filterState.value = filterState
+    }
+
     fun toggleFavorite(recipe: Recipe, isFavorite: Boolean) {
         viewModelScope.launch {
             if (isFavorite) favoriteRepository.addFavorite(recipe)
-            else favoriteRepository.removeFavorite(recipe.recipeId)
+            else favoriteRepository.removeFavorite(recipe)
         }
     }
 
@@ -135,6 +158,12 @@ class MainViewModel(
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun setCategoryFilter(category: String) { _categoryFilter.value = category }
-    fun setCuisineFilter(cuisine: String) { _cuisineFilter.value = cuisine }
+    fun setCategoryFilter(category: String) {
+        val newFilters = _filterState.value.copy(selectedCategories = if (category == "Все") emptySet() else setOf(category))
+        _filterState.value = newFilters
+    }
+    fun setCuisineFilter(cuisine: String) {
+        val newFilters = _filterState.value.copy(selectedCuisines = if (cuisine == "Все кухни") emptySet() else setOf(cuisine))
+        _filterState.value = newFilters
+    }
 }

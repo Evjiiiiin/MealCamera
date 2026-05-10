@@ -1,10 +1,14 @@
 package com.example.mealcamera.util
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import android.widget.Toast
 import java.util.Locale
 
@@ -14,21 +18,26 @@ class VoiceCommandHelper(
 ) {
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
+    private var isPaused = false
+    private val handler = Handler(Looper.getMainLooper())
 
     private val commandMap = mapOf(
         "следующий" to "next",
         "дальше" to "next",
         "вперед" to "next",
         "следующий шаг" to "next",
+        "далее" to "next",
 
         "назад" to "previous",
         "предыдущий" to "previous",
         "предыдущий шаг" to "previous",
+        "вернись" to "previous",
 
         "старт" to "start_timer",
         "запусти таймер" to "start_timer",
         "поставь таймер" to "start_timer",
         "запуск таймера" to "start_timer",
+        "пуск" to "start_timer",
 
         "пауза" to "pause_timer",
         "пауза таймер" to "pause_timer",
@@ -42,19 +51,23 @@ class VoiceCommandHelper(
         "повтори шаг" to "repeat",
         "прочитай шаг" to "repeat",
         "зачитай шаг" to "repeat",
+        "зачитай" to "repeat",
+        "прочитай" to "repeat",
 
-        "что дальше" to "next_step",
-        "следующий после" to "next_step",
+        "что дальше" to "next",
+        "следующий после" to "next",
 
         "ингредиенты" to "ingredients",
         "зачитай ингредиенты" to "ingredients",
         "прочитай ингредиенты" to "ingredients",
         "что нужно" to "ingredients",
         "какие продукты" to "ingredients",
+        "продукты" to "ingredients",
 
         "завершить" to "finish",
         "готово" to "finish",
         "закончить" to "finish",
+        "все" to "finish",
 
         "помощь" to "help",
         "команды" to "help",
@@ -66,7 +79,8 @@ class VoiceCommandHelper(
         "ok splash",
         "okay splash",
         "слушай",
-        "алло"
+        "meal camera",
+        "мил камера"
     )
 
     fun initialize() {
@@ -77,26 +91,36 @@ class VoiceCommandHelper(
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
             setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {}
+                override fun onReadyForSpeech(params: Bundle?) {
+                    Log.d("VoiceHelper", "Ready for speech")
+                }
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
 
                 override fun onError(error: Int) {
-                    val errorMessage = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH -> "Не распознано"
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Таймаут"
-                        SpeechRecognizer.ERROR_NETWORK -> "Ошибка сети"
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Распознаватель занят"
-                        else -> "Ошибка $error"
+                    val message = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio error"
+                        SpeechRecognizer.ERROR_CLIENT -> "Client error"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Permissions error"
+                        SpeechRecognizer.ERROR_NETWORK -> "Network error"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No match"
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Busy"
+                        SpeechRecognizer.ERROR_SERVER -> "Server error"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
+                        else -> "Unknown error"
                     }
-
-                    if (isListening) {
-                        if (error != SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
-                            Toast.makeText(context, "Голос: $errorMessage", Toast.LENGTH_SHORT).show()
+                    Log.e("VoiceHelper", "Error: $error ($message)")
+                    
+                    if (isListening && !isPaused) {
+                        if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
+                            // If busy, wait a bit longer before restarting
+                            handler.postDelayed({ restartListening() }, 1000)
+                        } else {
+                            restartListening()
                         }
-                        restartListening()
                     }
                 }
 
@@ -105,7 +129,9 @@ class VoiceCommandHelper(
                     if (!matches.isNullOrEmpty()) {
                         processVoiceInput(matches[0])
                     }
-                    restartListening()
+                    if (isListening && !isPaused) {
+                        restartListening()
+                    }
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
@@ -122,7 +148,9 @@ class VoiceCommandHelper(
 
     private fun processVoiceInput(input: String) {
         val normalized = input.lowercase(Locale.getDefault()).trim()
+        Log.d("VoiceHelper", "Input: $normalized")
 
+        // Check if wake word is present
         val wakeWord = wakeWords.firstOrNull { normalized.contains(it) }
 
         val commandText = if (wakeWord != null) {
@@ -133,88 +161,86 @@ class VoiceCommandHelper(
 
         if (commandText.isNotEmpty()) {
             executeCommand(commandText)
-        } else if (wakeWord != null) {
-            Toast.makeText(context, "Скажите команду", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun checkForWakeWord(partial: String) {
         val normalized = partial.lowercase(Locale.getDefault())
         if (wakeWords.any { normalized.contains(it) }) {
-            Toast.makeText(context, "Слушаю...", Toast.LENGTH_SHORT).show()
+            Log.d("VoiceHelper", "Wake word detected in partial: $normalized")
         }
     }
 
     private fun executeCommand(command: String) {
         for ((key, value) in commandMap) {
             if (command.contains(key)) {
+                Log.d("VoiceHelper", "Executing command: $value for text: $command")
                 onCommand(value)
                 return
             }
         }
-
-        if (command.isNotBlank()) {
-            Toast.makeText(context, "Команда не распознана: $command", Toast.LENGTH_SHORT).show()
-            showHelp()
-        }
-    }
-
-    private fun showHelp() {
-        val commands = """
-            Доступные команды:
-            • следующий / дальше
-            • назад / предыдущий
-            • старт / пауза / стоп (таймер)
-            • ингредиенты / что нужно
-            • повтори / прочитай шаг
-            • готово / завершить
-            • помощь / команды
-        """.trimIndent()
-        Toast.makeText(context, commands, Toast.LENGTH_LONG).show()
     }
 
     fun startListening() {
         if (speechRecognizer == null) return
 
         isListening = true
-        val intent = android.content.Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        isPaused = false
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
         }
 
         try {
             speechRecognizer?.startListening(intent)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("VoiceHelper", "startListening exception", e)
         }
     }
 
     fun stopListening() {
         isListening = false
+        isPaused = false
+        handler.removeCallbacksAndMessages(null)
         try {
             speechRecognizer?.stopListening()
             speechRecognizer?.cancel()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("VoiceHelper", "stopListening exception", e)
+        }
+    }
+
+    fun pauseListening() {
+        isPaused = true
+        try {
+            speechRecognizer?.cancel()
+        } catch (e: Exception) {
+            Log.e("VoiceHelper", "pauseListening exception", e)
+        }
+    }
+
+    fun resumeListening() {
+        if (isListening) {
+            isPaused = false
+            startListening()
         }
     }
 
     private fun restartListening() {
-        if (!isListening) return
+        if (!isListening || isPaused) return
 
         try {
             speechRecognizer?.cancel()
-        } catch (_: Exception) {
-        }
+        } catch (_: Exception) {}
 
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            if (isListening) {
+        handler.postDelayed({
+            if (isListening && !isPaused) {
                 startListening()
             }
-        }, 500)
+        }, 500) // Slightly increased delay for stability
     }
 
     fun destroy() {

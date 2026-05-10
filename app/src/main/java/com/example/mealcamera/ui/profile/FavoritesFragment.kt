@@ -16,6 +16,7 @@ import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
 import com.example.mealcamera.databinding.FragmentFavoritesBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
+import com.example.mealcamera.ui.home.MainActivity
 import kotlinx.coroutines.launch
 
 class FavoritesFragment : Fragment() {
@@ -34,7 +35,6 @@ class FavoritesFragment : Fragment() {
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             viewModel.loadFavorites()
-            // Навигация теперь управляется NavController
             findNavController().navigate(R.id.navigation_profile)
         }
     }
@@ -52,6 +52,7 @@ class FavoritesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         observeData()
+        setupEmptyState()
     }
 
     private fun setupRecyclerView() {
@@ -65,7 +66,6 @@ class FavoritesFragment : Fragment() {
             onFavoriteClick = { recipe ->
                 viewModel.toggleFavorite(recipe)
                 Toast.makeText(requireContext(), "Изменено", Toast.LENGTH_SHORT).show()
-                // Данные обновятся автоматически через Flow в ViewModel
             }
         )
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -77,13 +77,19 @@ class FavoritesFragment : Fragment() {
             viewModel.favoriteRecipes.collect { recipes ->
                 if (recipes.isEmpty()) {
                     binding.recyclerView.visibility = View.GONE
-                    binding.tvEmpty.visibility = View.VISIBLE
+                    binding.emptyState.visibility = View.VISIBLE
                 } else {
                     binding.recyclerView.visibility = View.VISIBLE
-                    binding.tvEmpty.visibility = View.GONE
+                    binding.emptyState.visibility = View.GONE
                     adapter.submitList(recipes)
                 }
             }
+        }
+    }
+
+    private fun setupEmptyState() {
+        binding.btnGoToRecipes.setOnClickListener {
+            (requireActivity() as? MainActivity)?.selectHomeTab()
         }
     }
 

@@ -15,6 +15,9 @@ interface ShoppingListDao {
     @Update
     suspend fun updateItem(item: ShoppingListItem)
 
+    @Delete
+    suspend fun deleteItem(item: ShoppingListItem)
+
     @Query("SELECT * FROM shopping_list WHERE LOWER(name) = LOWER(:name) AND LOWER(unit) = LOWER(:unit) AND userId = :userId LIMIT 1")
     suspend fun getItemByNameAndUnit(userId: String, name: String, unit: String): ShoppingListItem?
 

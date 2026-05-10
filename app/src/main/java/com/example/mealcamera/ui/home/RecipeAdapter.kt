@@ -48,7 +48,6 @@ class RecipeAdapter(
             val missingText = binding.tvMissingIngredients
             if (!missingIngredients.isNullOrEmpty()) {
                 missingText.visibility = View.VISIBLE
-                // ИСПРАВЛЕНО: Текст теперь информативнее (количество + продукт)
                 missingText.text = "Не хватает: " + missingIngredients.joinToString(", ")
             } else {
                 missingText.visibility = View.GONE
@@ -56,7 +55,7 @@ class RecipeAdapter(
 
             val isFavorite = favoriteIds.contains(recipe.recipeId)
             binding.btnFavorite.setImageResource(
-                if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outline
+                if (isFavorite) R.drawable.ic_favorite_filled else R.drawable.ic_favorite_outlined
             )
 
             Glide.with(binding.recipeImageView)

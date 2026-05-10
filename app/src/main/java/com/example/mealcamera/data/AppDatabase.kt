@@ -21,7 +21,7 @@ import com.example.mealcamera.data.model.*
         FavoriteRecipe::class,
         StepIngredient::class
     ],
-    version = 14, // 👈 Увеличили версию с 13 до 14
+    version = 16, // 👈 Подняли с 15 до 16
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,31 +33,19 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        val MIGRATION_11_12 = object : Migration(11, 12) {
+        val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                try {
-                    db.execSQL("ALTER TABLE recipes ADD COLUMN authorId TEXT DEFAULT 'admin'")
-                    db.execSQL("ALTER TABLE recipes ADD COLUMN isPublic INTEGER DEFAULT 1")
-                    db.execSQL("CREATE INDEX IF NOT EXISTS index_recipes_authorId ON recipes(authorId)")
-                    db.execSQL("CREATE INDEX IF NOT EXISTS index_recipes_isPublic ON recipes(isPublic)")
-                } catch (e: Exception) { }
+                db.execSQL("ALTER TABLE recipes ADD COLUMN calories INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN proteins REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN fats REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE recipes ADD COLUMN carbs REAL NOT NULL DEFAULT 0.0")
             }
         }
 
-        val MIGRATION_12_13 = object : Migration(12, 13) {
+        val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                try {
-                    db.execSQL("ALTER TABLE shopping_list ADD COLUMN userId TEXT NOT NULL DEFAULT ''")
-                    db.execSQL("CREATE INDEX IF NOT EXISTS index_shopping_list_userId ON shopping_list(userId)")
-                } catch (e: Exception) { }
-            }
-        }
-
-        // Миграция 13 -> 14 может быть пустой, если мы полагаемся на Destructive Migration для сброса хеша
-        val MIGRATION_13_14 = object : Migration(13, 14) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                // Если нужно сохранить данные, здесь должны быть ALTER TABLE
-                // Но так как у нас конфликты хешей, проще пересоздать
+                // Добавляем поле totalWeight для расчета граммовки
+                db.execSQL("ALTER TABLE recipes ADD COLUMN totalWeight INTEGER NOT NULL DEFAULT 0")
             }
         }
 
@@ -68,7 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "meal_camera_database"
                 )
-                    .addMigrations(MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
+                    .addMigrations(MIGRATION_14_15, MIGRATION_15_16)
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

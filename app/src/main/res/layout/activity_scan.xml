@@ -12,18 +12,48 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Подсказка при наведении -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardDetectionHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="220dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="@color/color_primary"
+        app:cardCornerRadius="12dp"
+        app:strokeWidth="0dp">
+        <TextView
+            android:id="@+id/tvDetectionName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:text="Обнаружено..."
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </com.google.android.material.card.MaterialCardView>
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        app:navigationIcon="@drawable/ic_close"
-        app:navigationIconTint="@color/white" />
+        android:layout_height="?attr/actionBarSize">
+        <com.example.mealcamera.ui.view.MaterialSymbolView
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="close"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </androidx.appcompat.widget.Toolbar>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-        <!-- RecyclerView для маленьких карточек отсканированных продуктов -->
+        
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvScannedIngredients"
             android:layout_width="match_parent"
@@ -32,11 +62,8 @@
             android:orientation="horizontal"
             android:paddingHorizontal="16dp"
             android:clipToPadding="false"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintBottom_toTopOf="@id/controlsLayout"
-            tools:listitem="@layout/item_scanned_card" />
+            app:layout_constraintBottom_toTopOf="@id/controlsLayout" />
 
-        <!-- Контейнер кнопок -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/controlsLayout"
             android:layout_width="match_parent"
@@ -45,69 +72,62 @@
             android:paddingHorizontal="24dp"
             app:layout_constraintBottom_toBottomOf="parent">
 
-            <!-- Кнопка Плюс (Слева) -->
-            <com.google.android.material.button.MaterialButton
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnAddManually"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginEnd="60dp"
-                app:cornerRadius="28dp"
-                app:icon="@drawable/ic_add"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconTint="@color/white"
-                app:strokeColor="@color/white"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                app:cardBackgroundColor="@color/white"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@id/btnShowResults"
-                app:layout_constraintStart_toStartOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"
+                app:strokeWidth="0dp">
+                <com.example.mealcamera.ui.view.MaterialSymbolView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="add"
+                    android:textColor="@color/color_primary"
+                    android:textSize="28sp" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Кнопка Далее (Справа) -->
-            <com.google.android.material.button.MaterialButton
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnShowResults"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="60dp"
-                app:backgroundTint="@color/color_primary"
-                app:cornerRadius="28dp"
-                app:icon="@drawable/ic_arrow_forward"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                app:cardBackgroundColor="@color/color_primary"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/btnAddManually" />
+                app:strokeWidth="0dp">
+                <com.example.mealcamera.ui.view.MaterialSymbolView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="arrow_forward"
+                    android:textColor="@color/white"
+                    android:textSize="28sp" />
+            </com.google.android.material.card.MaterialCardView>
 
-            <!-- Кнопка Фото (По центру) -->
-            <com.google.android.material.button.MaterialButton
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/btnCapture"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:backgroundTint="@color/white"
-                app:cornerRadius="40dp"
-                app:icon="@drawable/ic_camera"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconSize="32dp"
-                app:iconTint="@color/color_primary"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                app:cardBackgroundColor="@color/white"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
+                app:layout_constraintTop_toTopOf="parent"
+                app:strokeWidth="0dp">
+                <com.example.mealcamera.ui.view.MaterialSymbolView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="photo_camera"
+                    android:textColor="@color/color_primary"
+                    android:textSize="36sp" />
+            </com.google.android.material.card.MaterialCardView>
+            
         </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <ProgressBar
-            android:id="@+id/progressBar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

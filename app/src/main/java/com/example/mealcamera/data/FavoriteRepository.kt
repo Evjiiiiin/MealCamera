@@ -34,23 +34,17 @@ class FavoriteRepository(
         return favoriteDao.getFavoriteIdsFlow(userId)
     }
 
-    /**
-     * Toggles favorite state. Uses the Recipe object to ensure cloud sync has metadata.
-     */
     suspend fun toggleFavorite(recipe: Recipe) {
         val userId = currentUserId ?: return
         val isFav = favoriteDao.isFavorite(userId, recipe.recipeId)
 
         if (isFav) {
-            removeFavorite(recipe.recipeId)
+            removeFavorite(recipe)
         } else {
             addFavorite(recipe)
         }
     }
 
-    /**
-     * Adds a recipe to favorites with full cloud sync.
-     */
     suspend fun addFavorite(recipe: Recipe) {
         val userId = currentUserId ?: return
         Log.d("FavoriteRepository", "❤️ Adding to favorites: ${recipe.name}")
@@ -83,21 +77,19 @@ class FavoriteRepository(
         }
     }
 
-    /**
-     * Removes a recipe from favorites by ID.
-     */
-    suspend fun removeFavorite(recipeId: Long) {
+    suspend fun removeFavorite(recipe: Recipe) {
         val userId = currentUserId ?: return
-        Log.d("FavoriteRepository", "💔 Removing from favorites: $recipeId")
+        Log.d("FavoriteRepository", "💔 Removing from favorites: ${recipe.recipeId}")
 
-        favoriteDao.removeFavorite(userId, recipeId)
+        favoriteDao.removeFavorite(userId, recipe.recipeId)
 
         try {
+            val docId = recipe.firestoreId ?: recipe.recipeId.toString()
             val userFavoritesRef = firestore
                 .collection("users")
                 .document(userId)
                 .collection("favorites")
-                .document(recipeId.toString())
+                .document(docId)
 
             userFavoritesRef.delete().await()
             Log.d("FavoriteRepository", "✅ Favorite removed from cloud")

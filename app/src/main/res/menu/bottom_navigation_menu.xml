@@ -2,22 +2,22 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home"
+        android:icon="@drawable/ic_home_outlined"
         android:title="Главная" />
     <item
         android:id="@+id/navigation_shopping_list"
-        android:icon="@drawable/ic_paste"
+        android:icon="@drawable/ic_shopping_outlined"
         android:title="Список" />
     <item
         android:id="@+id/navigation_camera"
-        android:icon="@drawable/ic_camera"
+        android:icon="@drawable/ic_camera_outlined"
         android:title="Камера" />
     <item
         android:id="@+id/navigation_add_recipe"
-        android:icon="@drawable/ic_add"
+        android:icon="@drawable/ic_add_outlined"
         android:title="Добавить" />
     <item
         android:id="@+id/navigation_profile"
-        android:icon="@drawable/ic_profile_placeholder"
+        android:icon="@drawable/ic_profile_outlined"
         android:title="Профиль" />
 </menu>

@@ -20,4 +20,13 @@
         <item>Десерт</item>
         <item>Другое</item>
     </string-array>
+
+    <array name="prep_time_default">
+        <item>0</item>
+        <item>240</item>
+    </array>
+    <array name="calories_default">
+        <item>0</item>
+        <item>1000</item>
+    </array>
 </resources>

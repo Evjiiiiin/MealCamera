@@ -25,6 +25,15 @@ data class Recipe(
     val cuisine: String = "Русская",
     val cuisineCode: String = "RU",
     
+    // КБЖУ (на 100г)
+    val calories: Int = 0,
+    val proteins: Double = 0.0,
+    val fats: Double = 0.0,
+    val carbs: Double = 0.0,
+    
+    // Вес готового блюда (одной порции)
+    val totalWeight: Int = 0,
+    
     @ColumnInfo(name = "authorId", defaultValue = "admin")
     val createdByUserId: String? = null,
     

@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.R
-import com.example.mealcamera.ui.auth.LoginActivity
+import com.example.mealcamera.ui.auth.WelcomeActivity
 import com.example.mealcamera.ui.home.MainActivity
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -22,12 +22,10 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
 
         lifecycleScope.launch {
-            // Просто ждем 2 секунды для красоты и идем дальше.
-            // Приложение будет инициализироваться в фоне в Application классе.
             delay(SPLASH_DISPLAY_TIME_MS)
 
             val destination = if (FirebaseAuth.getInstance().currentUser == null) {
-                LoginActivity::class.java
+                WelcomeActivity::class.java
             } else {
                 MainActivity::class.java
             }

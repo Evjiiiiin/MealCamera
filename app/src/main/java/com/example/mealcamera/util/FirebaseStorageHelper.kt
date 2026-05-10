@@ -1,6 +1,7 @@
 package com.example.mealcamera.util
 
 import android.graphics.Bitmap
+import android.net.Uri
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
@@ -21,6 +22,17 @@ class FirebaseStorageHelper {
             ref.putBytes(data).await()
             val downloadUrl = ref.downloadUrl.await()
             downloadUrl.toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun uploadProfileImage(userId: String, uri: Uri): String? {
+        val ref = storage.child("avatars/$userId.jpg")
+        return try {
+            ref.putFile(uri).await()
+            ref.downloadUrl.await().toString()
         } catch (e: Exception) {
             e.printStackTrace()
             null

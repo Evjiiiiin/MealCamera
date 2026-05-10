@@ -32,7 +32,7 @@ class FavoriteAdapter(
 
         fun bind(recipe: Recipe) {
             binding.recipeName.text = recipe.name
-            binding.recipeCategory.text = recipe.category
+            binding.recipeCategory.text = "${recipe.category} • ${recipe.cuisine}"
             binding.recipePrepTime.text = recipe.prepTime
 
             Glide.with(binding.root.context)
@@ -41,16 +41,12 @@ class FavoriteAdapter(
                 .placeholder(R.drawable.ic_recipe_placeholder)
                 .into(binding.recipeImage)
 
-            // В избранном всегда показываем заполненное сердечко
             binding.btnFavorite.setImageDrawable(
                 ContextCompat.getDrawable(binding.root.context, R.drawable.ic_favorite_filled)
             )
 
             binding.root.setOnClickListener { onItemClick(recipe) }
-
-            binding.btnFavorite.setOnClickListener {
-                onFavoriteClick(recipe)
-            }
+            binding.btnFavorite.setOnClickListener { onFavoriteClick(recipe) }
         }
     }
 

@@ -2,9 +2,10 @@
 agp = "8.5.2"
 kotlin = "1.9.23"
 coreKtx = "1.13.1"
-# --- Firebase и Google Services ---
 googleServices = "4.4.2"
 firebaseBom = "33.1.2"
+playServicesAuth = "21.2.0"
+yandexAuthSdk = "3.2.0"
 
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -22,12 +23,14 @@ camerax = "1.4.0"
 navigation = "2.7.7"
 
 [libraries]
-# --- Firebase библиотеки ---
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
 firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore-ktx" }
 firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
+
+play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+yandex-authsdk = { group = "com.yandex.android", name = "authsdk", version.ref = "yandexAuthSdk" }
 
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -63,5 +66,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
-# --- Плагин Google Services ---
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

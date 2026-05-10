@@ -81,14 +81,4 @@ class RecipeDetailViewModel(
             sharedViewModel.notifyFavoriteChanged(recipeId, newState)
         }
     }
-
-    fun toggleFavorite() {
-        viewModelScope.launch {
-            val recipe = recipe.value ?: return@launch
-            val newState = !_isFavorite.value
-            favoriteRepository.toggleFavorite(recipe)
-            _isFavorite.value = newState
-            sharedViewModel.notifyFavoriteChanged(recipe.recipeId, newState)
-        }
-    }
 }

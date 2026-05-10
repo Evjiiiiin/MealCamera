@@ -1,8 +1,11 @@
 <resources>
-    <string name="app_name">MealCamera</string>
+    <string name="app_name">Splash</string>
     <string name="app_logo">Логотип приложения</string>
     <string name="scanned_ingredient_image">Изображение отсканированного ингредиента</string>
     <string name="delete">Удалить</string>
+    
+    <!-- Google Auth (замените на свой из Firebase Console -> Auth -> Google) -->
+    <string name="default_web_client_id">819919828811-fhda6ripqgfdj3t4evtgkieloj0n7ffr.apps.googleusercontent.com</string>
     
     <!-- Строки для камеры и сессии -->
     <string name="camera_permission_denied">Нужен доступ к камере для сканирования продуктов</string>

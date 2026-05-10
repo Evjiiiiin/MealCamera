@@ -25,12 +25,18 @@ class AppStatsManager(context: Context) {
         val uniqueKey = "cooked_unique_$userSuffix"
         val recentKey = "cooked_recent_$userSuffix"
 
-        val currentCount = prefs.getInt(countKey, 0)
+        val recentList = getRecentCookedRecipes(userId).toMutableList()
         
+        // ЗАЩИТА ОТ ДУБЛИКАТОВ: Проверяем, не готовили ли мы это же блюдо в последние 5 минут
+        val isDuplicate = recentList.any { 
+            it.name == recipeName && (System.currentTimeMillis() - it.cookedAtMillis) < 300000 
+        }
+        if (isDuplicate) return
+
+        val currentCount = prefs.getInt(countKey, 0)
         val uniqueSet = prefs.getStringSet(uniqueKey, emptySet())?.toMutableSet() ?: mutableSetOf()
         uniqueSet.add(recipeId.toString())
 
-        val recentList = getRecentCookedRecipes(userId).toMutableList()
         recentList.add(
             0,
             RecentCookedRecipe(
@@ -40,7 +46,7 @@ class AppStatsManager(context: Context) {
             )
         )
 
-        val trimmed = recentList.take(10)
+        val trimmed = recentList.take(15)
         val jsonArray = JSONArray()
         trimmed.forEach { item ->
             val obj = JSONObject()

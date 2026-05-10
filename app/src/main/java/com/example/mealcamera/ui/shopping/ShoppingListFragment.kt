@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -29,23 +28,26 @@ class ShoppingListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setupToolbar()
         setupRecycler()
         observeItems()
         setupActions()
     }
 
-    private fun setupToolbar() {
-        binding.toolbar.title = "Список покупок"
-        binding.toolbar.navigationIcon = null // В табах кнопка назад не нужна (п. 3 плана)
-    }
-
     private fun setupRecycler() {
-        adapter = ShoppingListAdapter { item, checked ->
-            viewLifecycleOwner.lifecycleScope.launch { repository.updateShoppingListItemChecked(item, checked) }
-        }
-        binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.recyclerView.adapter = adapter
+        adapter = ShoppingListAdapter(
+            onCheckedChanged = { item, checked ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    repository.updateShoppingListItemChecked(item, checked)
+                }
+            },
+            onRemoveItem = { item ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    repository.deleteShoppingListItem(item)
+                }
+            }
+        )
+        binding.rvShoppingList.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvShoppingList.adapter = adapter
     }
 
     private fun observeItems() {
@@ -53,7 +55,13 @@ class ShoppingListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             repository.getShoppingListItems(userId).collect { items ->
                 adapter.submitList(items)
-                binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+                if (items.isEmpty()) {
+                    binding.emptyState.visibility = View.VISIBLE
+                    binding.btnClearChecked.visibility = View.GONE
+                } else {
+                    binding.emptyState.visibility = View.GONE
+                    binding.btnClearChecked.visibility = View.VISIBLE
+                }
             }
         }
     }
@@ -63,7 +71,6 @@ class ShoppingListFragment : Fragment() {
             val userId = currentUserId ?: return@setOnClickListener
             viewLifecycleOwner.lifecycleScope.launch {
                 repository.clearCheckedShoppingListItems(userId)
-                Toast.makeText(requireContext(), "Отмеченные удалены", Toast.LENGTH_SHORT).show()
             }
         }
     }

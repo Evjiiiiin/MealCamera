@@ -12,10 +12,10 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mealcamera.MealCameraApplication
+import com.example.mealcamera.R
 import com.example.mealcamera.databinding.FragmentHomeBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -29,22 +29,19 @@ class HomeFragment : Fragment() {
         (requireActivity().application as MealCameraApplication).viewModelFactory
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    private val auth = FirebaseAuth.getInstance()
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         setupGreeting()
         setupRecyclerView()
         setupSearch()
-        setupFilters()
         setupSwipeRefresh()
         observeViewModel()
     }
@@ -52,12 +49,16 @@ class HomeFragment : Fragment() {
     private fun setupGreeting() {
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
-        binding.greetingTextView.text = when (hour) {
+        val greetingText = when (hour) {
             in 6..11 -> "Доброе утро"
             in 12..17 -> "Добрый день"
             in 18..22 -> "Добрый вечер"
             else -> "Доброй ночи"
         }
+        binding.tvGreeting.text = greetingText
+
+        val displayName = auth.currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Что будем готовить?"
+        binding.tvUserName.text = displayName
     }
 
     private fun setupRecyclerView() {
@@ -88,19 +89,20 @@ class HomeFragment : Fragment() {
             binding.searchEditText.text?.clear()
             viewModel.setSearchQuery("")
         }
+
+        binding.btnFilter.setOnClickListener {
+            showFilterBottomSheet()
+        }
     }
 
-    private fun setupFilters() {
-        binding.filterChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
-            val checkedId = checkedIds.firstOrNull()
-            val chip = if (checkedId != null) group.findViewById<Chip>(checkedId) else null
-            viewModel.setCategoryFilter(chip?.text?.toString() ?: "Все")
+    private fun showFilterBottomSheet() {
+        // Используем newInstance для безопасной передачи данных при пересоздании фрагмента
+        val bottomSheet = FilterBottomSheetFragment.newInstance(viewModel.currentFilterState).apply {
+            onApply = { newFilters ->
+                viewModel.setFilters(newFilters)
+            }
         }
-        binding.cuisineChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
-            val checkedId = checkedIds.firstOrNull()
-            val chip = if (checkedId != null) group.findViewById<Chip>(checkedId) else null
-            viewModel.setCuisineFilter(chip?.text?.toString() ?: "Все кухни")
-        }
+        bottomSheet.show(parentFragmentManager, "FilterBottomSheet")
     }
 
     private fun setupSwipeRefresh() {
@@ -115,26 +117,24 @@ class HomeFragment : Fragment() {
                 recipeAdapter.setFavoriteIds(state.favoriteIds)
                 recipeAdapter.submitList(state.recipes)
                 binding.swipeRefresh.isRefreshing = state.isRefreshing
-                
-                // Восстанавливаем состояние поиска и фильтров только если они изменились
+
                 if (binding.searchEditText.text.toString() != state.searchQuery) {
                     binding.searchEditText.setText(state.searchQuery)
                 }
-                restoreChipState(binding.filterChipGroup, state.categoryFilter)
-                restoreChipState(binding.cuisineChipGroup, state.cuisineFilter)
+                updateFilterIcon(state)
             }
         }
     }
 
-    private fun restoreChipState(group: ChipGroup, value: String) {
-        for (i in 0 until group.childCount) {
-            val chip = group.getChildAt(i) as? Chip
-            if (chip?.text?.toString() == value) {
-                if (!chip.isChecked) {
-                    group.check(chip.id)
-                }
-                break
-            }
+    private fun updateFilterIcon(state: MainUiState) {
+        val hasActiveFilters = state.categoryFilter != "Все" || state.cuisineFilter != "Все кухни"
+                || viewModel.currentFilterState.prepTimeRange?.let { it.start > 0 || it.endInclusive < 240 } ?: false
+                || viewModel.currentFilterState.caloriesRange?.let { it.start > 0 || it.endInclusive < 1000 } ?: false
+        
+        if (hasActiveFilters) {
+            binding.btnFilter.setColorFilter(resources.getColor(R.color.color_primary, null))
+        } else {
+            binding.btnFilter.clearColorFilter()
         }
     }
 

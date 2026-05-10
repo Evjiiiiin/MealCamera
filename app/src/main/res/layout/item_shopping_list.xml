@@ -3,13 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Widget_MealCamera_Card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="4dp"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="?android:attr/colorBackground">
+        android:layout_margin="4dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -22,7 +20,7 @@
                 android:id="@+id/checkbox"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical" />
+                app:buttonTint="@color/color_primary" />
 
             <TextView
                 android:id="@+id/tvItemName"
@@ -32,7 +30,7 @@
                 android:layout_marginStart="8dp"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="?android:attr/textColorPrimary"
+                android:textColor="@color/text_main"
                 tools:text="Молоко" />
 
             <TextView
@@ -41,7 +39,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:textSize="14sp"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="@color/text_secondary"
                 tools:text="200" />
 
             <TextView
@@ -50,17 +48,17 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:textSize="14sp"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="@color/text_secondary"
                 tools:text="мл" />
 
             <ImageButton
                 android:id="@+id/btnRemove"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@drawable/ic_close"
-                android:background="?selectableItemBackgroundBorderless"
-                android:contentDescription="@string/delete"
-                android:tint="?attr/colorPrimary" />
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_close_outlined"
+                app:tint="@color/red_error"
+                android:contentDescription="Удалить" />
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.card.MaterialCardView>
 </layout>

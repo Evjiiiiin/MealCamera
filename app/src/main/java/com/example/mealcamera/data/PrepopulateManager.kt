@@ -23,8 +23,9 @@ class PrepopulateManager(
 
     suspend fun prepopulateIfNeeded(recipeDao: RecipeDao) = withContext(Dispatchers.IO) {
         try {
-            val hasCloudData = firestoreService.hasData()
-            val localRecipeCount = recipeDao.getRecipeCount()
+            // Проверяем наличие данных в Firestore асинхронно, без блокировки
+            val hasCloudData = runCatching { firestoreService.hasData() }.getOrDefault(false)
+            val localRecipeCount = runCatching { recipeDao.getRecipeCount() }.getOrDefault(0)
 
             if (localRecipeCount > 0) {
                 Log.d("PrepopulateManager", "Локальная БД уже содержит данные ($localRecipeCount рецептов)")
@@ -32,25 +33,31 @@ class PrepopulateManager(
             }
 
             if (hasCloudData) {
-                Log.d("PrepopulateManager", "В Firestore уже есть данные — пропускаем локальную prepopulate из JSON")
+                Log.d("PrepopulateManager", "В Firestore есть данные — пропускаем локальную prepopulate")
                 return@withContext
             }
 
-            Log.d("PrepopulateManager", "Заполняем локальную БД из JSON и загружаем в Firestore")
+            Log.d("PrepopulateManager", "Заполняем локальную БД из JSON")
             val (ingredients, recipes) = parseJsonRecipes()
 
             saveToLocalDatabase(recipeDao, ingredients, recipes)
-            firestoreService.uploadInitialData(
-                ingredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
-                    CloudIngredientData(
-                        id = name,
-                        name = name,
-                        isAlwaysAvailable = isAlwaysAvailable,
-                        isCoreIngredient = isCoreIngredient
-                    )
-                },
-                recipes = recipes
-            )
+
+            // Загружаем в Firestore в фоне, игнорируем ошибки, чтобы не ломать запуск
+            try {
+                firestoreService.uploadInitialData(
+                    ingredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
+                        CloudIngredientData(
+                            id = name,
+                            name = name,
+                            isAlwaysAvailable = isAlwaysAvailable,
+                            isCoreIngredient = isCoreIngredient
+                        )
+                    },
+                    recipes = recipes
+                )
+            } catch (e: Exception) {
+                Log.e("PrepopulateManager", "Ошибка загрузки в Firestore, но локальные данные сохранены", e)
+            }
         } catch (e: Exception) {
             Log.e("PrepopulateManager", "Ошибка prepopulate", e)
         }
@@ -128,7 +135,6 @@ class PrepopulateManager(
                 }
             }
 
-            // Определяем кухню по названию рецепта
             val (cuisine, cuisineCode) = detectCuisine(recipeName)
 
             recipes.add(
@@ -156,44 +162,21 @@ class PrepopulateManager(
             .replace("ё", "е")
             .replace(Regex("[^a-zа-я0-9]+"), "_")
             .trim('_')
-
         return "step_images/${slug}/step_${stepNumber}.jpg"
     }
 
     private fun detectCuisine(recipeName: String): Pair<String, String> {
         return when {
-            recipeName.contains("Борщ") ||
-                    recipeName.contains("Щи") ||
-                    recipeName.contains("Солянка") ||
-                    recipeName.contains("Гречка") ||
-                    recipeName.contains("Котлеты") ||
-                    recipeName.contains("Жаркое") ||
-                    recipeName.contains("Блины") ||
-                    recipeName.contains("Сырники") -> Pair("Русская", "RU")
-
-            recipeName.contains("Паста") ||
-                    recipeName.contains("Карбонара") ||
-                    recipeName.contains("Ризотто") ||
-                    recipeName.contains("Тирамису") ||
-                    recipeName.contains("Пицца") -> Pair("Итальянская", "IT")
-
-            recipeName.contains("Паэлья") ||
-                    recipeName.contains("Гаспачо") ||
-                    recipeName.contains("Тапас") -> Pair("Испанская", "ES")
-
-            recipeName.contains("Рататуй") ||
-                    recipeName.contains("Круассан") ||
-                    recipeName.contains("Крем-брюле") -> Pair("Французская", "FR")
-
-            recipeName.contains("Панкейки") ||
-                    recipeName.contains("Бургер") ||
-                    recipeName.contains("Стейк") ||
+            recipeName.contains("Борщ") || recipeName.contains("Щи") || recipeName.contains("Солянка") ||
+                    recipeName.contains("Гречка") || recipeName.contains("Котлеты") || recipeName.contains("Жаркое") ||
+                    recipeName.contains("Блины") || recipeName.contains("Сырники") -> Pair("Русская", "RU")
+            recipeName.contains("Паста") || recipeName.contains("Карбонара") || recipeName.contains("Ризотто") ||
+                    recipeName.contains("Тирамису") || recipeName.contains("Пицца") -> Pair("Итальянская", "IT")
+            recipeName.contains("Паэлья") || recipeName.contains("Гаспачо") || recipeName.contains("Тапас") -> Pair("Испанская", "ES")
+            recipeName.contains("Рататуй") || recipeName.contains("Круассан") || recipeName.contains("Крем-брюле") -> Pair("Французская", "FR")
+            recipeName.contains("Панкейки") || recipeName.contains("Бургер") || recipeName.contains("Стейк") ||
                     recipeName.contains("Чизкейк") -> Pair("Американская", "US")
-
-            recipeName.contains("Суши") ||
-                    recipeName.contains("Вок") ||
-                    recipeName.contains("Лапша") -> Pair("Азиатская", "JP")
-
+            recipeName.contains("Суши") || recipeName.contains("Вок") || recipeName.contains("Лапша") -> Pair("Азиатская", "JP")
             else -> Pair("Русская", "RU")
         }
     }
@@ -206,7 +189,6 @@ class PrepopulateManager(
 
         val ingredientNameToId = mutableMapOf<String, Long>()
 
-        // Сохраняем ингредиенты
         ingredients.forEach { (name, isAlwaysAvailable, isCoreIngredient) ->
             val ingredient = Ingredient(
                 name = name,
@@ -217,7 +199,6 @@ class PrepopulateManager(
             ingredientNameToId[name] = id
         }
 
-        // Сохраняем рецепты
         recipes.forEach { cloudRecipe ->
             val recipe = Recipe(
                 firestoreId = null,
@@ -232,7 +213,6 @@ class PrepopulateManager(
             )
             val recipeId = recipeDao.insertRecipe(recipe)
 
-            // Сохраняем связи с ингредиентами (общие)
             cloudRecipe.ingredients.forEach { recipeIngredient ->
                 val ingredientId = ingredientNameToId[recipeIngredient.name]
                 if (ingredientId != null) {
@@ -248,7 +228,6 @@ class PrepopulateManager(
                 }
             }
 
-            // Сохраняем шаги
             cloudRecipe.steps.forEachIndexed { index, stepData ->
                 val step = RecipeStep(
                     recipeId = recipeId,
@@ -260,7 +239,6 @@ class PrepopulateManager(
                 )
                 val stepId = recipeDao.insertStep(step)
 
-                // Сохраняем ингредиенты шага
                 stepData.ingredients.forEach { stepIngredient ->
                     val ingredientId = ingredientNameToId[stepIngredient.name]
                     if (ingredientId != null) {

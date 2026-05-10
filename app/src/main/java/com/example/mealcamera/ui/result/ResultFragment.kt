@@ -10,18 +10,21 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
+import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.data.model.EditableIngredient
 import com.example.mealcamera.databinding.ActivityResultBinding
 import com.example.mealcamera.ui.SharedViewModel
 import com.example.mealcamera.ui.catalog.IngredientCatalogActivity
 import com.example.mealcamera.ui.home.RecipeAdapter
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class ResultFragment : Fragment() {
@@ -46,19 +49,27 @@ class ResultFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             val selectedNames = result.data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
             val currentList = viewModel.editableIngredients.value.toMutableList()
-            
+
+            // 1. Удаляем ингредиенты, которые больше не выбраны в каталоге
+            val normalizedSelected = selectedNames.map { it.trim().lowercase().replace("ё", "е") }.toSet()
+            currentList.removeAll { ing ->
+                !normalizedSelected.contains(ing.name.trim().lowercase().replace("ё", "е"))
+            }
+
+            // 2. Добавляем новые, которых не было
             selectedNames.forEach { name ->
-                if (currentList.none { it.name.equals(name, ignoreCase = true) }) {
+                val isAlreadyPresent = currentList.any { it.name.equals(name, ignoreCase = true) }
+                if (!isAlreadyPresent) {
                     currentList.add(EditableIngredient(
                         id = System.currentTimeMillis() + name.hashCode(),
                         name = name,
                         quantity = "1",
-                        unit = "г"
+                        unit = UnitHelper.getDefaultUnit(name)
                     ))
                 }
             }
+
             viewModel.addIngredients(currentList)
-            Toast.makeText(requireContext(), "Ингредиенты добавлены", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -69,20 +80,21 @@ class ResultFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
-        setupToolbar()
+
+        setupNavigation()
         setupRecyclerViews()
         setupPortionControls()
         observeViewModels()
 
-        val session = sharedViewModel.activeSession.value
-        if (session != null) {
-            viewModel.restoreSession(session.ingredients, session.portions)
+        sharedViewModel.activeSession.value?.let { session ->
+            if (viewModel.editableIngredients.value.isEmpty()) {
+                viewModel.restoreSession(session.ingredients, session.portions)
+            }
         }
     }
 
-    private fun setupToolbar() {
-        binding.toolbar.setNavigationOnClickListener {
+    private fun setupNavigation() {
+        binding.btnBack.setOnClickListener {
             findNavController().popBackStack()
         }
     }
@@ -90,50 +102,43 @@ class ResultFragment : Fragment() {
     private fun setupRecyclerViews() {
         perfectAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { _, _ -> }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
         )
         oneMissingAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { _, _ -> }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
         )
         twoMissingAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { _, _ -> }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
         )
 
         binding.perfectMatchRecyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), 2)
             adapter = perfectAdapter
-            isNestedScrollingEnabled = false
         }
         binding.oneMissingRecyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), 2)
             adapter = oneMissingAdapter
-            isNestedScrollingEnabled = false
         }
         binding.twoMissingRecyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), 2)
             adapter = twoMissingAdapter
-            isNestedScrollingEnabled = false
         }
 
         editableAdapter = EditableIngredientAdapter(
-            ingredients = mutableListOf(),
             onDeleteClick = { viewModel.removeIngredient(it) },
-            onUpdateClick = { viewModel.updateIngredient(it) },
-            fragmentActivity = requireActivity()
+            onUpdateClick = { viewModel.updateIngredient(it) }
         )
-        binding.editableIngredientsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-        binding.editableIngredientsRecyclerView.adapter = editableAdapter
+        binding.editableIngredientsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = editableAdapter
+        }
     }
 
     private fun setupPortionControls() {
         binding.btnPlusPortion.setOnClickListener { viewModel.setPortions(viewModel.portions.value + 1) }
         binding.btnMinusPortion.setOnClickListener { viewModel.setPortions(viewModel.portions.value - 1) }
-        
-        binding.btnApplyFilters.setOnClickListener {
-            viewModel.findRecipes(viewModel.editableIngredients.value)
-        }
 
         binding.btnAddIngredient.setOnClickListener {
             val intent = Intent(requireContext(), IngredientCatalogActivity::class.java).apply {
@@ -144,48 +149,81 @@ class ResultFragment : Fragment() {
         }
 
         binding.btnResetSession.setOnClickListener {
-            sharedViewModel.endSession()
-            findNavController().navigate(R.id.navigation_camera)
+            viewModel.resetIngredientsOnly()
         }
     }
 
     private fun observeViewModels() {
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.editableIngredients.collect { list ->
-                editableAdapter.updateIngredients(list)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.editableIngredients.collectLatest { list ->
+                        editableAdapter.submitList(list)
+                        if (list.isEmpty()) {
+                            binding.tvNoResults.visibility = View.GONE
+                        }
+                    }
+                }
+
+                launch {
+                    viewModel.portions.collect { binding.tvPortions.text = it.toString() }
+                }
+
+                launch {
+                    viewModel.isSearching.collect { isSearching ->
+                        binding.searchProgressBar.visibility = if (isSearching) View.VISIBLE else View.GONE
+                    }
+                }
+
+                launch {
+                    viewModel.errorEvents.collect { message ->
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                launch {
+                    viewModel.perfectRecipes.collectLatest { list ->
+                        perfectAdapter.submitList(list)
+                        binding.tvPerfectMatchHeader.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        binding.perfectMatchRecyclerView.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        updateNoResultsVisibility()
+                    }
+                }
+
+                launch {
+                    viewModel.oneMissingRecipes.collectLatest { list ->
+                        oneMissingAdapter.submitList(list)
+                        binding.tvOneMissingHeader.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        binding.oneMissingRecyclerView.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        updateNoResultsVisibility()
+                    }
+                }
+
+                launch {
+                    viewModel.twoMissingRecipes.collectLatest { list ->
+                        twoMissingAdapter.submitList(list)
+                        binding.tvTwoMissingHeader.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        binding.twoMissingRecyclerView.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        updateNoResultsVisibility()
+                    }
+                }
             }
         }
+    }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.portions.collect { binding.tvPortions.text = "Порции: $it" }
-        }
+    private fun updateNoResultsVisibility() {
+        val hasIngredients = viewModel.editableIngredients.value.isNotEmpty()
+        val isEmpty = viewModel.perfectRecipes.value.isEmpty() &&
+                viewModel.oneMissingRecipes.value.isEmpty() &&
+                viewModel.twoMissingRecipes.value.isEmpty()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            combine(viewModel.perfectRecipes, viewModel.oneMissingRecipes, viewModel.twoMissingRecipes) { p, o, t ->
-                Triple(p, o, t)
-            }.collect { (p, o, t) ->
-                perfectAdapter.submitList(p)
-                oneMissingAdapter.submitList(o)
-                twoMissingAdapter.submitList(t)
-
-                binding.tvPerfectMatchHeader.visibility = if (p.isNotEmpty()) View.VISIBLE else View.GONE
-                binding.perfectMatchRecyclerView.visibility = if (p.isNotEmpty()) View.VISIBLE else View.GONE
-                
-                binding.tvOneMissingHeader.visibility = if (o.isNotEmpty()) View.VISIBLE else View.GONE
-                binding.oneMissingRecyclerView.visibility = if (o.isNotEmpty()) View.VISIBLE else View.GONE
-                
-                binding.tvTwoMissingHeader.visibility = if (t.isNotEmpty()) View.VISIBLE else View.GONE
-                binding.twoMissingRecyclerView.visibility = if (t.isNotEmpty()) View.VISIBLE else View.GONE
-                
-                val isEmpty = p.isEmpty() && o.isEmpty() && t.isEmpty()
-                binding.tvNoResults.visibility = if (isEmpty) View.VISIBLE else View.GONE
-            }
-        }
+        binding.tvNoResults.visibility = if (hasIngredients && isEmpty && !viewModel.isSearching.value) View.VISIBLE else View.GONE
     }
 
     private fun navigateToDetail(recipeId: Long) {
         val intent = Intent(requireContext(), com.example.mealcamera.ui.detail.RecipeDetailActivity::class.java).apply {
             putExtra(com.example.mealcamera.ui.detail.RecipeDetailActivity.EXTRA_RECIPE_ID, recipeId)
+            putExtra("from_results", true)
         }
         startActivity(intent)
     }

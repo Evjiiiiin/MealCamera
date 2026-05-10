@@ -5,37 +5,39 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/background_main">
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_host_fragment"
         android:name="androidx.navigation.fragment.NavHostFragment"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="match_parent"
         app:defaultNavHost="true"
-        app:navGraph="@navigation/nav_graph"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavCard" />
+        app:navGraph="@navigation/nav_graph" />
 
-    <!-- Нижнее меню -->
+    <!-- Нижнее меню с эффектом стекла -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/bottomNavCard"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="72dp"
         android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="24dp"
-        app:cardCornerRadius="32dp"
-        app:cardElevation="8dp"
+        app:cardCornerRadius="36dp"
+        app:cardElevation="12dp"
+        app:cardBackgroundColor="@color/nav_glass_background"
+        app:strokeWidth="1dp"
+        app:strokeColor="#1A000000"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigationView"
+            style="@style/Widget_MealCamera_BottomNavigationView"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
+            android:layout_height="match_parent"
             android:background="@android:color/transparent"
             app:elevation="0dp"
-            app:itemIconTint="@color/bottom_nav_color"
-            app:itemTextColor="@color/bottom_nav_color"
+            app:itemIconTint="@color/icon_tint"
+            app:itemRippleColor="@color/color_primary_variant"
             app:labelVisibilityMode="unlabeled"
             app:menu="@menu/bottom_navigation_menu" />
 

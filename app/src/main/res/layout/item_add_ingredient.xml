@@ -5,78 +5,61 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="8dp">
+    android:paddingVertical="8dp">
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/layoutIngredientName"
+        style="@style/Widget_MealCamera_TextInputLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="2"
-        android:layout_marginEnd="4dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
+        android:layout_weight="1"
+        android:layout_marginEnd="8dp"
+        android:hint="Ингредиент">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etIngredientName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Ингредиент" />
+            android:inputType="textCapSentences"
+            android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/layoutIngredientQuantity"
-        android:layout_width="0dp"
+        style="@style/Widget_MealCamera_TextInputLayout"
+        android:layout_width="70dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:layout_marginEnd="4dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
+        android:hint="Кол-во">
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etIngredientQuantity"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Кол-во"
-            android:inputType="numberDecimal" />
+            android:inputType="numberDecimal"
+            android:textSize="16sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
-    <LinearLayout
-        android:id="@+id/unit_container"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@drawable/rounded_edittext_background"
-        android:clickable="true"
-        android:focusable="true"
-        android:paddingHorizontal="8dp"
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget_MealCamera_TextInputLayout_ExposedDropdownMenu"
+        android:layout_width="110dp"
+        android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
-        android:layout_marginTop="6dp">
-
-        <TextView
+        android:hint="Мера">
+        <AutoCompleteTextView
             android:id="@+id/tvIngredientUnit"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="г"
-            android:textColor="?android:attr/textColorPrimary"
-            android:textSize="14sp"
-            android:maxLines="1" />
-
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:src="@drawable/ic_arrow_drop_down"
-            app:tint="?android:attr/textColorSecondary" />
-
-    </LinearLayout>
+            android:inputType="none"
+            android:paddingHorizontal="8dp"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
 
     <ImageButton
         android:id="@+id/btnRemoveIngredient"
         android:layout_width="40dp"
         android:layout_height="40dp"
-        android:layout_gravity="center_vertical"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_close"
+        android:src="@drawable/ic_close_outlined"
         app:tint="@color/red_error"
-        android:contentDescription="Remove ingredient" />
+        android:contentDescription="Удалить" />
+
 </LinearLayout>

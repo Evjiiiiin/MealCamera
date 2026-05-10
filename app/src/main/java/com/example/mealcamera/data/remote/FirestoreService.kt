@@ -2,6 +2,7 @@ package com.example.mealcamera.data.remote
 
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -12,6 +13,7 @@ class FirestoreService {
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val recipesCollection = db.collection("recipes")
     private val ingredientsCollection = db.collection("ingredients")
+    private val usersCollection = db.collection("users")
 
     private fun anyToString(value: Any?): String {
         return when (value) {
@@ -26,16 +28,64 @@ class FirestoreService {
         }
     }
 
+    // ========== ПОЛЬЗОВАТЕЛИ ==========
+
+    suspend fun saveUserProfile(userId: String, name: String, photoUrl: String, yandexId: String? = null): Boolean {
+        return try {
+            val data = mutableMapOf<String, Any>(
+                "displayName" to name,
+                "photoUrl" to photoUrl,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            yandexId?.let { data["yandexId"] = it }
+            
+            usersCollection.document(userId).set(data, com.google.firebase.firestore.SetOptions.merge()).await()
+            Log.d("FirestoreService", "Профиль сохранён: name=$name, yandexId=$yandexId")
+            true
+        } catch (e: Exception) {
+            Log.e("FirestoreService", "Ошибка сохранения профиля", e)
+            false
+        }
+    }
+
+    suspend fun getUserProfile(userId: String): Map<String, Any>? {
+        return try {
+            val doc = usersCollection.document(userId).get().await()
+            if (doc.exists()) doc.data else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun saveCookingHistory(userId: String, recipeId: Long, recipeName: String): Boolean {
+        return try {
+            val historyData = mapOf(
+                "recipeId" to recipeId,
+                "recipeName" to recipeName,
+                "cookedAt" to System.currentTimeMillis()
+            )
+            usersCollection.document(userId)
+                .collection("cooking_history")
+                .add(historyData)
+                .await()
+            true
+        } catch (e: Exception) { false }
+    }
+
+    suspend fun getCookingHistory(userId: String): List<Map<String, Any>> {
+        return try {
+            val snapshot = usersCollection.document(userId)
+                .collection("cooking_history")
+                .orderBy("cookedAt", Query.Direction.DESCENDING)
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { it.data }
+        } catch (e: Exception) { emptyList() }
+    }
+
     // ========== ИНГРЕДИЕНТЫ ==========
 
-    /**
-     * Получить все ингредиенты из Firestore
-     */
     suspend fun getAllIngredients(): List<CloudIngredientData> {
         return try {
             val snapshot = ingredientsCollection.get().await()
-            Log.d("FirestoreService", "🔥 Loaded ${snapshot.documents.size} ingredients from Firebase")
-
             snapshot.documents.mapNotNull { document ->
                 try {
                     val name = document.getString("name") ?: return@mapNotNull null
@@ -48,21 +98,11 @@ class FirestoreService {
                         isAlwaysAvailable = isAlwaysAvailable,
                         isCoreIngredient = isCoreIngredient
                     )
-                } catch (e: Exception) {
-                    Log.e("FirestoreService", "Error parsing ingredient ${document.id}", e)
-                    null
-                }
+                } catch (e: Exception) { null }
             }
-
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error loading ingredients", e)
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 
-    /**
-     * Добавить новый ингредиент в Firestore
-     */
     suspend fun addIngredient(ingredient: CloudIngredientData): Boolean {
         return try {
             val data = mapOf(
@@ -70,45 +110,16 @@ class FirestoreService {
                 "isAlwaysAvailable" to ingredient.isAlwaysAvailable,
                 "isCoreIngredient" to ingredient.isCoreIngredient
             )
-            // Используем имя как ID для уникальности
             ingredientsCollection.document(ingredient.name).set(data).await()
-            Log.d("FirestoreService", "✅ Added ingredient: ${ingredient.name}")
             true
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error adding ingredient", e)
-            false
-        }
-    }
-
-    /**
-     * Обновить ингредиент
-     */
-    suspend fun updateIngredient(ingredient: CloudIngredientData): Boolean {
-        return try {
-            val data = mapOf(
-                "name" to ingredient.name,
-                "isAlwaysAvailable" to ingredient.isAlwaysAvailable,
-                "isCoreIngredient" to ingredient.isCoreIngredient
-            )
-            ingredientsCollection.document(ingredient.id).set(data).await()
-            Log.d("FirestoreService", "✅ Updated ingredient: ${ingredient.name}")
-            true
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error updating ingredient", e)
-            false
-        }
+        } catch (e: Exception) { false }
     }
 
     // ========== РЕЦЕПТЫ ==========
 
-    /**
-     * Получить все рецепты из Firestore
-     */
     suspend fun getAllRecipes(): List<RecipeData> {
         return try {
             val snapshot = recipesCollection.get().await()
-            Log.d("FirestoreService", "🔥 Loaded ${snapshot.documents.size} recipes from Firebase")
-
             snapshot.documents.mapNotNull { document ->
                 try {
                     val name = document.getString("name") ?: ""
@@ -120,7 +131,8 @@ class FirestoreService {
                     val authorId = document.getString("authorId") ?: "admin"
                     val isPublic = document.getBoolean("isPublic") ?: true
 
-                    // Получаем ингредиенты как список
+                    val totalWeight = document.getLong("totalWeight")?.toInt() ?: 0
+
                     val ingredientsList = mutableListOf<CloudIngredient>()
                     val ingredientsField = document.get("ingredients")
                     if (ingredientsField is List<*>) {
@@ -136,7 +148,6 @@ class FirestoreService {
                         }
                     }
 
-                    // Получаем шаги как список структурированных данных
                     val stepsList = mutableListOf<StepData>()
                     val stepsField = document.get("steps")
                     if (stepsField is List<*>) {
@@ -160,7 +171,6 @@ class FirestoreService {
                                         }
                                     }
                                 }
-
                                 stepsList.add(
                                     StepData(
                                         title = step["title"] as? String ?: "",
@@ -168,17 +178,6 @@ class FirestoreService {
                                         timerMinutes = (step["timerMinutes"] as? Number)?.toInt() ?: 0,
                                         imagePath = step["imagePath"] as? String ?: "",
                                         ingredients = ingredients
-                                    )
-                                )
-                            } else if (step is String) {
-                                // Поддержка старого формата, где шаги были просто строками
-                                stepsList.add(
-                                    StepData(
-                                        title = "Шаг",
-                                        description = step,
-                                        timerMinutes = 0,
-                                        imagePath = "",
-                                        ingredients = emptyList()
                                     )
                                 )
                             }
@@ -197,28 +196,20 @@ class FirestoreService {
                         ingredients = ingredientsList,
                         steps = stepsList,
                         authorId = authorId,
-                        isPublic = isPublic
+                        isPublic = isPublic,
+                        calories = document.getLong("calories")?.toInt() ?: 0,
+                        proteins = document.getDouble("proteins") ?: 0.0,
+                        fats = document.getDouble("fats") ?: 0.0,
+                        carbs = document.getDouble("carbs") ?: 0.0,
+                        totalWeight = totalWeight
                     )
 
-                    RecipeData(
-                        id = document.id,
-                        recipe = cloudRecipe
-                    )
-                } catch (e: Exception) {
-                    Log.e("FirestoreService", "Error parsing document ${document.id}", e)
-                    null
-                }
+                    RecipeData(id = document.id, recipe = cloudRecipe)
+                } catch (e: Exception) { null }
             }
-
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error loading recipes", e)
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 
-    /**
-     * Добавить новый рецепт
-     */
     suspend fun addRecipe(recipe: CloudRecipe): String? {
         return try {
             val data = mapOf(
@@ -232,12 +223,13 @@ class FirestoreService {
                 "cuisineCode" to recipe.cuisineCode,
                 "authorId" to recipe.authorId,
                 "isPublic" to recipe.isPublic,
+                "calories" to recipe.calories,
+                "proteins" to recipe.proteins,
+                "fats" to recipe.fats,
+                "carbs" to recipe.carbs,
+                "totalWeight" to recipe.totalWeight,
                 "ingredients" to recipe.ingredients.map {
-                    mapOf(
-                        "name" to it.name,
-                        "quantity" to it.quantity,
-                        "unit" to it.unit
-                    )
+                    mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                 },
                 "steps" to recipe.steps.map { step ->
                     mapOf(
@@ -246,27 +238,16 @@ class FirestoreService {
                         "timerMinutes" to step.timerMinutes,
                         "imagePath" to step.imagePath,
                         "ingredients" to step.ingredients.map {
-                            mapOf(
-                                "name" to it.name,
-                                "quantity" to it.quantity,
-                                "unit" to it.unit
-                            )
+                            mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                         }
                     )
                 }
             )
             val docRef = recipesCollection.add(data).await()
-            Log.d("FirestoreService", "✅ Added recipe: ${recipe.name} with ID: ${docRef.id}")
             docRef.id
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error adding recipe", e)
-            null
-        }
+        } catch (e: Exception) { null }
     }
 
-    /**
-     * Обновить рецепт
-     */
     suspend fun updateRecipe(recipeId: String, recipe: CloudRecipe): Boolean {
         return try {
             val data = mapOf(
@@ -280,12 +261,13 @@ class FirestoreService {
                 "cuisineCode" to recipe.cuisineCode,
                 "authorId" to recipe.authorId,
                 "isPublic" to recipe.isPublic,
+                "calories" to recipe.calories,
+                "proteins" to recipe.proteins,
+                "fats" to recipe.fats,
+                "carbs" to recipe.carbs,
+                "totalWeight" to recipe.totalWeight,
                 "ingredients" to recipe.ingredients.map {
-                    mapOf(
-                        "name" to it.name,
-                        "quantity" to it.quantity,
-                        "unit" to it.unit
-                    )
+                    mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                 },
                 "steps" to recipe.steps.map { step ->
                     mapOf(
@@ -294,115 +276,61 @@ class FirestoreService {
                         "timerMinutes" to step.timerMinutes,
                         "imagePath" to step.imagePath,
                         "ingredients" to step.ingredients.map {
-                            mapOf(
-                                "name" to it.name,
-                                "quantity" to it.quantity,
-                                "unit" to it.unit
-                            )
+                            mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                         }
                     )
                 }
             )
             recipesCollection.document(recipeId).set(data).await()
-            Log.d("FirestoreService", "✅ Updated recipe: ${recipe.name}")
             true
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error updating recipe", e)
-            false
-        }
+        } catch (e: Exception) { false }
     }
 
-    /**
-     * Удалить рецепт
-     */
     suspend fun deleteRecipe(recipeId: String): Boolean {
         return try {
             recipesCollection.document(recipeId).delete().await()
-            Log.d("FirestoreService", "✅ Deleted recipe with ID: $recipeId")
             true
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error deleting recipe", e)
-            false
-        }
+        } catch (e: Exception) { false }
     }
 
-    // ========== ЗАГРУЗКА НАЧАЛЬНЫХ ДАННЫХ ==========
-
-    /**
-     * Загрузить начальные данные из JSON в Firestore
-     * Вызывается только при первом запуске
-     */
     suspend fun uploadInitialData(
         ingredients: List<CloudIngredientData>,
         recipes: List<CloudRecipe>
     ) {
         try {
-            // 1. Загружаем ингредиенты
-            Log.d("FirestoreService", "📤 Uploading ${ingredients.size} ingredients...")
-            var ingredientsUploaded = 0
-            for (ingredient in ingredients) {
-                val success = addIngredient(ingredient)
-                if (success) ingredientsUploaded++
-            }
-            Log.d("FirestoreService", "✅ Uploaded $ingredientsUploaded/${ingredients.size} ingredients")
-
-            // 2. Загружаем рецепты
-            Log.d("FirestoreService", "📤 Uploading ${recipes.size} recipes...")
-            var recipesUploaded = 0
-            for (recipe in recipes) {
-                val id = addRecipe(recipe)
-                if (id != null) recipesUploaded++
-            }
-            Log.d("FirestoreService", "✅ Uploaded $recipesUploaded/${recipes.size} recipes")
-
+            for (ingredient in ingredients) { addIngredient(ingredient) }
+            for (recipe in recipes) { addRecipe(recipe) }
         } catch (e: Exception) {
             Log.e("FirestoreService", "❌ Error uploading initial data", e)
         }
     }
 
-    /**
-     * Проверить, есть ли уже данные в Firestore
-     */
     suspend fun hasData(): Boolean {
         return try {
             val ingredientsSnapshot = ingredientsCollection.limit(1).get().await()
             val recipesSnapshot = recipesCollection.limit(1).get().await()
             (ingredientsSnapshot.documents.isNotEmpty() || recipesSnapshot.documents.isNotEmpty())
         } catch (e: Exception) {
-            Log.e("FirestoreService", "Error checking data", e)
+            Log.e("FirestoreService", "hasData error", e)
             false
         }
     }
 
-    // ========== ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ ==========
-
-    /**
-     * Получить список аллергенов пользователя
-     */
     suspend fun getUserAllergens(userId: String): List<String> {
         return try {
-            val doc = db.collection("users").document(userId).get().await()
+            val doc = usersCollection.document(userId).get().await()
             val allergensObj = doc.get("allergens")
             when (allergensObj) {
                 is List<*> -> allergensObj.filterIsInstance<String>()
                 else -> emptyList()
             }
-        } catch (e: Exception) {
-            Log.e("FirestoreService", "Error getting allergens for user $userId", e)
-            emptyList()
-        }
+        } catch (e: Exception) { emptyList() }
     }
 
-    /**
-     * Получить Flow аллергенов пользователя (в реальном времени)
-     */
     fun getUserAllergensFlow(userId: String): Flow<List<String>> = callbackFlow {
-        val listener = db.collection("users").document(userId)
+        val listener = usersCollection.document(userId)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("FirestoreService", "Error listening for allergens", error)
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 if (snapshot != null && snapshot.exists()) {
                     val allergensObj = snapshot.get("allergens")
                     val allergens = when (allergensObj) {
@@ -417,8 +345,6 @@ class FirestoreService {
         awaitClose { listener.remove() }
     }
 }
-
-// ========== DATA CLASSES ==========
 
 data class RecipeData(
     val id: String,
@@ -437,7 +363,12 @@ data class CloudRecipe(
     val ingredients: List<CloudIngredient> = emptyList(),
     val steps: List<StepData> = emptyList(),
     val authorId: String = "admin",
-    val isPublic: Boolean = true
+    val isPublic: Boolean = true,
+    val calories: Int = 0,
+    val proteins: Double = 0.0,
+    val fats: Double = 0.0,
+    val carbs: Double = 0.0,
+    val totalWeight: Int = 0
 )
 
 data class StepData(

@@ -9,7 +9,8 @@ import com.example.mealcamera.data.model.ShoppingListItem
 import com.example.mealcamera.databinding.ItemShoppingListBinding
 
 class ShoppingListAdapter(
-    private val onCheckedChanged: (ShoppingListItem, Boolean) -> Unit
+    private val onCheckedChanged: (ShoppingListItem, Boolean) -> Unit,
+    private val onRemoveItem: (ShoppingListItem) -> Unit
 ) : ListAdapter<ShoppingListItem, ShoppingListAdapter.ViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -34,14 +35,16 @@ class ShoppingListAdapter(
             val unitText = item.unit.ifBlank { "шт" }
             binding.tvQuantity.text = item.quantity
             binding.tvUnit.text = unitText
+            
+            // Отключаем слушатель перед установкой значения, чтобы избежать зацикливания
+            binding.checkbox.setOnCheckedChangeListener(null)
             binding.checkbox.isChecked = item.isChecked
 
             binding.checkbox.setOnCheckedChangeListener { _, isChecked ->
                 onCheckedChanged(item, isChecked)
             }
             binding.btnRemove.setOnClickListener {
-                // Удаление через отметку checked
-                onCheckedChanged(item, true)
+                onRemoveItem(item)
             }
         }
     }

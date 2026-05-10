@@ -21,6 +21,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
     fun getRecipeById(recipeId: Long): Flow<Recipe>
 
+    @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
+    suspend fun getRecipeByIdSync(recipeId: Long): Recipe?
+
     @Query("SELECT recipeId FROM recipes WHERE firestoreId = :firestoreId LIMIT 1")
     suspend fun getRecipeIdByFirestoreId(firestoreId: String): Long?
 
@@ -58,6 +61,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_ingredient_cross_ref WHERE recipeId = :recipeId AND ingredientId = :ingredientId")
     suspend fun getCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef?
 
+    @Query("SELECT * FROM recipe_ingredient_cross_ref")
+    suspend fun getAllCrossRefs(): List<RecipeIngredientCrossRef>
+
     @Query("DELETE FROM recipe_ingredient_cross_ref WHERE recipeId = :recipeId")
     suspend fun deleteCrossRefsByRecipeId(recipeId: Long)
 
@@ -68,6 +74,9 @@ interface RecipeDao {
 
     @Query("SELECT * FROM recipe_steps WHERE recipeId = :recipeId ORDER BY stepNumber ASC")
     fun getStepsByRecipeId(recipeId: Long): Flow<List<RecipeStep>>
+
+    @Query("SELECT * FROM recipe_steps WHERE recipeId = :recipeId ORDER BY stepNumber ASC")
+    suspend fun getStepsByRecipeIdSync(recipeId: Long): List<RecipeStep>
 
     @Query("DELETE FROM recipe_steps WHERE recipeId = :recipeId")
     suspend fun deleteStepsByRecipeId(recipeId: Long)
@@ -99,6 +108,10 @@ interface RecipeDao {
     @Transaction
     @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
     fun getRecipeWithIngredientsById(recipeId: Long): Flow<RecipeWithIngredients>
+
+    @Transaction
+    @Query("SELECT * FROM recipes WHERE recipeId = :recipeId")
+    suspend fun getRecipeWithIngredientsByIdSync(recipeId: Long): RecipeWithIngredients?
 
     @Transaction
     @Query("SELECT * FROM recipe_steps WHERE recipeId = :recipeId ORDER BY stepNumber ASC")

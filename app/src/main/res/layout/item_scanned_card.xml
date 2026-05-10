@@ -4,22 +4,21 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="120dp"
-    android:layout_height="140dp"
+    android:layout_height="150dp"
     android:layout_marginEnd="12dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
-    app:cardBackgroundColor="@color/white">
+    style="@style/Widget_MealCamera_Card">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/ivIngredient"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
+            android:layout_height="90dp"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_recipe_placeholder"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Medium"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
@@ -29,7 +28,7 @@
             android:layout_margin="8dp"
             android:ellipsize="end"
             android:maxLines="2"
-            android:textColor="@color/black"
+            android:textColor="@color/text_main"
             android:textSize="12sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -42,14 +41,14 @@
             android:id="@+id/btnRemove"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_margin="4dp"
+            android:layout_margin="6dp"
             android:background="@drawable/circle_background_gray"
             android:padding="6dp"
-            android:src="@drawable/ic_close"
+            android:src="@drawable/ic_close_outlined"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/white" />
+            app:tint="@color/white"
+            android:contentDescription="Удалить" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </com.google.android.material.card.MaterialCardView>
