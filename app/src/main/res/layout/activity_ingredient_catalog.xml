@@ -68,7 +68,7 @@
             android:paddingEnd="48dp"
             android:singleLine="true"
             android:textColor="@color/text_main"
-            android:textColorHint="@color/gray_text"
+            android:textColorHint="@color/placeholder"
             android:textSize="16sp" />
     </FrameLayout>
 

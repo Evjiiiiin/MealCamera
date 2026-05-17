@@ -1,10 +1,11 @@
 package com.example.mealcamera.ui.home
 
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.view.ContextThemeWrapper
+import androidx.core.content.ContextCompat
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.FilterState
 import com.example.mealcamera.databinding.BottomSheetFiltersBinding
@@ -23,16 +24,16 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
     private var _binding: BottomSheetFiltersBinding? = null
     private val binding get() = _binding!!
 
-    private val categories = listOf("Все", "Завтрак", "Обед", "Ужин", "Десерт", "Напитки", "Перекус")
-    private val cuisines = listOf("Все кухни", "Русская", "Итальянская", "Испанская", "Французская", "Американская", "Азиатская")
-
     companion object {
         private const val ARG_FILTERS = "arg_filters"
+        private const val DEFAULT_CATEGORY = "Все"
+        private const val DEFAULT_CUISINE = "Все кухни"
+        private const val FILTER_CHIP_STROKE_WIDTH_DP = 1f
 
         fun newInstance(filters: FilterState): FilterBottomSheetFragment {
             return FilterBottomSheetFragment().apply {
                 arguments = Bundle().apply {
-                    putSerializable(ARG_FILTERS, filters as? Serializable)
+                    putSerializable(ARG_FILTERS, filters as Serializable)
                 }
             }
         }
@@ -51,11 +52,12 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
-        initAllChipGroups()
+
+        setupChipGroups()
         setupSliders()
         restoreFiltersState()
-        
+        binding.root.post { refreshChipAppearances() }
+
         binding.tvResetFilters.setOnClickListener { resetFilters() }
         binding.btnApply.setOnClickListener { applyAndDismiss() }
     }
@@ -65,23 +67,117 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
         (dialog as? BottomSheetDialog)?.behavior?.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
-    private fun initAllChipGroups() {
-        fillGroup(binding.categoryChipGroup, categories)
-        fillGroup(binding.cuisineChipGroup, cuisines)
+    private fun setupChipGroups() {
+        setupChipGroup(binding.categoryChipGroup, DEFAULT_CATEGORY)
+        setupChipGroup(binding.cuisineChipGroup, DEFAULT_CUISINE)
     }
 
-    private fun fillGroup(group: ChipGroup, list: List<String>) {
-        group.removeAllViews()
-        list.forEach { title ->
-            // Применяем стиль Widget_MealCamera_FilterChip через ContextThemeWrapper
-            val themedContext = ContextThemeWrapper(requireContext(), R.style.Widget_MealCamera_FilterChip)
-            val chip = Chip(themedContext).apply {
-                text = title
-                isCheckable = true
-                setEnsureMinTouchTargetSize(true)
+    private fun setupChipGroup(group: ChipGroup, defaultText: String) {
+        for (i in 0 until group.childCount) {
+            val chip = group.getChildAt(i) as? Chip ?: continue
+            chip.isCheckable = true
+            chip.checkedIcon = null
+            chip.isCheckedIconVisible = false
+            chip.setEnsureMinTouchTargetSize(true)
+            chip.elevation = 0f
+            chip.translationZ = 0f
+            chip.stateListAnimator = null
+            chip.updateFilterChipAppearance(isChecked = false)
+            chip.setOnCheckedChangeListener { buttonView, isChecked ->
+                val changedChip = buttonView as Chip
+                handleChipCheckedChange(group, changedChip, isChecked, defaultText)
             }
-            group.addView(chip)
         }
+    }
+
+    private fun handleChipCheckedChange(
+        group: ChipGroup,
+        changedChip: Chip,
+        isChecked: Boolean,
+        defaultText: String
+    ) {
+        val isDefaultChip = changedChip.text.toString() == defaultText
+
+        if (isDefaultChip && isChecked) {
+            uncheckNonDefaultChips(group, defaultText)
+        }
+
+        if (!isDefaultChip && isChecked) {
+            findChipByText(group, defaultText)?.isChecked = false
+        }
+
+        if (!hasCheckedNonDefaultChips(group, defaultText) && !isDefaultChip) {
+            findChipByText(group, defaultText)?.isChecked = true
+        }
+
+        if (isDefaultChip && !isChecked && !hasCheckedNonDefaultChips(group, defaultText)) {
+            changedChip.isChecked = true
+            return
+        }
+
+        refreshChipGroupAppearance(group)
+    }
+
+    private fun uncheckNonDefaultChips(group: ChipGroup, defaultText: String) {
+        for (i in 0 until group.childCount) {
+            val chip = group.getChildAt(i) as? Chip ?: continue
+            if (chip.text.toString() != defaultText && chip.isChecked) {
+                chip.isChecked = false
+            }
+        }
+    }
+
+    private fun hasCheckedNonDefaultChips(group: ChipGroup, defaultText: String): Boolean {
+        for (i in 0 until group.childCount) {
+            val chip = group.getChildAt(i) as? Chip ?: continue
+            if (chip.text.toString() != defaultText && chip.isChecked) return true
+        }
+        return false
+    }
+
+    private fun findChipByText(group: ChipGroup, text: String): Chip? {
+        for (i in 0 until group.childCount) {
+            val chip = group.getChildAt(i) as? Chip ?: continue
+            if (chip.text.toString() == text) return chip
+        }
+        return null
+    }
+
+    private val filterChipStrokeWidthPx: Float
+        get() = FILTER_CHIP_STROKE_WIDTH_DP * resources.displayMetrics.density
+
+    private fun refreshChipAppearances() {
+        refreshChipGroupAppearance(binding.categoryChipGroup)
+        refreshChipGroupAppearance(binding.cuisineChipGroup)
+    }
+
+    private fun refreshChipGroupAppearance(group: ChipGroup) {
+        for (i in 0 until group.childCount) {
+            (group.getChildAt(i) as? Chip)?.let { chip ->
+                chip.updateFilterChipAppearance(chip.isChecked)
+            }
+        }
+    }
+
+    private fun Chip.updateFilterChipAppearance(isChecked: Boolean) {
+        val backgroundColor = ContextCompat.getColor(
+            context,
+            if (isChecked) R.color.color_primary else R.color.surface_card
+        )
+        val strokeColor = ContextCompat.getColor(
+            context,
+            if (isChecked) android.R.color.transparent else R.color.border_light
+        )
+        val textColor = ContextCompat.getColor(
+            context,
+            if (isChecked) R.color.color_on_primary else R.color.text_main
+        )
+
+        chipBackgroundColor = ColorStateList.valueOf(backgroundColor)
+        chipStrokeColor = ColorStateList.valueOf(strokeColor)
+        setTextColor(textColor)
+        chipStrokeWidth = if (isChecked) 0f else filterChipStrokeWidthPx
+        invalidate()
     }
 
     private fun setupSliders() {
@@ -100,15 +196,12 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     private fun restoreFiltersState() {
-        checkChips(binding.categoryChipGroup, currentFilters.selectedCategories, "Все")
-        checkChips(binding.cuisineChipGroup, currentFilters.selectedCuisines, "Все кухни")
+        checkChips(binding.categoryChipGroup, currentFilters.selectedCategories, DEFAULT_CATEGORY)
+        checkChips(binding.cuisineChipGroup, currentFilters.selectedCuisines, DEFAULT_CUISINE)
 
-        currentFilters.prepTimeRange?.let { 
-            binding.sliderPrepTime.values = listOf(it.start, it.endInclusive) 
-        }
-        currentFilters.caloriesRange?.let { 
-            binding.sliderCalories.values = listOf(it.start, it.endInclusive) 
-        }
+        binding.sliderPrepTime.values = listOf(currentFilters.minPrepTime, currentFilters.maxPrepTime)
+        binding.sliderCalories.values = listOf(currentFilters.minCalories, currentFilters.maxCalories)
+        
         updateLabels()
     }
 
@@ -117,6 +210,7 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
             val chip = group.getChildAt(i) as Chip
             val txt = chip.text.toString()
             chip.isChecked = if (selected.isEmpty()) txt == default else selected.contains(txt)
+            chip.updateFilterChipAppearance(chip.isChecked)
         }
     }
 
@@ -136,10 +230,12 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
 
     private fun applyAndDismiss() {
         val st = FilterState(
-            selectedCategories = getSelected(binding.categoryChipGroup, "Все"),
-            selectedCuisines = getSelected(binding.cuisineChipGroup, "Все кухни"),
-            prepTimeRange = binding.sliderPrepTime.values.let { it[0]..it[1] },
-            caloriesRange = binding.sliderCalories.values.let { it[0]..it[1] }
+            selectedCategories = getSelected(binding.categoryChipGroup, DEFAULT_CATEGORY),
+            selectedCuisines = getSelected(binding.cuisineChipGroup, DEFAULT_CUISINE),
+            minPrepTime = binding.sliderPrepTime.values[0],
+            maxPrepTime = binding.sliderPrepTime.values[1],
+            minCalories = binding.sliderCalories.values[0],
+            maxCalories = binding.sliderCalories.values[1]
         )
         onApply?.invoke(st)
         dismiss()

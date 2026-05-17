@@ -3,19 +3,20 @@ package com.example.mealcamera.ui.home
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.mealcamera.R
+import com.example.mealcamera.data.model.MissingIngredientData
 import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.data.model.RecipeResult
 import com.example.mealcamera.databinding.ItemRecipeCardBinding
 
 class RecipeAdapter(
     private val onItemClick: (Recipe) -> Unit,
-    private val onFavoriteClick: (Recipe, Boolean) -> Unit
+    private val onFavoriteClick: (Recipe, Boolean) -> Unit,
+    private val onAddToShoppingList: ((List<MissingIngredientData>) -> Unit)? = null
 ) : ListAdapter<Any, RecipeAdapter.RecipeViewHolder>(DiffCallback()) {
 
     private var favoriteIds: Set<Long> = emptySet()
@@ -33,24 +34,34 @@ class RecipeAdapter(
     override fun onBindViewHolder(holder: RecipeViewHolder, position: Int) {
         val item = getItem(position)
         when (item) {
-            is Recipe -> holder.bind(item, null)
-            is RecipeResult -> holder.bind(item.recipe, item.missingIngredients)
+            is Recipe -> holder.bind(item, null, emptyList())
+            is RecipeResult -> holder.bind(item.recipe, item.missingIngredients, item.structuredMissingIngredients)
         }
     }
 
     inner class RecipeViewHolder(private val binding: ItemRecipeCardBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(recipe: Recipe, missingIngredients: List<String>?) {
+        fun bind(recipe: Recipe, missingIngredients: List<String>?, structuredMissing: List<MissingIngredientData>) {
             binding.recipeNameTextView.text = recipe.name
             binding.recipeTypeTextView.text = recipe.category
 
             val missingText = binding.tvMissingIngredients
+            val btnAddShopping = binding.btnAddToShoppingList
+
             if (!missingIngredients.isNullOrEmpty()) {
                 missingText.visibility = View.VISIBLE
                 missingText.text = "Не хватает: " + missingIngredients.joinToString(", ")
+                
+                if (onAddToShoppingList != null && structuredMissing.isNotEmpty()) {
+                    btnAddShopping.visibility = View.VISIBLE
+                    btnAddShopping.setOnClickListener { onAddToShoppingList.invoke(structuredMissing) }
+                } else {
+                    btnAddShopping.visibility = View.GONE
+                }
             } else {
                 missingText.visibility = View.GONE
+                btnAddShopping.visibility = View.GONE
             }
 
             val isFavorite = favoriteIds.contains(recipe.recipeId)
@@ -86,7 +97,9 @@ class RecipeAdapter(
 
         override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
             return if (oldItem is RecipeResult && newItem is RecipeResult) {
-                oldItem.recipe == newItem.recipe && oldItem.missingIngredients == newItem.missingIngredients
+                oldItem.recipe == newItem.recipe && 
+                oldItem.missingIngredients == newItem.missingIngredients &&
+                oldItem.structuredMissingIngredients == newItem.structuredMissingIngredients
             } else {
                 oldItem == newItem
             }

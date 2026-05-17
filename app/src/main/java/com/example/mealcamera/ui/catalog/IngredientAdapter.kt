@@ -8,6 +8,7 @@ import com.example.mealcamera.databinding.ItemIngredientSelectableBinding
 
 class IngredientAdapter(
     private val selectedNames: Set<String>,
+    private val userAllergens: List<String> = emptyList(),
     private val onSelectionChanged: (String, Boolean) -> Unit
 ) : RecyclerView.Adapter<IngredientAdapter.IngredientViewHolder>() {
 
@@ -18,7 +19,6 @@ class IngredientAdapter(
         return name.trim().lowercase().replace("ё", "е")
     }
 
-    // Кэшируем нормализованные выбранные имена для быстрого поиска
     private val normalizedSelectedNames: Set<String>
         get() = selectedNames.map { normalize(it) }.toSet()
 
@@ -47,11 +47,13 @@ class IngredientAdapter(
     override fun onBindViewHolder(holder: IngredientViewHolder, position: Int) {
         val ingredient = filteredItems[position]
         val normalizedName = normalize(ingredient.name)
+        val isAllergen = userAllergens.any { normalizedName.contains(it) }
 
-        holder.binding.cbIngredient.text = ingredient.name
-        holder.binding.cbIngredient.setOnCheckedChangeListener(null)
+        holder.binding.cbIngredient.text = if (isAllergen) "${ingredient.name} (Аллерген!)" else ingredient.name
+        holder.binding.cbIngredient.isEnabled = !isAllergen
+        holder.binding.cbIngredient.alpha = if (isAllergen) 0.5f else 1.0f
         
-        // Исправлено: ищем по нормализованному имени
+        holder.binding.cbIngredient.setOnCheckedChangeListener(null)
         holder.binding.cbIngredient.isChecked = normalizedSelectedNames.contains(normalizedName)
         
         holder.binding.cbIngredient.setOnCheckedChangeListener { _, isChecked ->

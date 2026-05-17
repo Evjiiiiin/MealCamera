@@ -1,5 +1,7 @@
 package com.example.mealcamera.util
 
+import java.util.Locale
+
 object IngredientTranslator {
     private val translationMap = mapOf(
         "apple" to "Яблоко",
@@ -68,6 +70,10 @@ object IngredientTranslator {
         "raspberry" to "Малина",
         "rice" to "Рис",
         "sausage" to "Сосиски",
+        "ham" to "Ветчина",
+        "salami" to "Салями",
+        "meat" to "Мясо",
+        "turkey" to "Индейка",
         "savoiardi" to "Савоярди",
         "sour cream" to "Сметана",
         "spaghetti" to "Спагетти",
@@ -78,10 +84,25 @@ object IngredientTranslator {
         "vanile" to "Ваниль",
         "vegetable oil" to "Растительное масло",
         "yogurt" to "Йогурт",
-        "zucchini" to "Кабачок"
+        "zucchini" to "Кабачок",
+        "salt" to "Соль",
+        "sugar" to "Сахар",
+        "water" to "Вода",
+        "pepper" to "Перец",
+        "oil" to "Масло",
+        "yeast" to "Дрожжи"
     )
+
+    private val allKnownNames: Set<String> by lazy {
+        (translationMap.keys + translationMap.values).map { it.lowercase(Locale.ROOT) }.toSet()
+    }
 
     fun translate(englishLabel: String): String {
         return translationMap[englishLabel.lowercase()] ?: englishLabel
+    }
+
+    fun isKnownIngredient(name: String): Boolean {
+        val norm = name.trim().lowercase(Locale.ROOT).replace("ё", "е")
+        return allKnownNames.any { it == norm || norm.startsWith(it) || it.startsWith(norm) }
     }
 }

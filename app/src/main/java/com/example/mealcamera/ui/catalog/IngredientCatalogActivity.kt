@@ -8,13 +8,20 @@ import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mealcamera.MealCameraApplication
+import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.databinding.ActivityIngredientCatalogBinding
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class IngredientCatalogActivity : AppCompatActivity() {
     private lateinit var binding: ActivityIngredientCatalogBinding
     private lateinit var adapter: IngredientAdapter
     private val selectedNames = mutableSetOf<String>()
+    
+    private val firestoreService = FirestoreService()
+    private val auth = FirebaseAuth.getInstance()
+    private var userAllergens = emptyList<String>()
 
     private fun normalize(name: String): String {
         return name.trim().lowercase().replace("ё", "е")
@@ -26,20 +33,32 @@ class IngredientCatalogActivity : AppCompatActivity() {
             binding = ActivityIngredientCatalogBinding.inflate(layoutInflater)
             setContentView(binding.root)
 
-            // Получаем предварительно выбранные имена (уже нормализованные или нет — нормализуем)
             val preSelectedNames = intent.getStringArrayListExtra("selected_names") ?: arrayListOf()
             selectedNames.addAll(preSelectedNames.map { normalize(it) })
 
             setupNavigation()
-            setupRecyclerView()
-            loadIngredients()
-            setupSearch()
-            setupConfirmButton()
+            
+            lifecycleScope.launch {
+                loadAllergens()
+                setupRecyclerView()
+                loadIngredients()
+                setupSearch()
+                setupConfirmButton()
+            }
 
         } catch (e: Exception) {
             Log.e("IngredientCatalog", "Error creating activity", e)
             finish()
         }
+    }
+
+    private suspend fun loadAllergens() {
+        val userId = auth.currentUser?.uid ?: return
+        val application = application as? MealCameraApplication
+        val repository = application?.recipeRepository
+        
+        val rawAllergens = firestoreService.getUserAllergensFlow(userId).first()
+        userAllergens = repository?.expandAllergens(rawAllergens)?.map { it.lowercase() } ?: emptyList()
     }
 
     private fun setupNavigation() {
@@ -51,6 +70,7 @@ class IngredientCatalogActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         adapter = IngredientAdapter(
             selectedNames = selectedNames,
+            userAllergens = userAllergens,
             onSelectionChanged = { name, isSelected ->
                 val normalized = normalize(name)
                 if (isSelected) {
@@ -58,7 +78,6 @@ class IngredientCatalogActivity : AppCompatActivity() {
                 } else {
                     selectedNames.remove(normalized)
                 }
-                Log.d("IngredientCatalog", "Selection: $normalized -> $isSelected, currently selected: $selectedNames")
             }
         )
         binding.rvIngredients.layoutManager = LinearLayoutManager(this)
@@ -93,8 +112,7 @@ class IngredientCatalogActivity : AppCompatActivity() {
     }
 
     private fun returnResult() {
-        val normalizedNames = selectedNames.toList()  // уже нормализованы
-        Log.d("IngredientCatalog", "Returning selected: $normalizedNames")
+        val normalizedNames = selectedNames.toList()
         val intent = Intent().apply {
             putStringArrayListExtra("selected_names", ArrayList(normalizedNames))
         }

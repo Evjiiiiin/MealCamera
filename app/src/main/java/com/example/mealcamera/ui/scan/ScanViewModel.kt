@@ -4,20 +4,32 @@ import android.app.Application
 import android.graphics.Bitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.model.ScannedIngredient
+import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.ml.DetectedFood
 import com.example.mealcamera.util.ImageStorage
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToInt
 
-class ScanViewModel(application: Application) : AndroidViewModel(application) {
+class ScanViewModel(
+    application: Application,
+    private val repository: RecipeRepository
+) : AndroidViewModel(application) {
 
     private val imageStorage = ImageStorage(application)
+    private val firestoreService = FirestoreService()
+    private val auth = FirebaseAuth.getInstance()
 
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing = _isProcessing.asStateFlow()
@@ -25,51 +37,65 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
     private val _latestDetections = MutableStateFlow<List<DetectedFood>>(emptyList())
     val latestDetections = _latestDetections.asStateFlow()
 
-    // Temporal Smoothing: храним историю количества детекций по типам для стабильности
-    // Map<Label, List<Int>> где List - история количества в последних 5 кадрах
-    private val detectionHistory = mutableMapOf<String, Int>()
-    private val frameCountHistory = mutableMapOf<String, MutableList<Int>>()
-    private val WINDOW_SIZE = 10
-    private val MIN_CONFIRMATION = 4
+    private val _userAllergens = MutableStateFlow<List<String>>(emptyList())
+    val userAllergens = _userAllergens.asStateFlow()
+
+    private val detectionHistory = mutableMapOf<String, MutableList<Int>>()
+    private val lastConfirmedDetections = mutableMapOf<String, List<DetectedFood>>()
+    private val historyWindowSize = 8
+    private val minConfirmationFrames = 3
+
+    init {
+        observeUserAllergens()
+    }
+
+    private fun observeUserAllergens() {
+        val userId = auth.currentUser?.uid ?: return
+        firestoreService.getUserAllergensFlow(userId)
+            .onEach { allergens ->
+                _userAllergens.value = repository.expandAllergens(allergens).map { it.lowercase() }
+            }
+            .launchIn(viewModelScope)
+    }
 
     fun updateDetections(newDetections: List<DetectedFood>) {
-        val currentCounts = newDetections.groupBy { it.originalLabel }.mapValues { it.value.size }
-        val allLabels = (frameCountHistory.keys + currentCounts.keys).toSet()
+        val detectionsByLabel = newDetections.groupBy { normalizeLabel(it.originalLabel) }
+        val allLabels = (detectionHistory.keys + detectionsByLabel.keys).toSet()
         val stableDetections = mutableListOf<DetectedFood>()
 
         for (label in allLabels) {
-            val history = frameCountHistory.getOrPut(label) { mutableListOf() }
-            val countInThisFrame = currentCounts[label] ?: 0
-            
-            history.add(countInThisFrame)
-            if (history.size > WINDOW_SIZE) history.removeAt(0)
+            val history = detectionHistory.getOrPut(label) { mutableListOf() }
+            val currentDetections = detectionsByLabel[label].orEmpty().sortedByDescending { it.confidence }
 
-            // Считаем медианное или среднее количество объектов этого типа
-            val averageCount = Math.round(history.average()).toInt()
-            
-            if (averageCount > 0) {
-                // Берем детекции из текущего кадра или создаем виртуальные для UI, если в этом кадре пропуск
-                val existing = newDetections.filter { it.originalLabel == label }
-                if (existing.isNotEmpty()) {
-                    stableDetections.addAll(existing.take(averageCount))
-                } else if (history.count { it > 0 } >= MIN_CONFIRMATION) {
-                    // Если объект часто мелькал, но на этом кадре пропал - оставляем "фантомную" метку для плавности
-                    repeat(averageCount) {
-                        stableDetections.add(DetectedFood(
-                            name = label,
-                            originalLabel = label,
-                            confidence = 0.5f
-                        ))
-                    }
-                }
+            history.add(currentDetections.size)
+            if (history.size > historyWindowSize) history.removeAt(0)
+
+            if (currentDetections.isNotEmpty()) {
+                lastConfirmedDetections[label] = currentDetections
             }
+
+            val visibleFrames = history.count { it > 0 }
+            val smoothedCount = history.average().roundToInt().coerceAtLeast(0)
+            val shouldShow = visibleFrames >= minConfirmationFrames || currentDetections.isNotEmpty()
+            if (!shouldShow || smoothedCount == 0) continue
+
+            val source = if (currentDetections.isNotEmpty()) currentDetections else lastConfirmedDetections[label].orEmpty()
+            stableDetections.addAll(source.take(smoothedCount))
         }
 
-        _latestDetections.value = stableDetections
+        val activeLabels = detectionHistory.filterValues { history -> history.any { it > 0 } }.keys
+        lastConfirmedDetections.keys.retainAll(activeLabels)
+        detectionHistory.keys.retainAll(activeLabels + detectionsByLabel.keys)
+
+        _latestDetections.value = stableDetections.sortedByDescending { it.confidence }
     }
 
-    private fun normalize(name: String): String {
+    private fun normalizeLabel(name: String): String {
         return name.trim().lowercase().replace("ё", "е")
+    }
+
+    private fun capitalize(text: String): String {
+        return text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
     }
 
     fun processCapturedDetections(
@@ -86,14 +112,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
                 val fileName = "scan_${UUID.randomUUID()}.jpg"
                 val imagePath = imageStorage.saveImage(bitmap, fileName)
 
-                // Группируем по имени, чтобы посчитать количество, если это одинаковые продукты
                 detections.groupBy { it.name }.map { (name, detectedList) ->
-                    val normalizedName = normalize(name)
+                    val unit = UnitHelper.getDefaultUnit(name)
+                    val estimatedQuantity = estimateQuantity(detectedList.size, unit)
                     ScannedIngredient(
-                        name = normalizedName,
+                        name = capitalize(name),
                         imagePath = imagePath,
-                        quantity = detectedList.size.toString(),
-                        unit = UnitHelper.getDefaultUnit(normalizedName),
+                        quantity = UnitHelper.formatQuantity(estimatedQuantity),
+                        unit = unit,
                         timestamp = System.currentTimeMillis() + name.hashCode()
                     )
                 }
@@ -101,6 +127,14 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
             onResult(newIngredients)
             _isProcessing.value = false
+        }
+    }
+
+    private fun estimateQuantity(count: Int, unit: String): Double {
+        return when (unit) {
+            "шт" -> count.toDouble()
+            "мл" -> 200.0 * count
+            else -> 100.0 * count
         }
     }
 }

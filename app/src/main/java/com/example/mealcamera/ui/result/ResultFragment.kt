@@ -102,15 +102,18 @@ class ResultFragment : Fragment() {
     private fun setupRecyclerViews() {
         perfectAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) },
+            onAddToShoppingList = { missing -> viewModel.addToShoppingList(missing) }
         )
         oneMissingAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) },
+            onAddToShoppingList = { missing -> viewModel.addToShoppingList(missing) }
         )
         twoMissingAdapter = RecipeAdapter(
             onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
-            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) }
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) },
+            onAddToShoppingList = { missing -> viewModel.addToShoppingList(missing) }
         )
 
         binding.perfectMatchRecyclerView.apply {

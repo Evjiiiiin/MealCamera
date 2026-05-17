@@ -2,6 +2,7 @@ package com.example.mealcamera.ui.detail
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -129,6 +130,14 @@ class RecipeDetailActivity : AppCompatActivity() {
         binding.tvRecipeName.text = recipe.name
         binding.tvToolbarTitle.text = recipe.name
         binding.tvDescription.text = recipe.description
+        
+        // Отображение времени приготовления
+        if (recipe.prepTime.isNotBlank()) {
+            binding.tvPrepTime.text = recipe.prepTime
+            binding.tvPrepTime.visibility = View.VISIBLE
+        } else {
+            binding.tvPrepTime.visibility = View.GONE
+        }
 
         Glide.with(this)
             .load(recipe.imagePath)
@@ -162,9 +171,10 @@ class RecipeDetailActivity : AppCompatActivity() {
     }
 
     private fun updateToggleVisuals(is100gActive: Boolean) {
+        val activeColor = ContextCompat.getColorStateList(this, R.color.surface_card)
         if (is100gActive) {
             binding.btn100g.setBackgroundResource(R.drawable.rounded_search_bg)
-            binding.btn100g.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
+            binding.btn100g.backgroundTintList = activeColor
             binding.btn100g.setTextColor(ContextCompat.getColor(this, R.color.text_main))
             binding.btn100g.paint.isFakeBoldText = true
 
@@ -174,7 +184,7 @@ class RecipeDetailActivity : AppCompatActivity() {
             binding.btnWholeProduct.paint.isFakeBoldText = false
         } else {
             binding.btnWholeProduct.setBackgroundResource(R.drawable.rounded_search_bg)
-            binding.btnWholeProduct.backgroundTintList = ContextCompat.getColorStateList(this, R.color.white)
+            binding.btnWholeProduct.backgroundTintList = activeColor
             binding.btnWholeProduct.setTextColor(ContextCompat.getColor(this, R.color.text_main))
             binding.btnWholeProduct.paint.isFakeBoldText = true
 

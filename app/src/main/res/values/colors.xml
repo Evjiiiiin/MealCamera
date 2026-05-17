@@ -6,25 +6,31 @@
     <color name="color_on_primary">#FFFFFF</color>
     <color name="color_primary_container">#FFEDE7</color>
 
+    <!-- Фоны -->
     <color name="background_main">#F8F9FA</color>
+    <color name="background_light">#F8F9FA</color>
     <color name="surface_card">#FFFFFF</color>
     <color name="surface_card_variant">#F1F0F5</color>
     
     <!-- Эффект стекла (полупрозрачный фон меню) -->
     <color name="nav_glass_background">#CCF8F9FA</color>
     
+    <!-- Текст -->
     <color name="text_main">#1A1C1E</color>
     <color name="text_secondary">#666666</color>
     <color name="gray_text">#9E9E9E</color>
+    <color name="grey">#9E9E9E</color>
 
+    <!-- Иконки и границы (совпадают с placeholder) -->
     <color name="icon_tint">#19323C</color>
-    
-    <color name="border_light">#E0E0E0</color>
-    <color name="placeholder">#BDBDBD</color>
+    <color name="border_light">#888888</color>
+    <color name="placeholder">#888888</color>
+    <color name="search_border">#888888</color>
 
+    <!-- Состояния и ошибки -->
     <color name="red_error">#B00020</color>
-    <color name="search_border">#E0E0E0</color>
 
+    <!-- Базовые цвета -->
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
     <color name="transparent">#00000000</color>

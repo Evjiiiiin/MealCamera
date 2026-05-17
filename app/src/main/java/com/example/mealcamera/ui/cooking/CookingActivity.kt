@@ -32,11 +32,19 @@ class CookingActivity : AppCompatActivity() {
             .get(CookingViewModel::class.java)
     }
 
+    private val sharedViewModel by lazy {
+        (application as MealCameraApplication).sharedViewModel
+    }
+
     private var currentStepIndex = 0
     private var stepsList = listOf<CookingStepWithIngredients>()
     private var timer: CountDownTimer? = null
     private var isVoiceEnabled = true
     private var voiceAssistant: VoiceAssistantManager? = null
+
+    private var isTimerRunning = false
+    private var isTimerPaused = false
+    private var remainingTimeMillis: Long = 0L
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -80,7 +88,6 @@ class CookingActivity : AppCompatActivity() {
                 runOnUiThread { handleVoiceCommand(command) }
             }
         )
-        // Начинаем слушать после небольшой задержки или первого озвучивания
         voiceAssistant?.startListening()
     }
 
@@ -90,7 +97,15 @@ class CookingActivity : AppCompatActivity() {
             VoiceAssistantManager.VoiceCommand.PREVIOUS -> binding.btnPrevious.performClick()
             VoiceAssistantManager.VoiceCommand.REPEAT, VoiceAssistantManager.VoiceCommand.READ_STEP -> readCurrentStep()
             VoiceAssistantManager.VoiceCommand.STOP -> voiceAssistant?.stopAll()
-            VoiceAssistantManager.VoiceCommand.TIMER -> startStepTimer()
+            VoiceAssistantManager.VoiceCommand.TIMER -> {
+                if (binding.timerContainer.visibility == View.VISIBLE) {
+                    if (!isTimerRunning || isTimerPaused) {
+                        binding.btnStartTimer.performClick()
+                    } else {
+                        pauseStepTimer()
+                    }
+                }
+            }
             else -> {}
         }
     }
@@ -112,31 +127,68 @@ class CookingActivity : AppCompatActivity() {
                 readCurrentStep()
             }
         }
-        binding.btnStartTimer.setOnClickListener { startStepTimer() }
-        binding.btnStopTimer.setOnClickListener { stopStepTimer() }
+        binding.btnStartTimer.setOnClickListener {
+            if (currentStepIndex in stepsList.indices) {
+                val timeToStart = if (isTimerPaused) remainingTimeMillis else stepsList[currentStepIndex].step.timerMinutes * 60 * 1000L
+                startStepTimer(timeToStart)
+            }
+        }
+        binding.btnPauseTimer.setOnClickListener {
+            if (isTimerPaused) {
+                startStepTimer(remainingTimeMillis)
+            } else {
+                pauseStepTimer()
+            }
+        }
+        binding.btnStopTimer.setOnClickListener { 
+            resetTimerUI(stepsList[currentStepIndex].step.timerMinutes)
+        }
     }
 
-    private fun startStepTimer() {
-        // Простая реализация таймера на 5 минут для теста или из данных шага
-        stopStepTimer()
-        binding.timerContainer.visibility = View.VISIBLE
-        val timeMillis = 5 * 60 * 1000L 
+    private fun startStepTimer(timeMillis: Long) {
+        if (timeMillis <= 0) return
+        timer?.cancel()
+        isTimerRunning = true
+        isTimerPaused = false
+        
         timer = object : CountDownTimer(timeMillis, 1000) {
             override fun onTick(millisUntilFinished: Long) {
+                remainingTimeMillis = millisUntilFinished
                 val sec = (millisUntilFinished / 1000) % 60
                 val min = (millisUntilFinished / 1000) / 60
                 binding.tvTimerDisplay.text = String.format("%02d:%02d", min, sec)
             }
             override fun onFinish() {
+                isTimerRunning = false
+                isTimerPaused = false
                 binding.tvTimerDisplay.text = "Готово!"
-                voiceAssistant?.speak("Таймер завершен!")
+                voiceAssistant?.speak("Время вышло! Перехожу к следующему шагу.")
+                binding.btnNext.performClick()
             }
         }.start()
+
+        binding.btnStartTimer.visibility = View.GONE
+        binding.btnPauseTimer.visibility = View.VISIBLE
+        binding.btnPauseTimer.text = "Пауза"
     }
 
-    private fun stopStepTimer() {
+    private fun pauseStepTimer() {
+        if (isTimerRunning && !isTimerPaused) {
+            timer?.cancel()
+            isTimerPaused = true
+            binding.btnPauseTimer.text = "Продолжить"
+        }
+    }
+
+    private fun resetTimerUI(minutes: Int) {
         timer?.cancel()
-        binding.timerContainer.visibility = View.GONE
+        isTimerRunning = false
+        isTimerPaused = false
+        remainingTimeMillis = 0L
+        binding.tvTimerDisplay.text = String.format("%02d:00", minutes)
+        binding.btnStartTimer.visibility = View.VISIBLE
+        binding.btnStartTimer.text = "Старт"
+        binding.btnPauseTimer.visibility = View.GONE
     }
 
     private fun readCurrentStep() {
@@ -155,11 +207,24 @@ class CookingActivity : AppCompatActivity() {
         binding.tvStepTitle.text = step.title
         binding.tvStepDescription.text = step.instruction
 
+        binding.ivStepImage.visibility = View.VISIBLE
         if (step.imagePath.isNotBlank()) {
-            Glide.with(this).load(step.imagePath).placeholder(R.drawable.ic_recipe_placeholder).into(binding.ivStepImage)
-            binding.ivStepImage.visibility = View.VISIBLE
+            Glide.with(this)
+                .load(step.imagePath)
+                .placeholder(R.drawable.ic_recipe_placeholder)
+                .error(R.drawable.ic_recipe_placeholder)
+                .into(binding.ivStepImage)
         } else {
-            binding.ivStepImage.visibility = View.GONE
+            binding.ivStepImage.setImageResource(R.drawable.ic_recipe_placeholder)
+        }
+
+        if (step.timerMinutes > 0) {
+            binding.timerContainer.visibility = View.VISIBLE
+            resetTimerUI(step.timerMinutes)
+        } else {
+            timer?.cancel()
+            isTimerRunning = false
+            binding.timerContainer.visibility = View.GONE
         }
 
         binding.ingredientsContainer.removeAllViews()
@@ -185,7 +250,6 @@ class CookingActivity : AppCompatActivity() {
                 stepsList = steps
                 if (steps.isNotEmpty()) {
                     displayStep(currentStepIndex)
-                    // Озвучиваем первый шаг автоматически при входе
                     if (currentStepIndex == 0) readCurrentStep()
                 }
             }
@@ -201,11 +265,18 @@ class CookingActivity : AppCompatActivity() {
     private fun finishCookingFlow() {
         lifecycleScope.launch {
             viewModel.saveToHistory(intent.getLongExtra(EXTRA_RECIPE_ID, -1), binding.tvToolbarTitle.text.toString())
+            
+            // Сброс прогресса камеры (очистка временных ингредиентов)
+            sharedViewModel.endSession()
+            
             Toast.makeText(this@CookingActivity, "Приятного аппетита!", Toast.LENGTH_LONG).show()
-            startActivity(Intent(this@CookingActivity, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-            })
-            finish()
+            
+            // Возврат на главный экран
+            val intent = Intent(this@CookingActivity, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            intent.putExtra("navigate_home", true) // Сигнал для MainActivity
+            startActivity(intent)
+            finish() 
         }
     }
 

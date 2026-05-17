@@ -177,6 +177,9 @@ class RegisterActivity : AppCompatActivity() {
         } else if (password.length < 6) {
             binding.tilPassword.error = "Пароль должен быть не менее 6 символов"
             isValid = false
+        } else if (!password.any { it.isDigit() } || !password.any { it.isLetter() }) {
+            binding.tilPassword.error = "Пароль должен содержать буквы и цифры"
+            isValid = false
         }
 
         return isValid
@@ -191,6 +194,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
+                // Проверка существования пользователя через попытку создания
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user
 
@@ -235,9 +239,15 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun handleRegistrationError(e: Exception) {
         when (e) {
-            is FirebaseAuthUserCollisionException -> binding.tilEmail.error = "Пользователь уже существует"
-            is FirebaseAuthInvalidCredentialsException -> binding.tilEmail.error = "Некорректная почта"
-            else -> Toast.makeText(this, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+            is FirebaseAuthUserCollisionException -> {
+                binding.tilEmail.error = "Аккаунт с таким email уже зарегистрирован"
+            }
+            is FirebaseAuthInvalidCredentialsException -> {
+                binding.tilEmail.error = "Некорректная почта"
+            }
+            else -> {
+                Toast.makeText(this, "Ошибка регистрации: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 }

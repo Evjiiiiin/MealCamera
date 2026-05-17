@@ -23,6 +23,7 @@
         <item name="android:fontFamily">sans-serif</item>
 
         <item name="sliderStyle">@style/Widget_MealCamera_Slider</item>
+        <item name="chipStyle">@style/Widget_MealCamera_FilterChip</item>
     </style>
 
     <style name="Widget_MealCamera_BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
@@ -39,7 +40,10 @@
         <item name="boxCornerRadiusBottomStart">16dp</item>
         <item name="boxCornerRadiusBottomEnd">16dp</item>
         <item name="boxStrokeColor">@color/border_light</item>
-        <item name="hintTextColor">@color/gray_text</item>
+        <item name="boxStrokeWidth">1.5dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="hintTextColor">@color/placeholder</item>
+        <item name="android:textColorHint">@color/placeholder</item>
     </style>
 
     <style name="Widget_MealCamera_TextInputLayout_ExposedDropdownMenu" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
@@ -48,6 +52,9 @@
         <item name="boxCornerRadiusBottomStart">16dp</item>
         <item name="boxCornerRadiusBottomEnd">16dp</item>
         <item name="boxStrokeColor">@color/border_light</item>
+        <item name="boxStrokeWidth">1.5dp</item>
+        <item name="hintTextColor">@color/placeholder</item>
+        <item name="android:textColorHint">@color/placeholder</item>
     </style>
 
     <style name="Widget_MealCamera_HeaderLabel" parent="TextAppearance.Material3.TitleMedium">
@@ -65,7 +72,7 @@
         <item name="trackColorInactive">@color/color_primary_container</item>
         <item name="thumbRadius">10dp</item>
         <item name="trackHeight">8dp</item>
-        <item name="thumbElevation">2dp</item>
+        <item name="thumbElevation">0dp</item>
         <item name="haloColor">@android:color/transparent</item>
         <item name="trackStopIndicatorSize">0dp</item>
         <item name="tickVisible">false</item>
@@ -74,9 +81,9 @@
 
     <style name="Widget_MealCamera_FilterChip" parent="Widget.Material3.Chip.Filter">
         <item name="android:textColor">@color/text_main</item>
-        <item name="chipBackgroundColor">@color/filter_chip_bg_selector</item>
-        <item name="chipStrokeColor">@color/filter_chip_stroke_selector</item>
         <item name="chipStrokeWidth">1dp</item>
+        <item name="chipStrokeColor">@color/border_light</item>
+        <item name="chipBackgroundColor">@color/surface_card</item>
         <item name="checkedIconVisible">false</item>
         <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Medium</item>
     </style>
@@ -90,9 +97,10 @@
         <item name="android:paddingVertical">12dp</item>
         <item name="android:textColor">@color/white</item>
         <item name="backgroundTint">@color/color_primary</item>
+        <item name="elevation">0dp</item>
     </style>
 
-    <style name="Widget_MealCamera_Button_Outlined" parent="Widget.Material3.Button.OutlinedButton">
+    <style name="Widget_MealCamera_Button_Outlined" parent="Widget.Material3.Button">
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
         <item name="cornerRadius">16dp</item>
@@ -100,15 +108,24 @@
         <item name="android:textSize">16sp</item>
         <item name="android:paddingVertical">12dp</item>
         <item name="strokeColor">@color/color_primary</item>
-        <item name="strokeWidth">2dp</item>
+        <item name="strokeWidth">1.5dp</item>
         <item name="android:textColor">@color/text_main</item>
+        <item name="backgroundTint">@color/surface_card</item>
         <item name="rippleColor">@color/color_primary_container</item>
-        <item name="android:backgroundTint">@android:color/transparent</item>
+        <item name="elevation">0dp</item>
     </style>
 
     <style name="Widget_MealCamera_Card" parent="Widget.Material3.CardView.Elevated">
         <item name="cardBackgroundColor">@color/surface_card</item>
         <item name="cardCornerRadius">24dp</item>
         <item name="cardElevation">0dp</item>
+    </style>
+
+    <style name="ShapeAppearance.MealCamera.BottomRoundedImage" parent="ShapeAppearance.Material3.Corner.Large">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeBottomLeft">24dp</item>
+        <item name="cornerSizeBottomRight">24dp</item>
     </style>
 </resources>

@@ -18,7 +18,8 @@
         <item>Обед</item>
         <item>Ужин</item>
         <item>Десерт</item>
-        <item>Другое</item>
+        <item>Напитки</item>
+        <item>Перекус</item>
     </string-array>
 
     <array name="prep_time_default">

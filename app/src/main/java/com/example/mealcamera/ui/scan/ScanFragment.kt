@@ -56,19 +56,32 @@ class ScanFragment : Fragment() {
         (requireActivity().application as MealCameraApplication).sharedViewModel
     }
 
+    private fun isAllergen(name: String): Boolean {
+        val normalized = name.trim().lowercase().replace("ё", "е")
+        return viewModel.userAllergens.value.any { normalized.contains(it) }
+    }
+
     private val catalogLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val selectedNames = result.data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
+            
+            // Фильтрация по аллергенам
+            val allergens = selectedNames.filter { isAllergen(it) }
+            if (allergens.isNotEmpty()) {
+                Toast.makeText(requireContext(), "Некоторые продукты не добавлены из-за аллергии: ${allergens.joinToString()}", Toast.LENGTH_LONG).show()
+            }
+            val filteredNames = selectedNames.filter { !isAllergen(it) }
+
             val currentIngs = sharedViewModel.temporaryIngredients.value.toMutableList()
 
             // 1. Удаляем ингредиенты, которые больше не выбраны в каталоге
-            val normalizedSelected = selectedNames.map { it.trim().lowercase().replace("ё", "е") }.toSet()
+            val normalizedSelected = filteredNames.map { it.trim().lowercase().replace("ё", "е") }.toSet()
             currentIngs.removeAll { ing ->
                 !normalizedSelected.contains(ing.name.trim().lowercase().replace("ё", "е"))
             }
 
             // 2. Добавляем новые, которых не было
-            selectedNames.forEach { name ->
+            filteredNames.forEach { name ->
                 val isAlreadyPresent = currentIngs.any { it.name.equals(name, ignoreCase = true) }
                 if (!isAlreadyPresent) {
                     currentIngs.add(ScannedIngredient(
@@ -182,9 +195,17 @@ class ScanFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.latestDetections.collect { detections ->
                     if (detections.isNotEmpty()) {
+                        val allergenDetected = detections.any { isAllergen(it.name) }
                         binding.cardDetectionHint.visibility = View.VISIBLE
-                        val names = detections.take(3).joinToString { it.name }
-                        binding.tvDetectionName.text = if (detections.size > 3) "$names..." else names
+                        
+                        if (allergenDetected) {
+                            binding.cardDetectionHint.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.red_error))
+                            binding.tvDetectionName.text = "⚠️ Обнаружен аллерген!"
+                        } else {
+                            binding.cardDetectionHint.setCardBackgroundColor(ContextCompat.getColor(requireContext(), R.color.color_primary))
+                            val names = detections.take(3).joinToString { it.name }
+                            binding.tvDetectionName.text = if (detections.size > 3) "$names..." else names
+                        }
                     } else {
                         binding.cardDetectionHint.visibility = View.GONE
                     }
@@ -215,11 +236,19 @@ class ScanFragment : Fragment() {
                 Toast.makeText(requireContext(), "Продукты не распознаны. Попробуйте другой ракурс.", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            viewModel.processCapturedDetections(bitmap, detections) { newIngredients ->
-                if (newIngredients.isNotEmpty()) {
-                    sharedViewModel.addToTemporary(newIngredients)
-                }
+            
+            val detectedAllergens = detections.filter { isAllergen(it.name) }
+            if (detectedAllergens.isNotEmpty()) {
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Обнаружена аллергия")
+                    .setMessage("Обнаружен продукт (${detectedAllergens.first().name}), который не рекомендуется пользователю из-за аллергии. Добавить остальные продукты?")
+                    .setPositiveButton("Добавить безопасные") { _, _ ->
+                        processDetections(bitmap, detections.filter { !isAllergen(it.name) })
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+            } else {
+                processDetections(bitmap, detections)
             }
         }
 
@@ -231,6 +260,14 @@ class ScanFragment : Fragment() {
         }
 
         binding.btnBack.setOnClickListener { requireActivity().onBackPressedDispatcher.onBackPressed() }
+    }
+
+    private fun processDetections(bitmap: android.graphics.Bitmap, detections: List<com.example.mealcamera.ml.DetectedFood>) {
+        viewModel.processCapturedDetections(bitmap, detections) { newIngredients ->
+            if (newIngredients.isNotEmpty()) {
+                sharedViewModel.addToTemporary(newIngredients)
+            }
+        }
     }
 
     override fun onDestroyView() {

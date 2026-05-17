@@ -9,6 +9,8 @@ import com.example.mealcamera.data.remote.RecipeData
 import com.example.mealcamera.data.remote.CloudRecipe
 import com.example.mealcamera.data.remote.StepData
 import com.example.mealcamera.data.remote.CloudIngredient
+import com.example.mealcamera.data.util.UnitHelper
+import com.example.mealcamera.util.IngredientTranslator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -32,8 +34,48 @@ class RecipeRepository(
         return name.trim().lowercase(Locale.ROOT).replace("ё", "е")
     }
 
+    private fun capitalize(text: String): String {
+        return text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    }
+
     suspend fun getRecipeByIdSync(recipeId: Long): Recipe? = withContext(Dispatchers.IO) {
         recipeDao.getRecipeByIdSync(recipeId)
+    }
+
+    suspend fun capitalizeExistingIngredients() = withContext(Dispatchers.IO) {
+        try {
+            val ingredients = recipeDao.getAllIngredients()
+            ingredients.forEach { ingredient ->
+                val capitalized = capitalize(ingredient.name)
+                if (capitalized != ingredient.name) {
+                    recipeDao.updateIngredientName(ingredient.ingredientId, capitalized)
+                }
+            }
+            
+            val recipes = recipeDao.getAllRecipes().firstOrNull() ?: emptyList()
+            recipes.forEach { recipe ->
+                val capitalized = capitalize(recipe.name)
+                if (capitalized != recipe.name) {
+                    recipeDao.updateRecipe(recipe.copy(name = capitalized))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RecipeRepository", "Error capitalizing ingredients", e)
+        }
+    }
+
+    suspend fun isEdible(name: String): Boolean = withContext(Dispatchers.IO) {
+        if (name.isBlank()) return@withContext false
+        val normalized = normalize(name)
+        val defaults = setOf("соль", "сахар", "вода", "перец", "перец молотый", "черный перец", "молотый перец")
+        if (defaults.contains(normalized)) return@withContext true
+        
+        if (IngredientTranslator.isKnownIngredient(normalized)) return@withContext true
+        
+        val existsInDb = recipeDao.getIngredientByName(name) != null || 
+                         recipeDao.getIngredientByName(normalized) != null
+        
+        return@withContext existsInDb
     }
 
     fun expandAllergens(allergens: List<String>): List<String> {
@@ -75,6 +117,8 @@ class RecipeRepository(
                     else -> insertNewRecipe(cloudData)
                 }
             }
+            
+            capitalizeExistingIngredients()
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error during sync", e)
         }
@@ -88,16 +132,18 @@ class RecipeRepository(
             cloudIngredients.forEach { cloudIngredient ->
                 val normalizedName = normalize(cloudIngredient.name)
                 if (normalizedName.isNotEmpty() && normalizedName !in localNormalizedNames) {
-                    recipeDao.insertIngredient(Ingredient(name = cloudIngredient.name))
+                    recipeDao.insertIngredient(Ingredient(name = capitalize(cloudIngredient.name)))
                 }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) { 
+            Log.e("RecipeRepository", "Sync ingredients error", e)
+        }
     }
 
     private suspend fun insertNewRecipe(cloudData: RecipeData) {
         val newRecipe = Recipe(
             firestoreId = cloudData.id,
-            name = cloudData.recipe.name,
+            name = capitalize(cloudData.recipe.name),
             description = cloudData.recipe.description,
             imagePath = cloudData.recipe.imagePath,
             category = cloudData.recipe.category,
@@ -121,7 +167,7 @@ class RecipeRepository(
         val updatedRecipe = Recipe(
             recipeId = existingId,
             firestoreId = cloudData.id,
-            name = cloudData.recipe.name,
+            name = capitalize(cloudData.recipe.name),
             description = cloudData.recipe.description,
             imagePath = cloudData.recipe.imagePath,
             category = cloudData.recipe.category,
@@ -154,8 +200,9 @@ class RecipeRepository(
             val ingredientId = if (existingIngredient != null) {
                 existingIngredient.ingredientId
             } else {
-                val newId = recipeDao.insertIngredient(Ingredient(name = name))
-                cachedIngredients.add(Ingredient(ingredientId = newId, name = name))
+                val capitalized = capitalize(name)
+                val newId = recipeDao.insertIngredient(Ingredient(name = capitalized))
+                cachedIngredients.add(Ingredient(ingredientId = newId, name = capitalized))
                 newId
             }
             recipeDao.insertRecipeIngredientCrossRef(
@@ -175,7 +222,7 @@ class RecipeRepository(
                 RecipeStep(
                     recipeId = localRecipeId,
                     stepNumber = index + 1,
-                    title = stepData.title,
+                    title = capitalize(stepData.title),
                     instruction = stepData.description,
                     timerMinutes = stepData.timerMinutes,
                     imagePath = stepData.imagePath
@@ -185,7 +232,7 @@ class RecipeRepository(
                 val name = stepIngredient.name.trim()
                 if (name.isEmpty()) return@forEach
                 val existingIngredient = recipeDao.getAllIngredients().find { normalize(it.name) == normalize(name) }
-                val ingredientId = existingIngredient?.ingredientId ?: recipeDao.insertIngredient(Ingredient(name = name))
+                val ingredientId = existingIngredient?.ingredientId ?: recipeDao.insertIngredient(Ingredient(name = capitalize(name)))
                 recipeDao.insertStepIngredient(
                     StepIngredient(
                         stepId = stepId,
@@ -204,7 +251,7 @@ class RecipeRepository(
                 val firestoreId = firestoreService.addRecipe(cloudRecipe) ?: return@withContext null
                 val recipe = Recipe(
                     firestoreId = firestoreId,
-                    name = cloudRecipe.name,
+                    name = capitalize(cloudRecipe.name),
                     description = cloudRecipe.description,
                     imagePath = cloudRecipe.imagePath,
                     category = cloudRecipe.category,
@@ -240,7 +287,7 @@ class RecipeRepository(
                 val updatedRecipe = Recipe(
                     recipeId = recipeId,
                     firestoreId = firestoreId,
-                    name = cloudRecipe.name,
+                    name = capitalize(cloudRecipe.name),
                     description = cloudRecipe.description,
                     imagePath = cloudRecipe.imagePath,
                     category = cloudRecipe.category,
@@ -306,7 +353,10 @@ class RecipeRepository(
                 if (firestoreId != null) { firestoreService.deleteRecipe(firestoreId) }
                 recipeDao.deleteRecipe(recipeId)
                 true
-            } catch (e: Exception) { false }
+            } catch (e: Exception) { 
+                Log.e("RecipeRepository", "Delete recipe error", e)
+                false 
+            }
         }
     }
 
@@ -338,7 +388,7 @@ class RecipeRepository(
         }
     }
 
-    fun getStepsForRecipe(recipeId: Long): Flow<List<RecipeStep>> = recipeDao.getStepsByRecipeId(recipeId)
+    fun getStepsByRecipeId(recipeId: Long): Flow<List<RecipeStep>> = recipeDao.getStepsByRecipeId(recipeId)
 
     fun getCookingStepsWithIngredients(recipeId: Long, portions: Int): Flow<List<CookingStepWithIngredients>> = flow {
         val safePortions = portions.coerceIn(1, 10)
@@ -353,6 +403,28 @@ class RecipeRepository(
                 CookingStepWithIngredients(step, details)
             }
             emit(result)
+        }
+    }
+
+    suspend fun addScaledIngredientsToShoppingListExplicit(userId: String, name: String, quantity: Double, unit: String) {
+        withContext(Dispatchers.IO) {
+            val formattedQty = UnitHelper.formatQuantity(quantity)
+            if (formattedQty == "0") return@withContext
+
+            val existing = shoppingListDao.getItemByNameAndUnit(userId, name, unit)
+            if (existing == null) {
+                shoppingListDao.insertItem(ShoppingListItem(userId = userId, name = name, quantity = formattedQty, unit = unit))
+            } else {
+                if (formattedQty == "по вкусу" || existing.quantity == "по вкусу") {
+                    shoppingListDao.updateItem(existing.copy(quantity = "по вкусу", unit = ""))
+                } else {
+                    val existingQty = existing.quantity.toDoubleOrNull() ?: 0.0
+                    val addQty = quantity
+                    val newQuantity = existingQty + addQty
+                    val newQuantityStr = UnitHelper.formatQuantity(newQuantity)
+                    shoppingListDao.updateItem(existing.copy(quantity = newQuantityStr))
+                }
+            }
         }
     }
 
@@ -384,7 +456,6 @@ class RecipeRepository(
     suspend fun incrementRecipePopularity(recipeId: Long) = recipeDao.incrementPopularity(recipeId)
     suspend fun getAllDbIngredients(): List<Ingredient> = recipeDao.getAllIngredients()
     suspend fun getAllRecipesWithIngredients(): List<RecipeWithIngredients> = recipeDao.getAllRecipesWithIngredients()
-    suspend fun getRecipeIngredientCrossRef(recipeId: Long, ingredientId: Long): RecipeIngredientCrossRef? = recipeDao.getCrossRef(recipeId, ingredientId)
     fun getShoppingListItems(userId: String): Flow<List<ShoppingListItem>> = shoppingListDao.getAllItems(userId)
     suspend fun updateShoppingListItemChecked(item: ShoppingListItem, checked: Boolean) = shoppingListDao.updateItem(item.copy(isChecked = checked))
     suspend fun deleteShoppingListItem(item: ShoppingListItem) = shoppingListDao.deleteItem(item)

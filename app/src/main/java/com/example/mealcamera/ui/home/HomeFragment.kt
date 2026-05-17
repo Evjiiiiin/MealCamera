@@ -127,9 +127,10 @@ class HomeFragment : Fragment() {
     }
 
     private fun updateFilterIcon(state: MainUiState) {
+        val filter = viewModel.currentFilterState
         val hasActiveFilters = state.categoryFilter != "Все" || state.cuisineFilter != "Все кухни"
-                || viewModel.currentFilterState.prepTimeRange?.let { it.start > 0 || it.endInclusive < 240 } ?: false
-                || viewModel.currentFilterState.caloriesRange?.let { it.start > 0 || it.endInclusive < 1000 } ?: false
+                || filter.minPrepTime > 0f || filter.maxPrepTime < 240f
+                || filter.minCalories > 0f || filter.maxCalories < 1000f
         
         if (hasActiveFilters) {
             binding.btnFilter.setColorFilter(resources.getColor(R.color.color_primary, null))

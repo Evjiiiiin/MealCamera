@@ -74,7 +74,51 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:chipSpacingHorizontal="8dp" />
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="8dp">
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Все" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Завтрак" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Обед" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ужин" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Десерт" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Напитки" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Перекус" />
+            </com.google.android.material.chip.ChipGroup>
 
             <!-- 2. Кухня -->
             <TextView
@@ -86,7 +130,51 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                app:chipSpacingHorizontal="8dp" />
+                app:chipSpacingHorizontal="8dp"
+                app:chipSpacingVertical="8dp">
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Все кухни" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Русская" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Итальянская" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Испанская" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Французская" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Американская" />
+
+                <com.google.android.material.chip.Chip
+                    style="@style/Widget_MealCamera_FilterChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Азиатская" />
+            </com.google.android.material.chip.ChipGroup>
 
             <!-- 3. Время -->
             <androidx.constraintlayout.widget.ConstraintLayout
@@ -99,7 +187,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="0dp"
-                    android:text="Время приготовления (мин)"
+                    android:text="Время приготовления"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -164,7 +252,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="0dp"
-                    android:text="Калории (ккал)"
+                    android:text="Калории"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />

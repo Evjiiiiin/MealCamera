@@ -8,6 +8,7 @@ import com.example.mealcamera.data.PrepopulateManager
 import com.example.mealcamera.data.RecipeRepository
 import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.ui.SharedViewModel
+import com.example.mealcamera.util.ThemeManager
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -39,6 +40,9 @@ class MealCameraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        
+        // Применяем сохраненную тему сразу при запуске
+        ThemeManager.applyTheme(this)
 
         // Отложенный запуск тяжелых операций, чтобы не блокировать UI
         appScope.launch {

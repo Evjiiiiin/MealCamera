@@ -18,7 +18,9 @@ import com.example.mealcamera.R
 import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.databinding.ActivityProfileEditBinding
 import com.example.mealcamera.ui.auth.LoginActivity
+import com.example.mealcamera.ui.home.MainActivity
 import com.example.mealcamera.util.ImageStorage
+import com.example.mealcamera.util.ThemeManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.launch
@@ -54,6 +56,7 @@ class ProfileEditActivity : AppCompatActivity() {
 
         loadCurrentUserData()
         setupListeners()
+        setupThemeToggle()
     }
 
     private fun uriToBitmap(uri: Uri): Bitmap? {
@@ -105,6 +108,28 @@ class ProfileEditActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupThemeToggle() {
+        val savedTheme = ThemeManager.getSavedTheme(this)
+        val checkId = when (savedTheme) {
+            ThemeManager.THEME_LIGHT -> R.id.btnThemeLight
+            ThemeManager.THEME_DARK -> R.id.btnThemeDark
+            else -> R.id.btnThemeSystem
+        }
+        binding.toggleTheme.check(checkId)
+
+        binding.toggleTheme.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                val themeMode = when (checkedId) {
+                    R.id.btnThemeLight -> ThemeManager.THEME_LIGHT
+                    R.id.btnThemeDark -> ThemeManager.THEME_DARK
+                    else -> ThemeManager.THEME_SYSTEM
+                }
+                ThemeManager.saveTheme(this, themeMode)
+                ThemeManager.applyThemeMode(themeMode)
+            }
+        }
+    }
+
     private fun saveChanges() {
         val newName = binding.etName.text.toString().trim()
         if (newName.isEmpty()) {
@@ -144,6 +169,11 @@ class ProfileEditActivity : AppCompatActivity() {
                 }
 
                 Toast.makeText(this@ProfileEditActivity, "Профиль обновлён", Toast.LENGTH_SHORT).show()
+                
+                // Пересоздаем MainActivity для применения изменений на всех экранах (включая имя)
+                val intent = Intent(this@ProfileEditActivity, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
                 finish()
             } catch (e: Exception) {
                 Log.e("ProfileEdit", "Ошибка", e)

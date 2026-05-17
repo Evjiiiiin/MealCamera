@@ -49,7 +49,7 @@ class RecipeDetailViewModel(
 
     val steps: StateFlow<List<RecipeStep>> = _recipeId
         .filterNotNull()
-        .flatMapLatest { id -> repository.getStepsForRecipe(id) }
+        .flatMapLatest { id -> repository.getStepsByRecipeId(id) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

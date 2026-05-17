@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:background="@color/background_main">
 
-    <!-- Header: Aligned with Design System (12dp start for back button) -->
+    <!-- Header -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerLayout"
         android:layout_width="match_parent"
@@ -120,7 +120,6 @@
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
-                android:id="@+id/tvIngredientsHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
@@ -144,7 +143,6 @@
                 android:textColor="@color/color_primary" />
 
             <TextView
-                android:id="@+id/tvStepsHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
@@ -168,6 +166,7 @@
                 android:text="+ Добавить шаг"
                 android:textColor="@color/color_primary" />
 
+            <!-- КБЖУ Fields -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -175,14 +174,12 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilCalories"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="4dp"
                     android:layout_weight="1"
                     android:hint="Ккал">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCalories"
                         android:layout_width="match_parent"
@@ -191,14 +188,12 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilProteins"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="2dp"
                     android:layout_weight="1"
                     android:hint="Белки">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etProteins"
                         android:layout_width="match_parent"
@@ -207,14 +202,12 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilFats"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginHorizontal="2dp"
                     android:layout_weight="1"
                     android:hint="Жиры">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etFats"
                         android:layout_width="match_parent"
@@ -223,14 +216,12 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilCarbs"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
                     android:layout_weight="1"
                     android:hint="Угл.">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCarbs"
                         android:layout_width="match_parent"
@@ -239,6 +230,7 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
+            <!-- Time Fields -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -246,14 +238,12 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilCookHours"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="8dp"
                     android:layout_weight="1"
                     android:hint="Часы">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCookHours"
                         android:layout_width="match_parent"
@@ -262,13 +252,11 @@
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilCookMinutes"
                     style="@style/Widget_MealCamera_TextInputLayout"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:hint="Мин">
-
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etCookMinutes"
                         android:layout_width="match_parent"
@@ -278,13 +266,11 @@
             </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilCategory"
                 style="@style/Widget_MealCamera_TextInputLayout_ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Категория">
-
                 <AutoCompleteTextView
                     android:id="@+id/spinnerCategory"
                     android:layout_width="match_parent"
@@ -295,13 +281,11 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilCuisine"
                 style="@style/Widget_MealCamera_TextInputLayout_ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Кухня">
-
                 <AutoCompleteTextView
                     android:id="@+id/spinnerCuisine"
                     android:layout_width="match_parent"
@@ -312,13 +296,11 @@
             </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilTotalWeight"
                 style="@style/Widget_MealCamera_TextInputLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:hint="Вес порции (г)">
-
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etTotalWeight"
                     android:layout_width="match_parent"
@@ -356,9 +338,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="12dp"
-                    android:backgroundTint="@color/white"
-                    android:text="Очистить"
-                    android:textColor="@color/text_main" />
+                    android:text="Очистить" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnDeleteRecipe"

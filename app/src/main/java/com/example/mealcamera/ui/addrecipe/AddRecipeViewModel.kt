@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.Locale
 
 sealed class AddRecipeState {
     object Idle : AddRecipeState()
@@ -34,6 +35,10 @@ class AddRecipeViewModel(
     private var editingRecipeId: Long? = null
     private var editingFirestoreId: String? = null
 
+    private fun capitalize(text: String): String {
+        return text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+    }
+
     fun loadRecipe(recipeId: Long) {
         if (recipeId <= 0) return
 
@@ -47,9 +52,7 @@ class AddRecipeViewModel(
                     val localRecipe = repository.getRecipeByIdSync(recipeId)
                     editingFirestoreId = localRecipe?.firestoreId
                     _uiState.value = AddRecipeState.Loaded(recipe)
-                    Log.d("AddRecipeViewModel", "Рецепт загружен: ${recipe.name}")
                 } else {
-                    Log.e("AddRecipeViewModel", "Рецепт не найден, recipeId=$recipeId")
                     _uiState.value = AddRecipeState.Error("Рецепт не найден")
                 }
             } catch (e: Exception) {
@@ -66,21 +69,32 @@ class AddRecipeViewModel(
         userId: String, isPublic: Boolean, calories: Int, proteins: Double,
         fats: Double, carbs: Double, currentImagePath: String, totalWeight: Int
     ) {
-        // --- Исчерпывающая валидация всех полей ---
-        if (name.isBlank()) {
+        val capitalizedName = capitalize(name)
+        val capitalizedIngredients = ingredients.map { it.copy(name = capitalize(it.name)) }
+        val capitalizedSteps = steps.map { step ->
+            step.copy(
+                title = capitalize(step.title),
+                ingredients = step.ingredients.map { it.copy(name = capitalize(it.name)) }
+            )
+        }
+
+        // --- Валидация (синхронная) ---
+        if (capitalizedName.isBlank()) {
             _uiState.value = AddRecipeState.Error("Введите название блюда")
             return
         }
+
+        if (category.isBlank() || category == "Выберите категорию") {
+            _uiState.value = AddRecipeState.Error("Выберите категорию блюда")
+            return
+        }
+        if (cuisine.isBlank() || cuisine == "Выберите кухню") {
+            _uiState.value = AddRecipeState.Error("Выберите кухню")
+            return
+        }
+
         if (description.isBlank()) {
             _uiState.value = AddRecipeState.Error("Добавьте описание рецепта")
-            return
-        }
-        if (category.isBlank()) {
-            _uiState.value = AddRecipeState.Error("Выберите категорию")
-            return
-        }
-        if (cuisine.isBlank()) {
-            _uiState.value = AddRecipeState.Error("Выберите кухню")
             return
         }
         if (prepTime.isBlank() || prepTime == "0 мин") {
@@ -91,42 +105,29 @@ class AddRecipeViewModel(
             _uiState.value = AddRecipeState.Error("Укажите вес порции (г)")
             return
         }
-        if (ingredients.isEmpty()) {
+        if (capitalizedIngredients.isEmpty()) {
             _uiState.value = AddRecipeState.Error("Добавьте хотя бы один основной ингредиент")
             return
         }
-        if (ingredients.any { it.name.isBlank() || it.quantity.isBlank() }) {
-            _uiState.value = AddRecipeState.Error("Заполните название и количество для всех основных ингредиентов")
-            return
-        }
-        if (steps.isEmpty()) {
+        if (capitalizedSteps.isEmpty()) {
             _uiState.value = AddRecipeState.Error("Добавьте хотя бы один шаг приготовления")
             return
         }
 
-        // Подробная валидация каждого шага
-        for ((index, step) in steps.withIndex()) {
-            val stepNum = index + 1
-            if (step.title.isBlank()) {
-                _uiState.value = AddRecipeState.Error("Шаг $stepNum: введите заголовок")
-                return
-            }
-            if (step.description.isBlank()) {
-                _uiState.value = AddRecipeState.Error("Шаг $stepNum: добавьте описание процесса")
-                return
-            }
-            if (step.ingredients.isEmpty()) {
-                _uiState.value = AddRecipeState.Error("Шаг $stepNum: добавьте используемые ингредиенты")
-                return
-            }
-            if (step.ingredients.any { it.name.isBlank() || it.quantity.isBlank() }) {
-                _uiState.value = AddRecipeState.Error("Шаг $stepNum: заполните данные ингредиентов")
-                return
-            }
-        }
-
         viewModelScope.launch {
             _uiState.value = AddRecipeState.Loading
+            
+            // --- Валидация съедобности (асинхронная, так как требует доступа к БД) ---
+            val allIngNames = capitalizedIngredients.map { it.name } + 
+                              capitalizedSteps.flatMap { s -> s.ingredients.map { it.name } }
+            
+            for (ingName in allIngNames) {
+                if (!repository.isEdible(ingName)) {
+                    _uiState.value = AddRecipeState.Error("Можно вводить только продукты питания: $ingName")
+                    return@launch
+                }
+            }
+
             try {
                 val isEditing = editingRecipeId != null
                 val recipeIdForSaving = editingRecipeId ?: System.currentTimeMillis()
@@ -137,7 +138,7 @@ class AddRecipeViewModel(
                     else -> ""
                 }
 
-                val updatedSteps = steps.mapIndexed { index, step ->
+                val updatedSteps = capitalizedSteps.mapIndexed { index, step ->
                     val newBitmap = stepImages[index]
                     if (newBitmap != null) {
                         val newPath = imageStorage.saveStepImage(recipeIdForSaving, index, newBitmap)
@@ -148,8 +149,8 @@ class AddRecipeViewModel(
                 }
 
                 val recipe = CloudRecipe(
-                    name, description, finalMainImage, category, prepTime, 0, cuisine, cuisineCode,
-                    ingredients, updatedSteps, userId, isPublic, calories, proteins, fats, carbs, totalWeight
+                    capitalizedName, description, finalMainImage, category, prepTime, 0, cuisine, cuisineCode,
+                    capitalizedIngredients, updatedSteps, userId, isPublic, calories, proteins, fats, carbs, totalWeight
                 )
 
                 val result = if (isEditing) {

@@ -35,7 +35,6 @@ class MainViewModel(
     private val _isRefreshing = MutableStateFlow(false)
     private val _userAllergens = MutableStateFlow<List<String>>(emptyList())
 
-    // Публичный геттер для текущего состояния фильтров (используется в HomeFragment)
     val currentFilterState: FilterState get() = _filterState.value
 
     private val firestoreService = FirestoreService()
@@ -71,20 +70,20 @@ class MainViewModel(
                 if (expandedAllergens.isEmpty()) true
                 else {
                     val inMainInfo = expandedAllergens.any { allergen: String ->
-                        normalize(item.recipe.name).contains(allergen as CharSequence) ||
-                                normalize(item.recipe.description).contains(allergen as CharSequence)
+                        normalize(item.recipe.name).contains(allergen) ||
+                                normalize(item.recipe.description).contains(allergen)
                     }
                     val inIngredients = item.ingredients.any { ing: Ingredient ->
                         val normalizedIng = normalize(ing.name)
-                        expandedAllergens.any { allergen: String -> normalizedIng.contains(allergen as CharSequence) }
+                        expandedAllergens.any { allergen: String -> normalizedIng.contains(allergen) }
                     }
                     !(inMainInfo || inIngredients)
                 }
             }
             .filter { item: RecipeWithIngredients ->
                 val matchesQuery = if (normalizedQuery.isEmpty()) true else {
-                    val inName = normalize(item.recipe.name).contains(normalizedQuery as CharSequence)
-                    val inIngredients = item.ingredients.any { ing: Ingredient -> normalize(ing.name).contains(normalizedQuery as CharSequence) }
+                    val inName = normalize(item.recipe.name).contains(normalizedQuery)
+                    val inIngredients = item.ingredients.any { ing: Ingredient -> normalize(ing.name).contains(normalizedQuery) }
                     inName || inIngredients
                 }
                 matchesQuery
@@ -101,14 +100,10 @@ class MainViewModel(
             }
             .filter { item: RecipeWithIngredients ->
                 val prepMinutes = PrepTimeParser.parseToMinutes(item.recipe.prepTime)
-                filter.prepTimeRange?.let { range ->
-                    prepMinutes in range.start.toInt()..range.endInclusive.toInt()
-                } ?: true
+                prepMinutes.toFloat() in filter.minPrepTime..filter.maxPrepTime
             }
             .filter { item: RecipeWithIngredients ->
-                filter.caloriesRange?.let { range ->
-                    item.recipe.calories in range.start.toInt()..range.endInclusive.toInt()
-                } ?: true
+                item.recipe.calories.toFloat() in filter.minCalories..filter.maxCalories
             }
             .map { it.recipe }
             .distinctBy { "${it.name.lowercase()}|${it.category.lowercase()}" }
