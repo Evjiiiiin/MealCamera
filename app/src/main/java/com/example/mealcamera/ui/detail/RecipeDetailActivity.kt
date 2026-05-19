@@ -130,7 +130,7 @@ class RecipeDetailActivity : AppCompatActivity() {
         binding.tvRecipeName.text = recipe.name
         binding.tvToolbarTitle.text = recipe.name
         binding.tvDescription.text = recipe.description
-        
+
         // Отображение времени приготовления
         if (recipe.prepTime.isNotBlank()) {
             binding.tvPrepTime.text = recipe.prepTime
@@ -149,24 +149,33 @@ class RecipeDetailActivity : AppCompatActivity() {
     private fun updateKbjuDisplay() {
         val recipe = currentRecipe ?: return
         val portions = viewModel.portions.value
-        val weightPerPortion = recipe.totalWeight
-        val currentTotalWeight = weightPerPortion * portions
+        val basePortions = recipe.basePortions.coerceAtLeast(1)
+        val scale = portions.toDouble() / basePortions.toDouble()
+        val currentTotalWeight = (recipe.totalWeight * scale).toInt()
 
         if (isDisplayingPer100g) {
             updateToggleVisuals(is100gActive = true)
-            binding.tvCalories.text = recipe.calories.toString()
-            binding.tvProteins.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.proteins)
-            binding.tvFats.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.fats)
-            binding.tvCarbs.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.carbs)
-            binding.tvKbjuSubtitle.text = "Расчет на 100 г"
+            if (recipe.totalWeight > 0) {
+                val per100gScale = 100.0 / recipe.totalWeight.toDouble()
+                binding.tvCalories.text = (recipe.calories * per100gScale).toInt().toString()
+                binding.tvProteins.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.proteins * per100gScale)
+                binding.tvFats.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.fats * per100gScale)
+                binding.tvCarbs.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.carbs * per100gScale)
+                binding.tvKbjuSubtitle.text = "Расчет на 100 г"
+            } else {
+                binding.tvCalories.text = recipe.calories.toString()
+                binding.tvProteins.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.proteins)
+                binding.tvFats.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.fats)
+                binding.tvCarbs.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.carbs)
+                binding.tvKbjuSubtitle.text = "Вес не указан"
+            }
         } else {
             updateToggleVisuals(is100gActive = false)
-            val multiplier = (weightPerPortion.toDouble() / 100.0) * portions
-            binding.tvCalories.text = (recipe.calories * multiplier).toInt().toString()
-            binding.tvProteins.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.proteins * multiplier)
-            binding.tvFats.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.fats * multiplier)
-            binding.tvCarbs.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.carbs * multiplier)
-            binding.tvKbjuSubtitle.text = if (weightPerPortion > 0) "Вес: $currentTotalWeight г" else "Вес не указан"
+            binding.tvCalories.text = (recipe.calories * scale).toInt().toString()
+            binding.tvProteins.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.proteins * scale)
+            binding.tvFats.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.fats * scale)
+            binding.tvCarbs.text = String.format(java.util.Locale.getDefault(), "%.1f", recipe.carbs * scale)
+            binding.tvKbjuSubtitle.text = if (recipe.totalWeight > 0) "Вес: $currentTotalWeight г" else "Расчет на $portions порц."
         }
     }
 
@@ -242,7 +251,7 @@ class RecipeDetailActivity : AppCompatActivity() {
 
         binding.btnPlusPortion.setOnClickListener {
             val current = viewModel.portions.value
-            if (current < 10) viewModel.setPortions(current + 1)
+            if (current < 99) viewModel.setPortions(current + 1)
         }
     }
 

@@ -31,6 +31,17 @@
             android:value="${YANDEX_CLIENT_ID}"
             tools:replace="android:value" />
 
+        <!-- Optional Roboflow credentials. Empty values keep the existing local TFLite detector as fallback. -->
+        <meta-data
+            android:name="com.example.mealcamera.ROBOFLOW_API_KEY"
+            android:value="xMdLAXOS8WP8PlXzKZVK" />
+        <meta-data
+            android:name="com.example.mealcamera.ROBOFLOW_MODEL"
+            android:value="splash-qy4gc" />
+        <meta-data
+            android:name="com.example.mealcamera.ROBOFLOW_VERSION"
+            android:value="4" />
+
         <activity
             android:name="com.example.mealcamera.ui.splash.SplashActivity"
             android:exported="true"

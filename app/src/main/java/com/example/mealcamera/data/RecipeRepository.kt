@@ -51,7 +51,7 @@ class RecipeRepository(
                     recipeDao.updateIngredientName(ingredient.ingredientId, capitalized)
                 }
             }
-            
+
             val recipes = recipeDao.getAllRecipes().firstOrNull() ?: emptyList()
             recipes.forEach { recipe ->
                 val capitalized = capitalize(recipe.name)
@@ -69,12 +69,12 @@ class RecipeRepository(
         val normalized = normalize(name)
         val defaults = setOf("соль", "сахар", "вода", "перец", "перец молотый", "черный перец", "молотый перец")
         if (defaults.contains(normalized)) return@withContext true
-        
+
         if (IngredientTranslator.isKnownIngredient(normalized)) return@withContext true
-        
-        val existsInDb = recipeDao.getIngredientByName(name) != null || 
-                         recipeDao.getIngredientByName(normalized) != null
-        
+
+        val existsInDb = recipeDao.getIngredientByName(name) != null ||
+                recipeDao.getIngredientByName(normalized) != null
+
         return@withContext existsInDb
     }
 
@@ -117,7 +117,7 @@ class RecipeRepository(
                     else -> insertNewRecipe(cloudData)
                 }
             }
-            
+
             capitalizeExistingIngredients()
         } catch (e: Exception) {
             Log.e("RecipeRepository", "❌ Error during sync", e)
@@ -135,7 +135,7 @@ class RecipeRepository(
                     recipeDao.insertIngredient(Ingredient(name = capitalize(cloudIngredient.name)))
                 }
             }
-        } catch (e: Exception) { 
+        } catch (e: Exception) {
             Log.e("RecipeRepository", "Sync ingredients error", e)
         }
     }
@@ -155,6 +155,7 @@ class RecipeRepository(
             fats = cloudData.recipe.fats,
             carbs = cloudData.recipe.carbs,
             totalWeight = cloudData.recipe.totalWeight,
+            basePortions = cloudData.recipe.basePortions.coerceAtLeast(1),
             createdByUserId = cloudData.recipe.authorId,
             isPublicRecipe = cloudData.recipe.isPublic
         )
@@ -179,6 +180,7 @@ class RecipeRepository(
             fats = cloudData.recipe.fats,
             carbs = cloudData.recipe.carbs,
             totalWeight = cloudData.recipe.totalWeight,
+            basePortions = cloudData.recipe.basePortions.coerceAtLeast(1),
             createdByUserId = cloudData.recipe.authorId,
             isPublicRecipe = cloudData.recipe.isPublic
         )
@@ -263,6 +265,7 @@ class RecipeRepository(
                     fats = cloudRecipe.fats,
                     carbs = cloudRecipe.carbs,
                     totalWeight = cloudRecipe.totalWeight,
+                    basePortions = cloudRecipe.basePortions.coerceAtLeast(1),
                     createdByUserId = userId,
                     isPublicRecipe = isPublic
                 )
@@ -299,6 +302,7 @@ class RecipeRepository(
                     fats = cloudRecipe.fats,
                     carbs = cloudRecipe.carbs,
                     totalWeight = cloudRecipe.totalWeight,
+                    basePortions = cloudRecipe.basePortions.coerceAtLeast(1),
                     createdByUserId = userId,
                     isPublicRecipe = isPublic
                 )
@@ -340,7 +344,7 @@ class RecipeRepository(
                 }
                 StepData(step.title, step.instruction, step.timerMinutes, step.imagePath, cloudStepIngs)
             }
-            CloudRecipe(recipe.name, recipe.description, recipe.imagePath, recipe.category, recipe.prepTime, 0, recipe.cuisine, recipe.cuisineCode, ingredients, steps, recipe.createdByUserId ?: "", recipe.isPublicRecipe ?: true, recipe.calories, recipe.proteins, recipe.fats, recipe.carbs, recipe.totalWeight)
+            CloudRecipe(recipe.name, recipe.description, recipe.imagePath, recipe.category, recipe.prepTime, 0, recipe.cuisine, recipe.cuisineCode, ingredients, steps, recipe.createdByUserId ?: "", recipe.isPublicRecipe ?: true, recipe.calories, recipe.proteins, recipe.fats, recipe.carbs, recipe.totalWeight, recipe.basePortions)
         } catch (e: Exception) {
             Log.e("RecipeRepository", "Error getting recipe for editing", e)
             null
@@ -353,14 +357,20 @@ class RecipeRepository(
                 if (firestoreId != null) { firestoreService.deleteRecipe(firestoreId) }
                 recipeDao.deleteRecipe(recipeId)
                 true
-            } catch (e: Exception) { 
+            } catch (e: Exception) {
                 Log.e("RecipeRepository", "Delete recipe error", e)
-                false 
+                false
             }
         }
     }
 
-    private fun formatIngredientQuantity(quantity: String, unit: String, portions: Int): Pair<String, String> {
+    private fun scaleForPortions(selectedPortions: Int, basePortions: Int): Double {
+        val safeSelected = selectedPortions.coerceAtLeast(1)
+        val safeBase = basePortions.coerceAtLeast(1)
+        return safeSelected.toDouble() / safeBase.toDouble()
+    }
+
+    private fun formatIngredientQuantity(quantity: String, unit: String, scale: Double): Pair<String, String> {
         if ((quantity == "1" && unit.isBlank()) ||
             quantity.lowercase(Locale.ROOT).contains("по вкусу") ||
             unit.lowercase(Locale.ROOT).contains("по вкусу")) {
@@ -368,7 +378,7 @@ class RecipeRepository(
         }
         val baseQtyNum = quantity.toDoubleOrNull()
         return if (baseQtyNum != null) {
-            val scaledQty = baseQtyNum * portions
+            val scaledQty = baseQtyNum * scale
             val qtyStr = if (scaledQty % 1.0 == 0.0) scaledQty.toInt().toString()
             else String.format(Locale.US, "%.1f", scaledQty)
             qtyStr to unit
@@ -378,11 +388,11 @@ class RecipeRepository(
     }
 
     fun getScaledIngredientsForRecipe(recipeId: Long, portions: Int): Flow<List<IngredientWithDetails>> {
-        val safePortions = portions.coerceIn(1, 10)
         return recipeDao.getRecipeWithIngredientsById(recipeId).map { recipeWithIngredients ->
+            val scale = scaleForPortions(portions, recipeWithIngredients.recipe.basePortions)
             recipeWithIngredients.ingredients.map { ingredient ->
                 val crossRef = recipeDao.getCrossRef(recipeId, ingredient.ingredientId)
-                val (qty, unit) = formatIngredientQuantity(crossRef?.quantity ?: "", crossRef?.unit ?: "", safePortions)
+                val (qty, unit) = formatIngredientQuantity(crossRef?.quantity ?: "", crossRef?.unit ?: "", scale)
                 IngredientWithDetails(ingredient, qty, unit)
             }
         }
@@ -391,13 +401,14 @@ class RecipeRepository(
     fun getStepsByRecipeId(recipeId: Long): Flow<List<RecipeStep>> = recipeDao.getStepsByRecipeId(recipeId)
 
     fun getCookingStepsWithIngredients(recipeId: Long, portions: Int): Flow<List<CookingStepWithIngredients>> = flow {
-        val safePortions = portions.coerceIn(1, 10)
+        val recipe = recipeDao.getRecipeByIdSync(recipeId)
+        val scale = scaleForPortions(portions, recipe?.basePortions ?: 1)
         recipeDao.getStepsByRecipeId(recipeId).collect { steps ->
             val result = steps.map { step ->
                 val stepIngs = recipeDao.getStepIngredients(step.stepId)
                 val details = stepIngs.mapNotNull { si ->
                     val ing = recipeDao.getIngredientById(si.ingredientId) ?: return@mapNotNull null
-                    val (qty, unit) = formatIngredientQuantity(si.quantity, si.unit, safePortions)
+                    val (qty, unit) = formatIngredientQuantity(si.quantity, si.unit, scale)
                     IngredientWithDetails(ing, qty, unit)
                 }
                 CookingStepWithIngredients(step, details)
@@ -430,12 +441,12 @@ class RecipeRepository(
 
     suspend fun addScaledIngredientsToShoppingList(recipeId: Long, portions: Int, userId: String) {
         val recipeWithIngredients = recipeDao.getRecipeWithIngredientsById(recipeId).firstOrNull() ?: return
-        val safePortions = portions.coerceIn(1, 10)
+        val scale = scaleForPortions(portions, recipeWithIngredients.recipe.basePortions)
         recipeWithIngredients.ingredients.forEach { ingredient ->
             val crossRef = recipeDao.getCrossRef(recipeId, ingredient.ingredientId)
             val baseQuantity = crossRef?.quantity ?: ""
             val baseUnit = crossRef?.unit ?: ""
-            val (scaledQuantity, scaledUnit) = formatIngredientQuantity(baseQuantity, baseUnit, safePortions)
+            val (scaledQuantity, scaledUnit) = formatIngredientQuantity(baseQuantity, baseUnit, scale)
             val existing = shoppingListDao.getItemByNameAndUnit(userId, ingredient.name, scaledUnit)
             if (existing == null) {
                 shoppingListDao.insertItem(ShoppingListItem(userId = userId, name = ingredient.name, quantity = scaledQuantity, unit = scaledUnit))

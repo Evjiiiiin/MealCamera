@@ -7,5 +7,9 @@ data class DetectedFood(
     val originalLabel: String,
     val confidence: Float,
     val boundingBox: RectF? = null,
-    val imagePath: String = ""
+    val imagePath: String = "",
+    val source: String = SOURCE_LOCAL
 )
+
+const val SOURCE_LOCAL = "Локальная модель"
+const val SOURCE_ROBOFLOW = "Roboflow"

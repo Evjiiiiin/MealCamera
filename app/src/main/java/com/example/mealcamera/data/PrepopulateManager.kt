@@ -93,7 +93,7 @@ class PrepopulateManager(
                 recipeIngredients.add(
                     CloudIngredient(
                         name = ingObj.getString("name"),
-                        quantity = ingObj.getString("quantity"),
+                        quantity = jsonQuantityToString(ingObj),
                         unit = ingObj.optString("unit", "")
                     )
                 )
@@ -113,7 +113,7 @@ class PrepopulateManager(
                             stepIngredients.add(
                                 CloudIngredient(
                                     name = stepIngObj.getString("name"),
-                                    quantity = stepIngObj.getString("quantity"),
+                                    quantity = jsonQuantityToString(stepIngObj),
                                     unit = stepIngObj.optString("unit", "")
                                 )
                             )
@@ -148,12 +148,29 @@ class PrepopulateManager(
                     cuisine = cuisine,
                     cuisineCode = cuisineCode,
                     ingredients = recipeIngredients,
-                    steps = steps
+                    steps = steps,
+                    calories = recipeObj.optInt("calories", 0),
+                    proteins = recipeObj.optDouble("proteins", 0.0),
+                    fats = recipeObj.optDouble("fats", 0.0),
+                    carbs = recipeObj.optDouble("carbs", 0.0),
+                    totalWeight = recipeObj.optInt("totalWeight", 0),
+                    basePortions = recipeObj.optInt("basePortions", 1).coerceAtLeast(1)
                 )
             )
         }
 
         return Pair(ingredients, recipes)
+    }
+
+    private fun jsonQuantityToString(obj: JSONObject, key: String = "quantity"): String {
+        return when (val value = obj.opt(key)) {
+            null, JSONObject.NULL -> ""
+            is Number -> {
+                val asDouble = value.toDouble()
+                if (asDouble % 1.0 == 0.0) asDouble.toInt().toString() else asDouble.toString()
+            }
+            else -> value.toString()
+        }
     }
 
     private fun buildDefaultStepImagePath(recipeName: String, stepNumber: Int): String {
@@ -209,7 +226,13 @@ class PrepopulateManager(
                 prepTime = cloudRecipe.prepTime,
                 popularityScore = cloudRecipe.popularityScore,
                 cuisine = cloudRecipe.cuisine,
-                cuisineCode = cloudRecipe.cuisineCode
+                cuisineCode = cloudRecipe.cuisineCode,
+                calories = cloudRecipe.calories,
+                proteins = cloudRecipe.proteins,
+                fats = cloudRecipe.fats,
+                carbs = cloudRecipe.carbs,
+                totalWeight = cloudRecipe.totalWeight,
+                basePortions = cloudRecipe.basePortions.coerceAtLeast(1)
             )
             val recipeId = recipeDao.insertRecipe(recipe)
 

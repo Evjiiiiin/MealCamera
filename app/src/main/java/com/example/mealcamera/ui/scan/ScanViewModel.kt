@@ -40,10 +40,37 @@ class ScanViewModel(
     private val _userAllergens = MutableStateFlow<List<String>>(emptyList())
     val userAllergens = _userAllergens.asStateFlow()
 
+    /**
+     * История обнаружений по каждому классу для сглаживания результатов между кадрами.
+     */
     private val detectionHistory = mutableMapOf<String, MutableList<Int>>()
+
+    /**
+     * Последние подтвержденные детекции по каждому классу.
+     */
     private val lastConfirmedDetections = mutableMapOf<String, List<DetectedFood>>()
+
+    /**
+     * Размер окна истории (количество кадров).
+     */
     private val historyWindowSize = 8
-    private val minConfirmationFrames = 3
+
+    /**
+     * Минимальное количество кадров, в которых объект должен появиться,
+     * чтобы считаться стабильным.
+     */
+    private val minConfirmationFrames = 1
+
+    /**
+     * Минимальная допустимая уверенность детектора.
+     */
+    private val minAcceptedConfidence = 0.40f
+
+    /**
+     * Максимальное количество различных групп продуктов,
+     * отображаемых одновременно.
+     */
+    private val maxProductGroups = 6
 
     init {
         observeUserAllergens()
@@ -51,53 +78,173 @@ class ScanViewModel(
 
     private fun observeUserAllergens() {
         val userId = auth.currentUser?.uid ?: return
+
         firestoreService.getUserAllergensFlow(userId)
             .onEach { allergens ->
-                _userAllergens.value = repository.expandAllergens(allergens).map { it.lowercase() }
+                _userAllergens.value =
+                    repository.expandAllergens(allergens)
+                        .map { it.lowercase() }
             }
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Обновляет список текущих обнаружений и выполняет:
+     * - фильтрацию по confidence;
+     * - удаление не-пищевых объектов;
+     * - сглаживание по истории кадров;
+     * - выбор лучших групп продуктов.
+     */
     fun updateDetections(newDetections: List<DetectedFood>) {
-        val detectionsByLabel = newDetections.groupBy { normalizeLabel(it.originalLabel) }
-        val allLabels = (detectionHistory.keys + detectionsByLabel.keys).toSet()
+        val filteredDetections = newDetections
+            .filter { it.confidence >= minAcceptedConfidence }
+            .filter {
+                repositorySafeFoodName(it.name) &&
+                        repositorySafeFoodName(it.originalLabel)
+            }
+
+        val detectionsByLabel =
+            filteredDetections.groupBy { normalizeLabel(it.originalLabel) }
+
+        val allLabels =
+            (detectionHistory.keys + detectionsByLabel.keys).toSet()
+
         val stableDetections = mutableListOf<DetectedFood>()
 
         for (label in allLabels) {
-            val history = detectionHistory.getOrPut(label) { mutableListOf() }
-            val currentDetections = detectionsByLabel[label].orEmpty().sortedByDescending { it.confidence }
+            val history =
+                detectionHistory.getOrPut(label) { mutableListOf() }
 
+            val currentDetections =
+                detectionsByLabel[label]
+                    .orEmpty()
+                    .sortedByDescending { it.confidence }
+
+            // Сохраняем количество найденных объектов в текущем кадре
             history.add(currentDetections.size)
-            if (history.size > historyWindowSize) history.removeAt(0)
 
+            // Ограничиваем размер истории
+            if (history.size > historyWindowSize) {
+                history.removeAt(0)
+            }
+
+            // Запоминаем последние подтвержденные детекции
             if (currentDetections.isNotEmpty()) {
                 lastConfirmedDetections[label] = currentDetections
             }
 
+            // Количество кадров, в которых объект был виден
             val visibleFrames = history.count { it > 0 }
-            val smoothedCount = history.average().roundToInt().coerceAtLeast(0)
-            val shouldShow = visibleFrames >= minConfirmationFrames || currentDetections.isNotEmpty()
-            if (!shouldShow || smoothedCount == 0) continue
 
-            val source = if (currentDetections.isNotEmpty()) currentDetections else lastConfirmedDetections[label].orEmpty()
-            stableDetections.addAll(source.take(smoothedCount))
+            // Усреднённое количество объектов
+            val smoothedCount =
+                history.average()
+                    .roundToInt()
+                    .coerceAtLeast(0)
+
+            val shouldShow = visibleFrames >= minConfirmationFrames
+
+            if (!shouldShow || smoothedCount == 0) {
+                continue
+            }
+
+            // Используем текущие детекции, а если их нет —
+            // последние подтвержденные
+            val source =
+                if (currentDetections.isNotEmpty()) {
+                    currentDetections
+                } else {
+                    lastConfirmedDetections[label].orEmpty()
+                }
+
+            stableDetections.addAll(
+                source.take(smoothedCount)
+            )
         }
 
-        val activeLabels = detectionHistory.filterValues { history -> history.any { it > 0 } }.keys
+        // Оставляем только активные классы
+        val activeLabels =
+            detectionHistory
+                .filterValues { history ->
+                    history.any { it > 0 }
+                }
+                .keys
+
         lastConfirmedDetections.keys.retainAll(activeLabels)
-        detectionHistory.keys.retainAll(activeLabels + detectionsByLabel.keys)
+        detectionHistory.keys.retainAll(
+            activeLabels + detectionsByLabel.keys
+        )
 
-        _latestDetections.value = stableDetections.sortedByDescending { it.confidence }
+        // Сохраняем итоговые сглаженные результаты
+        _latestDetections.value =
+            keepTopProductGroupsWithAllVisibleItems(stableDetections)
     }
 
+    /**
+     * Оставляет несколько наиболее вероятных групп продуктов,
+     * сохраняя все видимые экземпляры внутри каждой группы.
+     */
+    private fun keepTopProductGroupsWithAllVisibleItems(
+        detections: List<DetectedFood>
+    ): List<DetectedFood> {
+        return detections
+            .groupBy { normalizeLabel(it.originalLabel) }
+            .values
+            .sortedByDescending { group ->
+                group.maxOf { it.confidence }
+            }
+            .take(maxProductGroups)
+            .flatMap { group ->
+                group.sortedByDescending { it.confidence }
+            }
+    }
+
+    /**
+     * Исключает очевидные не-пищевые объекты.
+     */
+    private fun repositorySafeFoodName(name: String): Boolean {
+        val normalized = normalizeLabel(name)
+
+        val blocked = setOf(
+            "phone", "mobile phone", "cell phone", "телефон",
+            "key", "keys", "ключ", "ключи",
+            "table", "стол",
+            "hand", "hands", "рука", "руки",
+            "person", "people", "человек", "люди"
+        )
+
+        return normalized !in blocked
+    }
+
+    /**
+     * Нормализация названия для сравнения.
+     */
     private fun normalizeLabel(name: String): String {
-        return name.trim().lowercase().replace("ё", "е")
+        return name
+            .trim()
+            .lowercase()
+            .replace("ё", "е")
     }
 
+    /**
+     * Приведение первой буквы к верхнему регистру.
+     */
     private fun capitalize(text: String): String {
-        return text.trim().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        return text
+            .trim()
+            .replaceFirstChar {
+                if (it.isLowerCase()) {
+                    it.titlecase(Locale.getDefault())
+                } else {
+                    it.toString()
+                }
+            }
     }
 
+    /**
+     * Преобразует детекции в список ScannedIngredient
+     * и сохраняет общий снимок.
+     */
     fun processCapturedDetections(
         bitmap: Bitmap,
         detections: List<DetectedFood>,
@@ -107,22 +254,35 @@ class ScanViewModel(
             _isProcessing.value = true
 
             val newIngredients = withContext(Dispatchers.IO) {
-                if (detections.isEmpty()) return@withContext emptyList()
+                if (detections.isEmpty()) {
+                    return@withContext emptyList()
+                }
 
                 val fileName = "scan_${UUID.randomUUID()}.jpg"
                 val imagePath = imageStorage.saveImage(bitmap, fileName)
 
-                detections.groupBy { it.name }.map { (name, detectedList) ->
-                    val unit = UnitHelper.getDefaultUnit(name)
-                    val estimatedQuantity = estimateQuantity(detectedList.size, unit)
-                    ScannedIngredient(
-                        name = capitalize(name),
-                        imagePath = imagePath,
-                        quantity = UnitHelper.formatQuantity(estimatedQuantity),
-                        unit = unit,
-                        timestamp = System.currentTimeMillis() + name.hashCode()
-                    )
-                }
+                detections
+                    .groupBy { it.name }
+                    .map { (name, detectedList) ->
+                        val unit = UnitHelper.getDefaultUnit(name)
+                        val estimatedQuantity =
+                            estimateQuantity(
+                                detectedList.size,
+                                unit
+                            )
+
+                        ScannedIngredient(
+                            name = capitalize(name),
+                            imagePath = imagePath,
+                            quantity = UnitHelper.formatQuantity(
+                                estimatedQuantity
+                            ),
+                            unit = unit,
+                            timestamp =
+                                System.currentTimeMillis() +
+                                        name.hashCode()
+                        )
+                    }
             }
 
             onResult(newIngredients)
@@ -130,7 +290,13 @@ class ScanViewModel(
         }
     }
 
-    private fun estimateQuantity(count: Int, unit: String): Double {
+    /**
+     * Примерная оценка количества по числу обнаруженных объектов.
+     */
+    private fun estimateQuantity(
+        count: Int,
+        unit: String
+    ): Double {
         return when (unit) {
             "шт" -> count.toDouble()
             "мл" -> 200.0 * count

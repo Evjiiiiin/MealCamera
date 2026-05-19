@@ -38,7 +38,7 @@ class FirestoreService {
                 "updatedAt" to System.currentTimeMillis()
             )
             yandexId?.let { data["yandexId"] = it }
-            
+
             usersCollection.document(userId).set(data, com.google.firebase.firestore.SetOptions.merge()).await()
             Log.d("FirestoreService", "Профиль сохранён: name=$name, yandexId=$yandexId")
             true
@@ -132,6 +132,7 @@ class FirestoreService {
                     val isPublic = document.getBoolean("isPublic") ?: true
 
                     val totalWeight = document.getLong("totalWeight")?.toInt() ?: 0
+                    val basePortions = (document.getLong("basePortions")?.toInt() ?: 1).coerceAtLeast(1)
 
                     val ingredientsList = mutableListOf<CloudIngredient>()
                     val ingredientsField = document.get("ingredients")
@@ -201,7 +202,8 @@ class FirestoreService {
                         proteins = document.getDouble("proteins") ?: 0.0,
                         fats = document.getDouble("fats") ?: 0.0,
                         carbs = document.getDouble("carbs") ?: 0.0,
-                        totalWeight = totalWeight
+                        totalWeight = totalWeight,
+                        basePortions = basePortions
                     )
 
                     RecipeData(id = document.id, recipe = cloudRecipe)
@@ -228,6 +230,7 @@ class FirestoreService {
                 "fats" to recipe.fats,
                 "carbs" to recipe.carbs,
                 "totalWeight" to recipe.totalWeight,
+                "basePortions" to recipe.basePortions,
                 "ingredients" to recipe.ingredients.map {
                     mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                 },
@@ -266,6 +269,7 @@ class FirestoreService {
                 "fats" to recipe.fats,
                 "carbs" to recipe.carbs,
                 "totalWeight" to recipe.totalWeight,
+                "basePortions" to recipe.basePortions,
                 "ingredients" to recipe.ingredients.map {
                     mapOf("name" to it.name, "quantity" to it.quantity, "unit" to it.unit)
                 },
@@ -368,7 +372,8 @@ data class CloudRecipe(
     val proteins: Double = 0.0,
     val fats: Double = 0.0,
     val carbs: Double = 0.0,
-    val totalWeight: Int = 0
+    val totalWeight: Int = 0,
+    val basePortions: Int = 1
 )
 
 data class StepData(

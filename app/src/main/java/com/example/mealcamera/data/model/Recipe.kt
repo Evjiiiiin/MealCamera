@@ -24,19 +24,22 @@ data class Recipe(
     val popularityScore: Int = 0,
     val cuisine: String = "Русская",
     val cuisineCode: String = "RU",
-    
+
     // КБЖУ (на 100г)
     val calories: Int = 0,
     val proteins: Double = 0.0,
     val fats: Double = 0.0,
     val carbs: Double = 0.0,
-    
-    // Вес готового блюда (одной порции)
+
+    // Вес готового блюда для базового количества порций
     val totalWeight: Int = 0,
-    
+
+    // Исходное количество порций, для которого указаны ингредиенты и КБЖУ
+    val basePortions: Int = 1,
+
     @ColumnInfo(name = "authorId", defaultValue = "admin")
     val createdByUserId: String? = null,
-    
+
     @ColumnInfo(name = "isPublic", defaultValue = "1")
     val isPublicRecipe: Boolean? = true
 )
