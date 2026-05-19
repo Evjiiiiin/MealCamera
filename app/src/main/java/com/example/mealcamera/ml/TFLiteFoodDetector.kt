@@ -22,8 +22,9 @@ class TFLiteFoodDetector(context: Context) {
 
     private val inputSize = 640
 
-    // Улучшенные параметры из Codex
-    private val confidenceThreshold = 0.40f
+    // Локальный режим оставляем менее строгим, т.к. это fallback без интернета.
+    // Далее стабильность усиливается в ScanViewModel (smoothing + tracking).
+    private val minConfidenceThreshold = 0.40f
     private val nmsThreshold = 0.45f
     private val maxDetections = 50
 
@@ -39,10 +40,7 @@ class TFLiteFoodDetector(context: Context) {
     init {
         try {
             val modelBuffer = loadModelFile()
-
-            val options = Interpreter.Options().apply {
-                setNumThreads(4)
-            }
+            val options = Interpreter.Options().apply { setNumThreads(4) }
 
             interpreter = Interpreter(modelBuffer, options)
 
@@ -50,17 +48,13 @@ class TFLiteFoodDetector(context: Context) {
             outputShape = outputTensor.shape()
             outputBuffer = createOutputBuffer(outputShape)
 
-            labels = appContext.assets
-                .open("labels.txt")
+            labels = appContext.assets.open("labels.txt")
                 .bufferedReader()
                 .readLines()
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
 
-            Log.d(
-                TAG,
-                "Модель загружена. Выход: ${outputShape.contentToString()}, labels=${labels.size}"
-            )
+            Log.d(TAG, "Модель загружена. Выход: ${outputShape.contentToString()}, labels=${labels.size}")
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка инициализации", e)
         }
@@ -80,64 +74,27 @@ class TFLiteFoodDetector(context: Context) {
 
     private fun createOutputBuffer(shape: IntArray): Any {
         return when (shape.size) {
-            3 -> Array(shape[0]) {
-                Array(shape[1]) {
-                    FloatArray(shape[2])
-                }
-            }
-
-            4 -> Array(shape[0]) {
-                Array(shape[1]) {
-                    Array(shape[2]) {
-                        FloatArray(shape[3])
-                    }
-                }
-            }
-
-            else -> throw IllegalStateException(
-                "Unsupported output shape: ${shape.contentToString()}"
-            )
+            3 -> Array(shape[0]) { Array(shape[1]) { FloatArray(shape[2]) } }
+            4 -> Array(shape[0]) { Array(shape[1]) { Array(shape[2]) { FloatArray(shape[3]) } } }
+            else -> throw IllegalStateException("Unsupported output shape: ${shape.contentToString()}")
         }
     }
 
     fun detectFood(bitmap: Bitmap): List<DetectedFood> {
         lock.withLock {
-            if (
-                isClosed ||
-                interpreter == null ||
-                outputBuffer == null
-            ) {
-                return emptyList()
-            }
+            if (isClosed || interpreter == null || outputBuffer == null) return emptyList()
 
             try {
-                val resized = Bitmap.createScaledBitmap(
-                    bitmap,
-                    inputSize,
-                    inputSize,
-                    true
-                )
-
+                val resized = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
                 val buffer = prepareInputBuffer(resized)
-
-                if (resized != bitmap) {
-                    resized.recycle()
-                }
+                if (resized != bitmap) resized.recycle()
 
                 interpreter?.run(buffer, outputBuffer)
-
-                val matrix = extractYoloMatrix()
-                    ?: return emptyList()
-
-                return parseYoloV8Output(
-                    matrix,
-                    bitmap.width,
-                    bitmap.height
-                )
+                val matrix = extractYoloMatrix() ?: return emptyList()
+                return parseYoloV8Output(matrix, bitmap.width, bitmap.height)
             } catch (e: Exception) {
                 Log.e(TAG, "Inference error", e)
             }
-
             return emptyList()
         }
     }
@@ -146,40 +103,30 @@ class TFLiteFoodDetector(context: Context) {
     private fun extractYoloMatrix(): Array<FloatArray>? {
         return when (outputShape.size) {
             3 -> {
-                val output =
-                    outputBuffer as Array<Array<FloatArray>>
+                val output = outputBuffer as Array<Array<FloatArray>>
                 normalizeCandidateMatrix(output[0])
             }
-
             4 -> {
-                val output =
-                    outputBuffer as Array<Array<Array<FloatArray>>>
+                val output = outputBuffer as Array<Array<Array<FloatArray>>>
                 val batch = output[0]
 
                 when {
-                    // [1, 1, 8400, 81] или [1, 1, 8400, 84]
-                    outputShape[1] == 1 ->
-                        normalizeCandidateMatrix(batch[0])
+                    // [1, 1, 8400, 81] / [1, 1, 8400, 84]
+                    outputShape[1] == 1 -> normalizeCandidateMatrix(batch[0])
 
                     // [1, 81, 8400, 1]
-                    outputShape[3] == 1 ->
-                        Array(outputShape[1]) { attr ->
-                            FloatArray(outputShape[2]) { candidate ->
-                                batch[attr][candidate][0]
-                            }
-                        }
+                    outputShape[3] == 1 -> Array(outputShape[1]) { attr ->
+                        FloatArray(outputShape[2]) { candidate -> batch[attr][candidate][0] }
+                    }
 
                     else -> null
                 }
             }
-
             else -> null
         }
     }
 
-    private fun normalizeCandidateMatrix(
-        matrix: Array<FloatArray>
-    ): Array<FloatArray> {
+    private fun normalizeCandidateMatrix(matrix: Array<FloatArray>): Array<FloatArray> {
         if (matrix.isEmpty()) return matrix
 
         val rows = matrix.size
@@ -193,14 +140,10 @@ class TFLiteFoodDetector(context: Context) {
                     rows == expectedAttributesWithObjectness ||
                     rows < columns
 
-        if (rowsAreAttributes) {
-            return matrix
-        }
+        if (rowsAreAttributes) return matrix
 
         return Array(columns) { attr ->
-            FloatArray(rows) { candidate ->
-                matrix[candidate][attr]
-            }
+            FloatArray(rows) { candidate -> matrix[candidate][attr] }
         }
     }
 
@@ -209,48 +152,28 @@ class TFLiteFoodDetector(context: Context) {
         imageWidth: Int,
         imageHeight: Int
     ): List<DetectedFood> {
-        if (output.size < 5 || output[0].isEmpty()) {
-            return emptyList()
-        }
+        if (output.size < 5 || output[0].isEmpty()) return emptyList()
 
         val attributes = output.size
         val candidates = output[0].size
 
-        val hasObjectness =
-            attributes >= labels.size + 5
-
-        val classOffset =
-            if (hasObjectness) 5 else 4
-
-        val numClasses =
-            min(labels.size, attributes - classOffset)
-
-        if (numClasses <= 0) {
-            return emptyList()
-        }
+        val hasObjectness = attributes >= labels.size + 5
+        val classOffset = if (hasObjectness) 5 else 4
+        val numClasses = min(labels.size, attributes - classOffset)
+        if (numClasses <= 0) return emptyList()
 
         val results = mutableListOf<DetectedFood>()
-        val coordinatesAreNormalized =
-            coordinatesAreNormalized(output)
+        val coordinatesAreNormalized = coordinatesAreNormalized(output)
 
         for (candidate in 0 until candidates) {
-            val objectness =
-                if (hasObjectness) {
-                    output[4][candidate].coerceIn(0f, 1f)
-                } else {
-                    1f
-                }
-
+            val objectness = if (hasObjectness) output[4][candidate].coerceIn(0f, 1f) else 1f
             if (objectness <= 0f) continue
 
             var maxClassScore = 0f
             var classIndex = -1
 
             for (classPosition in 0 until numClasses) {
-                val score =
-                    output[classOffset + classPosition][candidate]
-                        .coerceIn(0f, 1f)
-
+                val score = output[classOffset + classPosition][candidate].coerceIn(0f, 1f)
                 if (score > maxClassScore) {
                     maxClassScore = score
                     classIndex = classPosition
@@ -258,95 +181,36 @@ class TFLiteFoodDetector(context: Context) {
             }
 
             val confidence = objectness * maxClassScore
-
-            if (
-                confidence < confidenceThreshold ||
-                classIndex < 0
-            ) {
-                continue
-            }
+            if (confidence < minConfidenceThreshold || classIndex < 0) continue
 
             val cx = output[0][candidate]
             val cy = output[1][candidate]
             val width = output[2][candidate]
             val height = output[3][candidate]
 
-            val xFactor =
-                if (coordinatesAreNormalized) {
-                    imageWidth.toFloat()
-                } else {
-                    imageWidth.toFloat() / inputSize
-                }
-
-            val yFactor =
-                if (coordinatesAreNormalized) {
-                    imageHeight.toFloat()
-                } else {
-                    imageHeight.toFloat() / inputSize
-                }
+            val xFactor = if (coordinatesAreNormalized) imageWidth.toFloat() else imageWidth.toFloat() / inputSize
+            val yFactor = if (coordinatesAreNormalized) imageHeight.toFloat() else imageHeight.toFloat() / inputSize
 
             val left = (cx - width / 2f) * xFactor
             val top = (cy - height / 2f) * yFactor
             val right = (cx + width / 2f) * xFactor
             val bottom = (cy + height / 2f) * yFactor
+            if (right <= left || bottom <= top) continue
 
-            if (right <= left || bottom <= top) {
-                continue
-            }
-
-            val originalLabel =
-                labels.getOrNull(classIndex) ?: "unknown"
-
-            val normalizedLabel =
-                originalLabel
-                    .trim()
-                    .lowercase(java.util.Locale.ROOT)
-
-            if (
-                normalizedLabel in nonFoodLabels ||
-                !IngredientTranslator.isKnownIngredient(
-                    normalizedLabel
-                )
-            ) {
-                continue
-            }
-
-            val imageArea =
-                imageWidth.toFloat() * imageHeight.toFloat()
-
-            val boxArea =
-                (right - left) * (bottom - top)
-
-            if (boxArea < imageArea * minBoxAreaRatio) {
-                continue
-            }
-
+            val originalLabel = labels.getOrNull(classIndex) ?: "unknown"
             results.add(
                 DetectedFood(
-                    name = IngredientTranslator.translate(
-                        originalLabel
-                    ),
+                    name = IngredientTranslator.translate(originalLabel),
                     originalLabel = originalLabel,
                     confidence = confidence,
                     boundingBox = RectF(
-                        left.coerceIn(
-                            0f,
-                            imageWidth.toFloat()
-                        ),
-                        top.coerceIn(
-                            0f,
-                            imageHeight.toFloat()
-                        ),
-                        right.coerceIn(
-                            0f,
-                            imageWidth.toFloat()
-                        ),
-                        bottom.coerceIn(
-                            0f,
-                            imageHeight.toFloat()
-                        )
+                        left.coerceIn(0f, imageWidth.toFloat()),
+                        top.coerceIn(0f, imageHeight.toFloat()),
+                        right.coerceIn(0f, imageWidth.toFloat()),
+                        bottom.coerceIn(0f, imageHeight.toFloat())
                     ),
-                    source = SOURCE_LOCAL
+                    source = SOURCE_LOCAL,
+                    isLowConfidence = confidence in LOW_CONFIDENCE_MIN..LOW_CONFIDENCE_MAX
                 )
             )
         }
@@ -354,18 +218,11 @@ class TFLiteFoodDetector(context: Context) {
         return nms(results).take(maxDetections)
     }
 
-    private fun coordinatesAreNormalized(
-        output: Array<FloatArray>
-    ): Boolean {
-        val sampleCount =
-            min(100, output[0].size)
-
-        if (sampleCount == 0) {
-            return false
-        }
+    private fun coordinatesAreNormalized(output: Array<FloatArray>): Boolean {
+        val sampleCount = min(100, output[0].size)
+        if (sampleCount == 0) return false
 
         var maxCoordinate = 0f
-
         for (i in 0 until sampleCount) {
             maxCoordinate = maxOf(
                 maxCoordinate,
@@ -375,144 +232,71 @@ class TFLiteFoodDetector(context: Context) {
                 output[3][i]
             )
         }
-
         return maxCoordinate <= 2f
     }
 
-    private fun prepareInputBuffer(
-        bitmap: Bitmap
-    ): ByteBuffer {
-        val buffer =
-            inputBuffer
-                ?: ByteBuffer.allocateDirect(
-                    1 * inputSize * inputSize * 3 * 4
-                ).apply {
-                    order(ByteOrder.nativeOrder())
-                    inputBuffer = this
-                }
-
+    private fun prepareInputBuffer(bitmap: Bitmap): ByteBuffer {
+        val buffer = inputBuffer ?: ByteBuffer.allocateDirect(1 * inputSize * inputSize * 3 * 4).apply {
+            order(ByteOrder.nativeOrder())
+            inputBuffer = this
+        }
         buffer.rewind()
 
-        if (
-            pixels == null ||
-            pixels?.size != inputSize * inputSize
-        ) {
-            pixels = IntArray(
-                inputSize * inputSize
-            )
+        if (pixels == null || pixels?.size != inputSize * inputSize) {
+            pixels = IntArray(inputSize * inputSize)
         }
 
-        bitmap.getPixels(
-            pixels!!,
-            0,
-            inputSize,
-            0,
-            0,
-            inputSize,
-            inputSize
-        )
+        bitmap.getPixels(pixels!!, 0, inputSize, 0, 0, inputSize, inputSize)
 
         for (pixel in pixels!!) {
-            buffer.putFloat(
-                ((pixel shr 16) and 0xFF) / 255.0f
-            )
-            buffer.putFloat(
-                ((pixel shr 8) and 0xFF) / 255.0f
-            )
-            buffer.putFloat(
-                (pixel and 0xFF) / 255.0f
-            )
+            buffer.putFloat(((pixel shr 16) and 0xFF) / 255.0f)
+            buffer.putFloat(((pixel shr 8) and 0xFF) / 255.0f)
+            buffer.putFloat((pixel and 0xFF) / 255.0f)
         }
 
         return buffer
     }
 
-    private fun nms(
-        detections: List<DetectedFood>
-    ): List<DetectedFood> {
-        if (detections.isEmpty()) {
-            return emptyList()
-        }
+    private fun nms(detections: List<DetectedFood>): List<DetectedFood> {
+        if (detections.isEmpty()) return emptyList()
 
         return detections
             .groupBy { it.originalLabel }
             .values
             .flatMap { classDetections ->
-                val sorted =
-                    classDetections
-                        .sortedByDescending {
-                            it.confidence
-                        }
-                        .toMutableList()
-
-                val selected =
-                    mutableListOf<DetectedFood>()
+                val sorted = classDetections.sortedByDescending { it.confidence }.toMutableList()
+                val selected = mutableListOf<DetectedFood>()
 
                 while (sorted.isNotEmpty()) {
-                    val current =
-                        sorted.removeAt(0)
-
-                    val currentBox =
-                        current.boundingBox ?: continue
-
+                    val current = sorted.removeAt(0)
+                    val currentBox = current.boundingBox ?: continue
                     selected.add(current)
 
-                    val iterator =
-                        sorted.iterator()
-
+                    val iterator = sorted.iterator()
                     while (iterator.hasNext()) {
-                        val nextBox =
-                            iterator.next()
-                                .boundingBox ?: continue
-
-                        if (
-                            calculateIoU(
-                                currentBox,
-                                nextBox
-                            ) > nmsThreshold
-                        ) {
+                        val nextBox = iterator.next().boundingBox ?: continue
+                        if (calculateIoU(currentBox, nextBox) > nmsThreshold) {
                             iterator.remove()
                         }
                     }
                 }
-
                 selected
             }
             .sortedByDescending { it.confidence }
     }
 
-    private fun calculateIoU(
-        box1: RectF,
-        box2: RectF
-    ): Float {
+    private fun calculateIoU(box1: RectF, box2: RectF): Float {
         val left = maxOf(box1.left, box2.left)
         val top = maxOf(box1.top, box2.top)
         val right = minOf(box1.right, box2.right)
         val bottom = minOf(box1.bottom, box2.bottom)
 
-        val intersection =
-            if (right > left && bottom > top) {
-                (right - left) * (bottom - top)
-            } else {
-                0f
-            }
+        val intersection = if (right > left && bottom > top) (right - left) * (bottom - top) else 0f
+        val area1 = (box1.right - box1.left) * (box1.bottom - box1.top)
+        val area2 = (box2.right - box2.left) * (box2.bottom - box2.top)
+        val union = area1 + area2 - intersection
 
-        val area1 =
-            (box1.right - box1.left) *
-                    (box1.bottom - box1.top)
-
-        val area2 =
-            (box2.right - box2.left) *
-                    (box2.bottom - box2.top)
-
-        val union =
-            area1 + area2 - intersection
-
-        return if (union <= 0f) {
-            0f
-        } else {
-            intersection / union
-        }
+        return if (union <= 0f) 0f else intersection / union
     }
 
     fun close() {
@@ -528,24 +312,5 @@ class TFLiteFoodDetector(context: Context) {
 
     companion object {
         private const val TAG = "TFLiteFoodDetector"
-
-        // Уменьшен минимальный размер объекта для повышения чувствительности
-        private const val minBoxAreaRatio = 0.002f
-
-        private val nonFoodLabels = setOf(
-            "phone",
-            "mobile phone",
-            "cell phone",
-            "key",
-            "keys",
-            "table",
-            "hand",
-            "person",
-            "people",
-            "human",
-            "chair",
-            "cup",
-            "plate"
-        )
     }
 }
