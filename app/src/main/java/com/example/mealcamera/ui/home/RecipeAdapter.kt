@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.MissingIngredientData
 import com.example.mealcamera.data.model.Recipe
@@ -52,7 +53,7 @@ class RecipeAdapter(
             if (!missingIngredients.isNullOrEmpty()) {
                 missingText.visibility = View.VISIBLE
                 missingText.text = "Не хватает: " + missingIngredients.joinToString(", ")
-                
+
                 if (onAddToShoppingList != null && structuredMissing.isNotEmpty()) {
                     btnAddShopping.visibility = View.VISIBLE
                     btnAddShopping.setOnClickListener { onAddToShoppingList.invoke(structuredMissing) }
@@ -73,6 +74,9 @@ class RecipeAdapter(
                 .load(recipe.imagePath)
                 .placeholder(R.drawable.ic_recipe_placeholder)
                 .error(R.drawable.ic_recipe_placeholder)
+                .fallback(R.drawable.ic_recipe_placeholder)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .dontAnimate()
                 .into(binding.recipeImageView)
 
             binding.root.setOnClickListener { onItemClick(recipe) }
@@ -97,9 +101,9 @@ class RecipeAdapter(
 
         override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
             return if (oldItem is RecipeResult && newItem is RecipeResult) {
-                oldItem.recipe == newItem.recipe && 
-                oldItem.missingIngredients == newItem.missingIngredients &&
-                oldItem.structuredMissingIngredients == newItem.structuredMissingIngredients
+                oldItem.recipe == newItem.recipe &&
+                        oldItem.missingIngredients == newItem.missingIngredients &&
+                        oldItem.structuredMissingIngredients == newItem.structuredMissingIngredients
             } else {
                 oldItem == newItem
             }

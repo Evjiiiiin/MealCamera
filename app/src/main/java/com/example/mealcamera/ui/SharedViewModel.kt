@@ -64,7 +64,7 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
         val editable = _temporaryIngredients.value.map {
             EditableIngredient(it.timestamp, it.name, it.quantity.ifBlank { "1" }, it.unit.ifBlank { "г" })
         }
-        _activeSession.value = SessionData(currentUserId, editable, _activeSession.value?.portions ?: 1)
+        _activeSession.value = SessionData(currentUserId, editable, (_activeSession.value?.portions ?: 1).coerceIn(1, 10))
     }
 
     fun clearTemporary() {
@@ -81,8 +81,8 @@ class SharedViewModel(private val repository: RecipeRepository) : ViewModel() {
 
     fun updateSession(ingredients: List<EditableIngredient>, portions: Int) {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: "guest"
-        _activeSession.value = SessionData(currentUserId, ingredients, portions)
-        
+        _activeSession.value = SessionData(currentUserId, ingredients, portions.coerceIn(1, 10))
+
         _temporaryIngredients.value = ingredients.map {
             ScannedIngredient(it.name, "", it.quantity, it.unit, it.id)
         }

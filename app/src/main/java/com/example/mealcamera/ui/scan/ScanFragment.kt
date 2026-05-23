@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -191,7 +193,7 @@ class ScanFragment : Fragment() {
     private fun showDetectorModeHint() {
         val cloudAvailable = roboflowDetector?.isAvailable() == true
         val mode = if (cloudAvailable) {
-            "Режим: только Roboflow (по снимку)"
+            "Режим: Cloud->Local fallback (по снимку)"
         } else {
             "Режим: только локальная модель (по снимку)"
         }
@@ -228,19 +230,13 @@ class ScanFragment : Fragment() {
             binding.btnCapture.isEnabled = false
 
             viewLifecycleOwner.lifecycleScope.launch {
-                val detections = withContext(Dispatchers.IO) {
-                    val cloud = roboflowDetector
-                    if (cloud?.isAvailable() == true) {
-                        Log.d(TAG, "Capture mode: CLOUD_ONLY")
-                        cloud.detectFood(bitmap)
-                    } else {
-                        Log.d(TAG, "Capture mode: LOCAL_ONLY")
-                        localDetector?.detectFood(bitmap).orEmpty()
-                    }
-                }
+                val detectionResult = withContext(Dispatchers.IO) { analyzeCapture(bitmap) }
 
                 hideLoadingDialog()
                 binding.btnCapture.isEnabled = true
+
+                val detections = detectionResult.first
+                val sourceTag = detectionResult.second
 
                 if (detections.isEmpty()) {
                     Toast.makeText(
@@ -248,8 +244,11 @@ class ScanFragment : Fragment() {
                         "Продукты не обнаружены. Попробуйте другой ракурс/свет.",
                         Toast.LENGTH_SHORT
                     ).show()
+                    Log.w(TAG, "Capture analysis result=empty source=$sourceTag")
                     return@launch
                 }
+
+                Log.d(TAG, "Capture analysis result=ok source=$sourceTag detections=${detections.size}")
 
                 val allergenDetections = detections.filter { isAllergen(it.name) }
                 if (allergenDetections.isNotEmpty()) {
@@ -284,6 +283,79 @@ class ScanFragment : Fragment() {
         }
     }
 
+    private fun analyzeCapture(bitmap: Bitmap): Pair<List<DetectedFood>, String> {
+        val cloud = roboflowDetector
+        if (cloud?.isAvailable() == true) {
+            val cloudFull = cloud.detectFood(bitmap)
+            val cloudCrop = cloud.detectFood(createCenterCrop(bitmap, CENTER_CROP_RATIO))
+            val mergedCloud = mergeDetections(cloudFull + cloudCrop, MERGE_IOU_THRESHOLD)
+            Log.d(
+                TAG,
+                "Cloud multi-pass: full=${cloudFull.size}, crop=${cloudCrop.size}, merged=${mergedCloud.size}"
+            )
+
+            if (mergedCloud.isNotEmpty()) {
+                Log.d(TAG, "Capture analysis source=CLOUD, detections=${mergedCloud.size}")
+                return mergedCloud to "cloud"
+            }
+
+            Log.w(TAG, "Capture analysis fallback=LOCAL reason=cloud_empty_or_error")
+            val local = localDetector?.detectFood(bitmap).orEmpty()
+            return local to "local_fallback"
+        }
+
+        Log.w(TAG, "Capture analysis source=LOCAL reason=cloud_unavailable")
+        return localDetector?.detectFood(bitmap).orEmpty() to "local_only"
+    }
+
+    private fun createCenterCrop(source: Bitmap, ratio: Float): Bitmap {
+        val safeRatio = ratio.coerceIn(0.5f, 1f)
+        val cropWidth = (source.width * safeRatio).toInt().coerceAtLeast(1)
+        val cropHeight = (source.height * safeRatio).toInt().coerceAtLeast(1)
+        val left = ((source.width - cropWidth) / 2).coerceAtLeast(0)
+        val top = ((source.height - cropHeight) / 2).coerceAtLeast(0)
+        return Bitmap.createBitmap(source, left, top, cropWidth, cropHeight)
+    }
+
+    private fun mergeDetections(detections: List<DetectedFood>, iouThreshold: Float): List<DetectedFood> {
+        if (detections.isEmpty()) return emptyList()
+
+        val sorted = detections.sortedByDescending { it.confidence }
+        val kept = mutableListOf<DetectedFood>()
+
+        for (candidate in sorted) {
+            val candidateBox = candidate.boundingBox
+            if (candidateBox == null) {
+                kept.add(candidate)
+                continue
+            }
+
+            val isDuplicate = kept.any { selected ->
+                val selectedBox = selected.boundingBox ?: return@any false
+                selected.name.equals(candidate.name, ignoreCase = true) &&
+                        calculateIoU(selectedBox, candidateBox) >= iouThreshold
+            }
+
+            if (!isDuplicate) kept.add(candidate)
+        }
+
+        return kept.take(MAX_CAPTURE_DETECTIONS)
+    }
+
+    private fun calculateIoU(first: RectF, second: RectF): Float {
+        val left = maxOf(first.left, second.left)
+        val top = maxOf(first.top, second.top)
+        val right = minOf(first.right, second.right)
+        val bottom = minOf(first.bottom, second.bottom)
+
+        val intersection = if (right > left && bottom > top) (right - left) * (bottom - top) else 0f
+        val firstArea = (first.right - first.left) * (first.bottom - first.top)
+        val secondArea = (second.right - second.left) * (second.bottom - second.top)
+        val union = firstArea + secondArea - intersection
+
+        return if (union <= 0f) 0f else intersection / union
+    }
+
     private fun showLoadingDialog() {
         if (loadingDialog?.isShowing == true) return
 
@@ -298,7 +370,7 @@ class ScanFragment : Fragment() {
         }
 
         val textView = TextView(requireContext()).apply {
-            text = "Анализируем фото..."
+            text = "Анализ фото..."
             textSize = 16f
             setPadding(32, 0, 0, 0)
         }
@@ -340,5 +412,8 @@ class ScanFragment : Fragment() {
 
     companion object {
         private const val TAG = "ScanFragment"
+        private const val CENTER_CROP_RATIO = 0.8f
+        private const val MERGE_IOU_THRESHOLD = 0.60f
+        private const val MAX_CAPTURE_DETECTIONS = 24
     }
 }

@@ -87,6 +87,9 @@ dependencies {
     // TensorFlow Lite для мультидетекции ингредиентов
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
 
+    // Offline speech recognition (Vosk) for continuous cooking voice mode
+    implementation("com.alphacephei:vosk-android:0.3.47")
+
     // SwipeRefreshLayout для HomeFragment
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 

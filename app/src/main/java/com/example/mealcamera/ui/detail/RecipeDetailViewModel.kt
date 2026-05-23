@@ -62,7 +62,7 @@ class RecipeDetailViewModel(
         _recipeId.value = recipeId
         viewModelScope.launch {
             repository.getRecipeByIdSync(recipeId)?.let { recipe ->
-                _portions.value = recipe.basePortions.coerceAtLeast(1)
+                _portions.value = recipe.basePortions.coerceIn(1, 10)
             }
             _isFavorite.value = favoriteRepository.isFavorite(recipeId)
             repository.incrementRecipePopularity(recipeId)
@@ -70,7 +70,7 @@ class RecipeDetailViewModel(
     }
 
     fun setPortions(count: Int) {
-        if (count in 1..99) {
+        if (count in 1..10) {
             _portions.value = count
         }
     }

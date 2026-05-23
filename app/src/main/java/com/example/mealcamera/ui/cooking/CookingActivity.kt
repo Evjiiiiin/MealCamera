@@ -21,7 +21,7 @@ import com.example.mealcamera.R
 import com.example.mealcamera.data.model.CookingStepWithIngredients
 import com.example.mealcamera.databinding.ActivityCookingBinding
 import com.example.mealcamera.ui.home.MainActivity
-import com.example.mealcamera.util.VoiceAssistantManager
+import com.example.mealcamera.util.VoskVoiceManager
 import kotlinx.coroutines.launch
 
 class CookingActivity : AppCompatActivity() {
@@ -45,7 +45,7 @@ class CookingActivity : AppCompatActivity() {
     private var timer: CountDownTimer? = null
 
     private var isVoiceEnabled = true
-    private var voiceAssistant: VoiceAssistantManager? = null
+    private var voskVoiceManager: VoskVoiceManager? = null
 
     private var isTimerRunning = false
     private var isTimerPaused = false
@@ -104,55 +104,53 @@ class CookingActivity : AppCompatActivity() {
     }
 
     private fun initVoiceAssistant() {
-        voiceAssistant = VoiceAssistantManager(
-            context = this,
-            onListeningStateChanged = { isListening ->
-                runOnUiThread {
-                    binding.listeningIndicator.visibility =
-                        if (isListening) View.VISIBLE else View.GONE
+        if (voskVoiceManager == null) {
+            voskVoiceManager = VoskVoiceManager(
+                context = this,
+                onListeningStateChanged = { isListening ->
+                    runOnUiThread {
+                        binding.listeningIndicator.visibility =
+                            if (isListening) View.VISIBLE else View.GONE
+                    }
+                },
+                onCommand = { command ->
+                    runOnUiThread {
+                        handleVoiceCommand(command)
+                    }
                 }
-            },
-            onCommand = { command ->
-                runOnUiThread {
-                    handleVoiceCommand(command)
-                }
-            }
-        )
+            )
+        }
 
-        voiceAssistant?.startListening()
+        voskVoiceManager?.initializeAndStart()
     }
 
     private fun handleVoiceCommand(
-        command: VoiceAssistantManager.VoiceCommand
+        command: VoskVoiceManager.VoiceCommand
     ) {
         when (command) {
-            VoiceAssistantManager.VoiceCommand.NEXT ->
+            VoskVoiceManager.VoiceCommand.NEXT ->
                 binding.btnNext.performClick()
 
-            VoiceAssistantManager.VoiceCommand.PREVIOUS ->
+            VoskVoiceManager.VoiceCommand.PREVIOUS ->
                 binding.btnPrevious.performClick()
 
-            VoiceAssistantManager.VoiceCommand.REPEAT,
-            VoiceAssistantManager.VoiceCommand.READ_STEP ->
+            VoskVoiceManager.VoiceCommand.REPEAT,
+            VoskVoiceManager.VoiceCommand.READ_STEP ->
                 readCurrentStep()
 
-            VoiceAssistantManager.VoiceCommand.STOP ->
-                voiceAssistant?.stopAll()
+            VoskVoiceManager.VoiceCommand.STOP ->
+                voskVoiceManager?.stopAll()
 
-            // Озвучить ингредиенты текущего шага
-            VoiceAssistantManager.VoiceCommand.READ_INGREDIENTS ->
+            VoskVoiceManager.VoiceCommand.READ_INGREDIENTS ->
                 readCurrentIngredients()
 
-            // Запустить или продолжить таймер
-            VoiceAssistantManager.VoiceCommand.TIMER ->
+            VoskVoiceManager.VoiceCommand.TIMER ->
                 startOrResumeTimerByVoice()
 
-            // Поставить таймер на паузу
-            VoiceAssistantManager.VoiceCommand.TIMER_PAUSE ->
+            VoskVoiceManager.VoiceCommand.TIMER_PAUSE ->
                 pauseTimerByVoice()
 
-            // Сбросить таймер
-            VoiceAssistantManager.VoiceCommand.TIMER_RESET ->
+            VoskVoiceManager.VoiceCommand.TIMER_RESET ->
                 resetTimerByVoice()
 
             else -> {}
@@ -210,15 +208,12 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Запуск или продолжение таймера голосовой командой.
-     */
     private fun startOrResumeTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
             currentStepIndex !in stepsList.indices
         ) {
-            voiceAssistant?.speak("В этом шаге таймер не указан")
+            voskVoiceManager?.speak("В этом шаге таймер не указан")
             return
         }
 
@@ -227,31 +222,25 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Пауза таймера голосовой командой.
-     */
     private fun pauseTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
             !isTimerRunning ||
             isTimerPaused
         ) {
-            voiceAssistant?.speak("Таймер сейчас не запущен")
+            voskVoiceManager?.speak("Таймер сейчас не запущен")
             return
         }
 
         pauseStepTimer()
     }
 
-    /**
-     * Сброс таймера голосовой командой.
-     */
     private fun resetTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
             currentStepIndex !in stepsList.indices
         ) {
-            voiceAssistant?.speak("В этом шаге таймер не указан")
+            voskVoiceManager?.speak("В этом шаге таймер не указан")
             return
         }
 
@@ -286,7 +275,7 @@ class CookingActivity : AppCompatActivity() {
 
                 binding.tvTimerDisplay.text = "Готово!"
 
-                voiceAssistant?.speak(
+                voskVoiceManager?.speak(
                     "Время вышло! Перехожу к следующему шагу."
                 )
 
@@ -333,12 +322,9 @@ class CookingActivity : AppCompatActivity() {
                     "${step.title}. " +
                     "${step.instruction}"
 
-        voiceAssistant?.speak(text)
+        voskVoiceManager?.speak(text)
     }
 
-    /**
-     * Озвучивает ингредиенты текущего шага.
-     */
     private fun readCurrentIngredients() {
         if (
             !isVoiceEnabled ||
@@ -352,7 +338,7 @@ class CookingActivity : AppCompatActivity() {
             stepsList[currentStepIndex].ingredients
 
         if (ingredients.isEmpty()) {
-            voiceAssistant?.speak(
+            voskVoiceManager?.speak(
                 "Для этого шага ингредиенты не указаны"
             )
             return
@@ -369,7 +355,7 @@ class CookingActivity : AppCompatActivity() {
             }
         }
 
-        voiceAssistant?.speak(
+        voskVoiceManager?.speak(
             "Ингредиенты для шага: $text"
         )
     }
@@ -503,7 +489,6 @@ class CookingActivity : AppCompatActivity() {
                 binding.tvToolbarTitle.text.toString()
             )
 
-            // Очистка временных ингредиентов
             sharedViewModel.endSession()
 
             Toast.makeText(
@@ -512,7 +497,6 @@ class CookingActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
 
-            // Возврат на главный экран
             val intent = Intent(
                 this@CookingActivity,
                 MainActivity::class.java
@@ -542,7 +526,7 @@ class CookingActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        voiceAssistant?.destroy()
+        voskVoiceManager?.destroy()
         timer?.cancel()
     }
 

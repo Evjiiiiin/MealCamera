@@ -131,7 +131,6 @@ class RecipeDetailActivity : AppCompatActivity() {
         binding.tvToolbarTitle.text = recipe.name
         binding.tvDescription.text = recipe.description
 
-        // Отображение времени приготовления
         if (recipe.prepTime.isNotBlank()) {
             binding.tvPrepTime.text = recipe.prepTime
             binding.tvPrepTime.visibility = View.VISIBLE
@@ -251,7 +250,7 @@ class RecipeDetailActivity : AppCompatActivity() {
 
         binding.btnPlusPortion.setOnClickListener {
             val current = viewModel.portions.value
-            if (current < 99) viewModel.setPortions(current + 1)
+            if (current < 10) viewModel.setPortions(current + 1)
         }
     }
 

@@ -7,12 +7,17 @@ import com.example.mealcamera.data.model.CookingStepWithIngredients
 import com.example.mealcamera.data.remote.FirestoreService
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withTimeoutOrNull
 
 class CookingViewModel(
     private val repository: RecipeRepository,
     private val statsManager: AppStatsManager,
     private val firestoreService: FirestoreService
 ) : ViewModel() {
+
+    companion object {
+        private const val CLOUD_SAVE_TIMEOUT_MS = 1_500L
+    }
 
     private val auth = FirebaseAuth.getInstance()
 
@@ -21,18 +26,23 @@ class CookingViewModel(
 
     suspend fun saveToHistory(recipeId: Long, recipeName: String) {
         if (recipeId <= 0L) return
-        
+
         val userId = auth.currentUser?.uid
-        
+
         // 1. Увеличиваем популярность в локальной БД
         repository.incrementRecipePopularity(recipeId)
-        
+
         // 2. Регистрируем приготовление в локальной статистике (для мгновенного обновления UI)
         statsManager.registerCookedRecipe(userId, recipeId, recipeName)
-        
-        // 3. Сохраняем историю в облако (Firebase), если пользователь авторизован
+
+        // 3. Сохраняем историю в облако best-effort.
+        // В офлайне/при зависаниях сети не блокируем завершение приготовления.
         if (userId != null) {
-            firestoreService.saveCookingHistory(userId, recipeId, recipeName)
+            runCatching {
+                withTimeoutOrNull(CLOUD_SAVE_TIMEOUT_MS) {
+                    firestoreService.saveCookingHistory(userId, recipeId, recipeName)
+                }
+            }
         }
     }
 }

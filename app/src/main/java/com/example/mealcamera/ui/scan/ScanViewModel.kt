@@ -48,6 +48,11 @@ class ScanViewModel(
     private val iouThreshold = 0.4f
     private val maxShownGroups = 3
 
+    // DEMO PROFILE: финальные ограничения для стабильного списка.
+    private val captureIouDedupThreshold = 0.55f
+    private val captureMaxClasses = 4
+    private val captureMaxObjectsTotal = 6
+
     private var allowedIngredients: Set<String> = emptySet()
     private var previousFrameDetections: List<DetectedFood> = emptyList()
 
@@ -203,7 +208,9 @@ class ScanViewModel(
                 val fileName = "scan_${UUID.randomUUID()}.jpg"
                 val imagePath = imageStorage.saveImage(bitmap, fileName)
 
-                detections.groupBy { it.name }.map { (name, detectedList) ->
+                val normalizedDetections = normalizeCaptureDetections(detections)
+
+                normalizedDetections.groupBy { it.name }.map { (name, detectedList) ->
                     val unit = UnitHelper.getDefaultUnit(name)
                     val estimatedQuantity = estimateQuantity(detectedList.size, unit)
 
@@ -220,6 +227,47 @@ class ScanViewModel(
             onResult(newIngredients)
             _isProcessing.value = false
         }
+    }
+
+
+    private fun normalizeCaptureDetections(detections: List<DetectedFood>): List<DetectedFood> {
+        if (detections.isEmpty()) return emptyList()
+
+        val deduplicated = deduplicateByIou(detections, captureIouDedupThreshold)
+
+        return deduplicated
+            .groupBy { normalizeLabel(it.name) }
+            .values
+            .sortedByDescending { group -> group.maxOf { it.confidence } }
+            .take(captureMaxClasses)
+            .flatMap { classGroup -> classGroup.sortedByDescending { it.confidence } }
+            .take(captureMaxObjectsTotal)
+    }
+
+    private fun deduplicateByIou(
+        detections: List<DetectedFood>,
+        threshold: Float
+    ): List<DetectedFood> {
+        val sorted = detections.sortedByDescending { it.confidence }
+        val kept = mutableListOf<DetectedFood>()
+
+        for (candidate in sorted) {
+            val candidateBox = candidate.boundingBox
+            if (candidateBox == null) {
+                kept.add(candidate)
+                continue
+            }
+
+            val isDuplicate = kept.any { keptItem ->
+                val keptBox = keptItem.boundingBox ?: return@any false
+                val sameClass = normalizeLabel(keptItem.name) == normalizeLabel(candidate.name)
+                sameClass && calculateIoU(candidateBox, keptBox) >= threshold
+            }
+
+            if (!isDuplicate) kept.add(candidate)
+        }
+
+        return kept
     }
 
     private fun estimateQuantity(count: Int, unit: String): Double {

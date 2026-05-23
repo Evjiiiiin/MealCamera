@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.example.mealcamera.R
 import com.example.mealcamera.data.model.Recipe
 import com.example.mealcamera.databinding.ItemFavoriteRecipeBinding
@@ -39,6 +40,10 @@ class FavoriteAdapter(
                 .load(recipe.imagePath)
                 .centerCrop()
                 .placeholder(R.drawable.ic_recipe_placeholder)
+                .error(R.drawable.ic_recipe_placeholder)
+                .fallback(R.drawable.ic_recipe_placeholder)
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .dontAnimate()
                 .into(binding.recipeImage)
 
             binding.btnFavorite.setImageDrawable(

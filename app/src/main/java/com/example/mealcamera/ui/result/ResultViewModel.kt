@@ -51,9 +51,8 @@ class ResultViewModel(
 
     private var searchJob: Job? = null
 
-    // Список ингредиентов, которые всегда считаются доступными (кухонный минимум)
     private val alwaysAvailableDefaults = setOf(
-        "соль", "сахар", "вода", "перец", "сода", "уксус", "ванилин", 
+        "соль", "сахар", "вода", "перец", "сода", "уксус", "ванилин",
         "корица", "разрыхлитель", "лимонная кислота", "лавровый лист", "гвоздика", "молотый перец"
     )
 
@@ -68,7 +67,7 @@ class ResultViewModel(
         val n2 = normalize(name2)
         if (n1 == n2) return true
         if (n1.contains(n2) || n2.contains(n1)) return true
-        
+
         val minLen = minOf(n1.length, n2.length)
         if (minLen >= 4) {
             val rootLen = (minLen * 0.75).toInt().coerceAtLeast(4)
@@ -80,7 +79,7 @@ class ResultViewModel(
     fun restoreSession(ingredients: List<EditableIngredient>, savedPortions: Int) {
         val capitalized = ingredients.map { it.copy(name = capitalize(it.name)) }
         _editableIngredients.value = capitalized
-        _portions.value = savedPortions
+        _portions.value = savedPortions.coerceIn(1, 10)
         findRecipes(capitalized)
     }
 
@@ -121,7 +120,6 @@ class ResultViewModel(
                 _oneMissingRecipes.value = results.oneMissing
                 _twoMissingRecipes.value = results.twoMissing
             } catch (e: CancellationException) {
-                // ignore
             } catch (e: Exception) {
                 Log.e("ResultViewModel", "Search error", e)
                 _errorEvents.emit("Ошибка поиска")
@@ -162,11 +160,10 @@ class ResultViewModel(
             processedKeys.add(key)
 
             val normRecipeName = normalize(recipe.name)
-            
-            // Фильтрация по аллергенам
-            val hasAllergen = expandedAllergens.any { allergen -> 
-                normRecipeName.contains(allergen) || 
-                recipeWithIngs.ingredients.any { ing -> normalize(ing.name).contains(allergen) }
+
+            val hasAllergen = expandedAllergens.any { allergen ->
+                normRecipeName.contains(allergen) ||
+                        recipeWithIngs.ingredients.any { ing -> normalize(ing.name).contains(allergen) }
             }
             if (hasAllergen) continue
 
@@ -177,11 +174,9 @@ class ResultViewModel(
 
             for (ing in recipeWithIngs.ingredients) {
                 val normIngName = normalize(ing.name)
-                
-                // Пропуск базовых продуктов
+
                 if (combinedAlwaysAvailable.any { normIngName.contains(it) || it.contains(normIngName) }) continue
 
-                // Поиск совпадения у пользователя
                 val userIng = normalizedUserIngredients.find { isSimilar(it.name, normIngName) }
 
                 val cr = crossRefs.find { it.ingredientId == ing.ingredientId }
@@ -199,7 +194,6 @@ class ResultViewModel(
                     val userQty = userIng.quantity.toDoubleOrNull() ?: 0.0
                     val userUnit = userIng.unit.ifBlank { UnitHelper.getDefaultUnit(userIng.name) }
 
-                    // Строгая проверка достаточности с учетом конвертации
                     val sufficient = when {
                         UnitHelper.areDiscreteUnitsCompatible(userUnit, reqUnit) -> {
                             UnitHelper.isDiscreteAmountSufficient(userQty, userUnit, reqQty * currentPortions, reqUnit)
@@ -207,7 +201,7 @@ class ResultViewModel(
                         else -> {
                             val uBase = UnitHelper.toBaseUnit(userQty, userUnit)
                             val rBase = UnitHelper.toBaseUnit(reqQty * currentPortions, reqUnit)
-                            
+
                             if (uBase.isNaN() || rBase.isNaN()) {
                                 userQty >= (reqQty * currentPortions)
                             } else {
@@ -219,8 +213,7 @@ class ResultViewModel(
                     if (!sufficient) {
                         val diffDesc = buildDiffDescription(userQty, userUnit, reqQty * currentPortions, reqUnit, ing.name)
                         missingStrings.add(diffDesc)
-                        
-                        // Считаем сколько реально не хватает для списка покупок
+
                         val diffQty = if (UnitHelper.areDiscreteUnitsCompatible(userUnit, reqUnit)) {
                             (reqQty * currentPortions) - userQty
                         } else {
@@ -228,12 +221,11 @@ class ResultViewModel(
                             val rBase = UnitHelper.toBaseUnit(reqQty * currentPortions, reqUnit)
                             if (uBase.isNaN() || rBase.isNaN()) (reqQty * currentPortions) - userQty
                             else {
-                                // Конвертируем недостачу обратно в единицу рецепта
                                 val missingInBase = rBase - uBase
                                 UnitHelper.convert(missingInBase, "г", reqUnit).takeIf { !it.isNaN() } ?: ((reqQty * currentPortions) - userQty)
                             }
                         }
-                        
+
                         structuredMissing.add(MissingIngredientData(ing.name, diffQty, reqUnit))
                         missingCount++
                     }

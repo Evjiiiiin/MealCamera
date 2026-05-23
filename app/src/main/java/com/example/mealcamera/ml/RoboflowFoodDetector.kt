@@ -60,12 +60,12 @@ class RoboflowFoodDetector(context: Context) {
         return try {
             val imageBase64 = encodeBitmap(bitmap)
             val endpoint =
-                "https://serverless.roboflow.com/$model/$version?api_key=$apiKey&confidence=${(REQUEST_CONFIDENCE * 100).toInt()}&overlap=30&format=json"
+                "https://serverless.roboflow.com/$model/$version?api_key=$apiKey&confidence=${(REQUEST_CONFIDENCE * 100).toInt()}&overlap=$REQUEST_OVERLAP&format=json"
 
             val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
-                connectTimeout = 4_000
-                readTimeout = 6_000
+                connectTimeout = CONNECT_TIMEOUT_MS
+                readTimeout = READ_TIMEOUT_MS
                 doOutput = true
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             }
@@ -83,38 +83,61 @@ class RoboflowFoodDetector(context: Context) {
             connection.disconnect()
 
             if (responseCode !in 200..299) {
-                Log.w(TAG, "Roboflow response code: $responseCode, body=$body")
+                Log.w(TAG, "Roboflow non-2xx: code=$responseCode, body=$body")
                 return emptyList()
             }
 
-            parseDetections(body, bitmap.width, bitmap.height)
+            parseDetections(body, bitmap.width, bitmap.height, responseCode)
         } catch (e: Exception) {
-            Log.w(TAG, "Roboflow detection failed, local model will be used", e)
+            Log.w(TAG, "Roboflow detection failed (network/parse), local fallback should be used", e)
             emptyList()
         }
     }
 
     private fun encodeBitmap(bitmap: Bitmap): String {
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
         return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 
-    private fun parseDetections(body: String, imageWidth: Int, imageHeight: Int): List<DetectedFood> {
-        val predictions = JSONObject(body).optJSONArray("predictions") ?: return emptyList()
-        val detections = mutableListOf<DetectedFood>()
+    private fun parseDetections(
+        body: String,
+        imageWidth: Int,
+        imageHeight: Int,
+        responseCode: Int
+    ): List<DetectedFood> {
+        val predictions = JSONObject(body).optJSONArray("predictions")
+        if (predictions == null) {
+            Log.w(TAG, "Roboflow response has no predictions array: code=$responseCode")
+            return emptyList()
+        }
 
-        for (index in 0 until predictions.length()) {
+        val rawCount = predictions.length()
+        val detections = mutableListOf<DetectedFood>()
+        var rejectedByConfidence = 0
+        var rejectedByLabel = 0
+        var rejectedByArea = 0
+
+        for (index in 0 until rawCount) {
             val item = predictions.optJSONObject(index) ?: continue
             val confidence = item.optDouble("confidence", 0.0).toFloat()
-            if (confidence < CONFIDENCE_THRESHOLD) continue
+            if (confidence < POST_FILTER_CONFIDENCE) {
+                rejectedByConfidence++
+                continue
+            }
 
             val label = item.optString("class", "").trim()
-            if (label.isBlank()) continue
+            if (label.isBlank()) {
+                rejectedByLabel++
+                continue
+            }
 
             val width = item.optDouble("width", 0.0).toFloat()
             val height = item.optDouble("height", 0.0).toFloat()
-            if (width * height < imageWidth * imageHeight * MIN_BOX_AREA_RATIO) continue
+            if (width * height < imageWidth * imageHeight * MIN_BOX_AREA_RATIO) {
+                rejectedByArea++
+                continue
+            }
 
             val centerX = item.optDouble("x", 0.0).toFloat()
             val centerY = item.optDouble("y", 0.0).toFloat()
@@ -136,8 +159,13 @@ class RoboflowFoodDetector(context: Context) {
             )
         }
 
-        Log.d(TAG, "Roboflow detections count=${detections.size}")
-        return detections.sortedByDescending { it.confidence }.take(MAX_DETECTIONS)
+        val finalDetections = detections.sortedByDescending { it.confidence }.take(MAX_DETECTIONS)
+        Log.d(
+            TAG,
+            "Roboflow parsed: code=$responseCode, raw=$rawCount, keptBeforeLimit=${detections.size}, final=${finalDetections.size}, " +
+                    "rejectConfidence=$rejectedByConfidence, rejectLabel=$rejectedByLabel, rejectArea=$rejectedByArea"
+        )
+        return finalDetections
     }
 
     private fun hasInternetConnection(): Boolean {
@@ -162,11 +190,17 @@ class RoboflowFoodDetector(context: Context) {
         private const val META_MODEL = "com.example.mealcamera.ROBOFLOW_MODEL"
         private const val META_VERSION = "com.example.mealcamera.ROBOFLOW_VERSION"
 
-        // Request parameter sent to Roboflow endpoint
-        private const val REQUEST_CONFIDENCE = 0.25f
-        // Local post-filter in app
-        private const val CONFIDENCE_THRESHOLD = 0.35f
-        private const val MIN_BOX_AREA_RATIO = 0.003f
-        private const val MAX_DETECTIONS = 20
+        // DEMO PROFILE: консервативные пороги для стабильности.
+        // Отдельный порог для сервера: чем выше, тем меньше шум в ответе API.
+        private const val REQUEST_CONFIDENCE = 0.30f // старое: 0.25
+        // Дополнительный локальный фильтр после ответа API.
+        private const val POST_FILTER_CONFIDENCE = 0.40f // старое: 0.35
+        private const val REQUEST_OVERLAP = 30
+        private const val MIN_BOX_AREA_RATIO = 0.004f // старое: 0.003
+        private const val MAX_DETECTIONS = 12 // старое: 20
+
+        private const val JPEG_QUALITY = 90
+        private const val CONNECT_TIMEOUT_MS = 4_000
+        private const val READ_TIMEOUT_MS = 6_000
     }
 }
