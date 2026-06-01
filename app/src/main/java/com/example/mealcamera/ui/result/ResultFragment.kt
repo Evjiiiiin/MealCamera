@@ -185,6 +185,14 @@ class ResultFragment : Fragment() {
                 }
 
                 launch {
+                    viewModel.favoriteRecipeIds.collect { favoriteIds ->
+                        perfectAdapter.setFavoriteIds(favoriteIds)
+                        oneMissingAdapter.setFavoriteIds(favoriteIds)
+                        twoMissingAdapter.setFavoriteIds(favoriteIds)
+                    }
+                }
+
+                launch {
                     viewModel.perfectRecipes.collectLatest { list ->
                         perfectAdapter.submitList(list)
                         binding.tvPerfectMatchHeader.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE

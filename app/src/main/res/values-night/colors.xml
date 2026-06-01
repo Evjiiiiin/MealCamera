@@ -10,21 +10,22 @@
     <color name="background_light">#121212</color>
     <color name="surface_card">#1E1E1E</color>
     <color name="surface_card_variant">#2C2C2C</color>
-    
+
     <!-- Эффект стекла (полупрозрачный фон меню) -->
     <color name="nav_glass_background">#CC121212</color>
-    
+
     <color name="text_main">#FFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color>
     <color name="gray_text">#9E9E9E</color>
     <color name="grey">#9E9E9E</color>
 
     <color name="icon_tint">#E0E0E0</color>
-    
+
     <!-- Обводка и подсказки (сделал ярче #CCCCCC для максимальной видимости) -->
     <color name="border_light">#CCCCCC</color>
     <color name="placeholder">#CCCCCC</color>
     <color name="search_border">#CCCCCC</color>
+
 
     <color name="red_error">#CF6679</color>
 

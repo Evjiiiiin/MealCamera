@@ -2,7 +2,9 @@ package com.example.mealcamera.ui.profile
 
 import android.app.Activity
 import android.content.Context
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -12,13 +14,15 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.signature.ObjectKey
 import com.example.mealcamera.R
 import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.databinding.ActivityProfileEditBinding
 import com.example.mealcamera.ui.auth.LoginActivity
-import com.example.mealcamera.ui.home.MainActivity
 import com.example.mealcamera.util.ImageStorage
 import com.example.mealcamera.util.ThemeManager
 import com.google.firebase.auth.FirebaseAuth
@@ -45,6 +49,14 @@ class ProfileEditActivity : AppCompatActivity() {
                 binding.ivProfile.setImageBitmap(selectedImageBitmap)
                 Log.d("ProfileEdit", "Фото выбрано")
             }
+        }
+    }
+
+    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        binding.switchCamera.isChecked = isGranted
+        saveCameraSetting(isGranted)
+        if (!isGranted) {
+            Toast.makeText(this, "Камера выключена: разрешение не выдано", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -77,6 +89,9 @@ class ProfileEditActivity : AppCompatActivity() {
         if (avatarFile.exists()) {
             Glide.with(this)
                 .load(avatarFile)
+                .signature(ObjectKey(avatarFile.lastModified()))
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .skipMemoryCache(true)
                 .placeholder(R.drawable.ic_profile_placeholder)
                 .error(R.drawable.ic_profile_placeholder)
                 .into(binding.ivProfile)
@@ -86,7 +101,9 @@ class ProfileEditActivity : AppCompatActivity() {
 
         val prefs = getSharedPreferences("app_settings", Context.MODE_PRIVATE)
         binding.switchVoice.isChecked = prefs.getBoolean("voice_enabled", true)
-        binding.switchCamera.isChecked = prefs.getBoolean("camera_enabled", true)
+        val cameraEnabled = prefs.getBoolean("camera_enabled", true) && hasCameraPermission()
+        binding.switchCamera.isChecked = cameraEnabled
+        if (!cameraEnabled) saveCameraSetting(false)
     }
 
     private fun setupListeners() {
@@ -100,12 +117,30 @@ class ProfileEditActivity : AppCompatActivity() {
 
         binding.btnSave.setOnClickListener { saveChanges() }
 
+        binding.switchCamera.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !hasCameraPermission()) {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+
         binding.btnLogout.setOnClickListener {
             auth.signOut()
             startActivity(Intent(this, LoginActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             })
         }
+    }
+
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun saveCameraSetting(enabled: Boolean) {
+        getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("camera_enabled", enabled)
+            .apply()
     }
 
     private fun setupThemeToggle() {
@@ -158,22 +193,17 @@ class ProfileEditActivity : AppCompatActivity() {
 
                 firestoreService.saveUserProfile(user.uid, newName, finalPhotoPath)
 
-                Glide.get(this@ProfileEditActivity).clearMemory()
-                Thread { Glide.get(this@ProfileEditActivity).clearDiskCache() }.start()
-
                 val prefs = getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+                val cameraEnabled = binding.switchCamera.isChecked && hasCameraPermission()
+                binding.switchCamera.isChecked = cameraEnabled
                 prefs.edit().apply {
                     putBoolean("voice_enabled", binding.switchVoice.isChecked)
-                    putBoolean("camera_enabled", binding.switchCamera.isChecked)
+                    putBoolean("camera_enabled", cameraEnabled)
                     apply()
                 }
 
                 Toast.makeText(this@ProfileEditActivity, "Профиль обновлён", Toast.LENGTH_SHORT).show()
-                
-                // Пересоздаем MainActivity для применения изменений на всех экранах (включая имя)
-                val intent = Intent(this@ProfileEditActivity, MainActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
+                setResult(Activity.RESULT_OK)
                 finish()
             } catch (e: Exception) {
                 Log.e("ProfileEdit", "Ошибка", e)

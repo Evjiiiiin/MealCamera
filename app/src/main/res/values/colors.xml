@@ -11,10 +11,10 @@
     <color name="background_light">#F8F9FA</color>
     <color name="surface_card">#FFFFFF</color>
     <color name="surface_card_variant">#F1F0F5</color>
-    
+
     <!-- Эффект стекла (полупрозрачный фон меню) -->
     <color name="nav_glass_background">#CCF8F9FA</color>
-    
+
     <!-- Текст -->
     <color name="text_main">#1A1C1E</color>
     <color name="text_secondary">#666666</color>
@@ -28,6 +28,7 @@
     <color name="search_border">#888888</color>
 
     <!-- Состояния и ошибки -->
+
     <color name="red_error">#B00020</color>
 
     <!-- Базовые цвета -->

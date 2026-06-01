@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mealcamera.data.FavoriteRepository
 import com.example.mealcamera.data.RecipeRepository
+import com.example.mealcamera.data.model.DEFAULT_MAX_CALORIES_PER_PORTION
 import com.example.mealcamera.data.model.FilterState
 import com.example.mealcamera.data.model.Ingredient
 import com.example.mealcamera.data.model.Recipe
@@ -22,6 +23,7 @@ data class MainUiState(
     val searchQuery: String = "",
     val categoryFilter: String = "Все",
     val cuisineFilter: String = "Все кухни",
+    val adaptiveMaxCalories: Float = DEFAULT_MAX_CALORIES_PER_PORTION,
     val error: String? = null
 )
 
@@ -55,8 +57,21 @@ class MainViewModel(
 
     private fun normalize(text: String): String = text.lowercase().trim().replace("ё", "е")
 
+    private val recipesWithIngredientsFlow = repository.allRecipesWithIngredientsFlow()
+        .shareIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            replay = 1
+        )
+
+    private val adaptiveMaxCaloriesFlow: Flow<Float> = recipesWithIngredientsFlow
+        .map { recipesWithIngredients ->
+            calculateAdaptiveCaloriesMax(recipesWithIngredients.map { it.recipe })
+        }
+        .distinctUntilChanged()
+
     private val filteredRecipesFlow: Flow<List<Recipe>> = combine(
-        repository.allRecipesWithIngredientsFlow(),
+        recipesWithIngredientsFlow,
         _searchQuery,
         _filterState,
         _userAllergens
@@ -103,7 +118,10 @@ class MainViewModel(
                 prepMinutes.toFloat() in filter.minPrepTime..filter.maxPrepTime
             }
             .filter { item: RecipeWithIngredients ->
-                item.recipe.calories.toFloat() in filter.minCalories..filter.maxCalories
+                val caloriesPerPortion = calculateCaloriesPerPortion(item.recipe)
+                val hasNoUpperCaloriesLimit = filter.maxCalories >= DEFAULT_MAX_CALORIES_PER_PORTION
+                caloriesPerPortion >= filter.minCalories &&
+                        (hasNoUpperCaloriesLimit || caloriesPerPortion <= filter.maxCalories)
             }
             .map { it.recipe }
             .distinctBy { "${it.name.lowercase()}|${it.category.lowercase()}" }
@@ -116,7 +134,8 @@ class MainViewModel(
         _isRefreshing,
         _searchQuery,
         _filterState.map { it.selectedCategories.firstOrNull() ?: "Все" },
-        _filterState.map { it.selectedCuisines.firstOrNull() ?: "Все кухни" }
+        _filterState.map { it.selectedCuisines.firstOrNull() ?: "Все кухни" },
+        adaptiveMaxCaloriesFlow
     ) { args: Array<Any> ->
         @Suppress("UNCHECKED_CAST")
         MainUiState(
@@ -125,13 +144,27 @@ class MainViewModel(
             isRefreshing = args[2] as Boolean,
             searchQuery = args[3] as String,
             categoryFilter = args[4] as String,
-            cuisineFilter = args[5] as String
+            cuisineFilter = args[5] as String,
+            adaptiveMaxCalories = args[6] as Float
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = MainUiState()
     )
+
+
+    private fun calculateCaloriesPerPortion(recipe: Recipe): Float {
+        val portions = recipe.basePortions.coerceAtLeast(1)
+        return recipe.calories.toFloat() / portions
+    }
+
+    private fun calculateAdaptiveCaloriesMax(recipes: List<Recipe>): Float {
+        val maxPerPortion = recipes.maxOfOrNull { calculateCaloriesPerPortion(it) }
+            ?: DEFAULT_MAX_CALORIES_PER_PORTION
+        val roundedToThousand = kotlin.math.ceil(maxPerPortion / 1000f) * 1000f
+        return maxOf(DEFAULT_MAX_CALORIES_PER_PORTION, roundedToThousand)
+    }
 
     fun setFilters(filterState: FilterState) {
         _filterState.value = filterState
@@ -153,10 +186,12 @@ class MainViewModel(
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
+
     fun setCategoryFilter(category: String) {
         val newFilters = _filterState.value.copy(selectedCategories = if (category == "Все") emptySet() else setOf(category))
         _filterState.value = newFilters
     }
+
     fun setCuisineFilter(cuisine: String) {
         val newFilters = _filterState.value.copy(selectedCuisines = if (cuisine == "Все кухни") emptySet() else setOf(cuisine))
         _filterState.value = newFilters

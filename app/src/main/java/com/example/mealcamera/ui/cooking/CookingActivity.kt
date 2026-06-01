@@ -45,6 +45,7 @@ class CookingActivity : AppCompatActivity() {
     private var timer: CountDownTimer? = null
 
     private var isVoiceEnabled = true
+    private var voiceAssistant: VoiceAssistantManager? = null
     private var voskVoiceManager: VoskVoiceManager? = null
 
     private var isTimerRunning = false
@@ -141,15 +142,19 @@ class CookingActivity : AppCompatActivity() {
             VoskVoiceManager.VoiceCommand.STOP ->
                 voskVoiceManager?.stopAll()
 
+            // Озвучить ингредиенты текущего шага
             VoskVoiceManager.VoiceCommand.READ_INGREDIENTS ->
                 readCurrentIngredients()
 
+            // Запустить или продолжить таймер
             VoskVoiceManager.VoiceCommand.TIMER ->
                 startOrResumeTimerByVoice()
 
+            // Поставить таймер на паузу
             VoskVoiceManager.VoiceCommand.TIMER_PAUSE ->
                 pauseTimerByVoice()
 
+            // Сбросить таймер
             VoskVoiceManager.VoiceCommand.TIMER_RESET ->
                 resetTimerByVoice()
 
@@ -208,6 +213,9 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Запуск или продолжение таймера голосовой командой.
+     */
     private fun startOrResumeTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -222,6 +230,9 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Пауза таймера голосовой командой.
+     */
     private fun pauseTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -235,6 +246,9 @@ class CookingActivity : AppCompatActivity() {
         pauseStepTimer()
     }
 
+    /**
+     * Сброс таймера голосовой командой.
+     */
     private fun resetTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -325,6 +339,9 @@ class CookingActivity : AppCompatActivity() {
         voskVoiceManager?.speak(text)
     }
 
+    /**
+     * Озвучивает ингредиенты текущего шага.
+     */
     private fun readCurrentIngredients() {
         if (
             !isVoiceEnabled ||
@@ -444,7 +461,20 @@ class CookingActivity : AppCompatActivity() {
             } else {
                 "Далее"
             }
+
+        updateNavigationButtons(index)
     }
+
+    private fun updateNavigationButtons(index: Int) {
+        val canGoBack = index > 0
+        binding.btnPrevious.isEnabled = canGoBack
+        binding.btnPrevious.alpha = if (canGoBack) 1f else DISABLED_BUTTON_ALPHA
+
+        val canGoNext = stepsList.isNotEmpty()
+        binding.btnNext.isEnabled = canGoNext
+        binding.btnNext.alpha = if (canGoNext) 1f else DISABLED_BUTTON_ALPHA
+    }
+
 
     private fun loadSteps(
         recipeId: Long,
@@ -460,11 +490,14 @@ class CookingActivity : AppCompatActivity() {
                     stepsList = steps
 
                     if (steps.isNotEmpty()) {
+                        currentStepIndex = currentStepIndex.coerceIn(0, steps.lastIndex)
                         displayStep(currentStepIndex)
 
                         if (currentStepIndex == 0) {
                             readCurrentStep()
                         }
+                    } else {
+                        updateNavigationButtons(0)
                     }
                 }
         }
@@ -489,6 +522,7 @@ class CookingActivity : AppCompatActivity() {
                 binding.tvToolbarTitle.text.toString()
             )
 
+            // Очистка временных ингредиентов
             sharedViewModel.endSession()
 
             Toast.makeText(
@@ -497,6 +531,7 @@ class CookingActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
 
+            // Возврат на главный экран
             val intent = Intent(
                 this@CookingActivity,
                 MainActivity::class.java
@@ -534,5 +569,6 @@ class CookingActivity : AppCompatActivity() {
         const val EXTRA_RECIPE_ID = "recipe_id"
         const val EXTRA_RECIPE_NAME = "recipe_name"
         const val EXTRA_PORTIONS = "portions"
+        private const val DISABLED_BUTTON_ALPHA = 0.45f
     }
 }

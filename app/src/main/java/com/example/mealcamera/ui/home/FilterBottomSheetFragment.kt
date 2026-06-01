@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import com.example.mealcamera.R
+import com.example.mealcamera.data.model.DEFAULT_MAX_CALORIES_PER_PORTION
 import com.example.mealcamera.data.model.FilterState
 import com.example.mealcamera.databinding.BottomSheetFiltersBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -20,6 +21,7 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
 
     var onApply: ((FilterState) -> Unit)? = null
     private var currentFilters: FilterState = FilterState()
+    private var maxCaloriesLimit: Float = DEFAULT_MAX_CALORIES_PER_PORTION
 
     private var _binding: BottomSheetFiltersBinding? = null
     private val binding get() = _binding!!
@@ -29,11 +31,13 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
         private const val DEFAULT_CATEGORY = "Все"
         private const val DEFAULT_CUISINE = "Все кухни"
         private const val FILTER_CHIP_STROKE_WIDTH_DP = 1f
+        private const val ARG_MAX_CALORIES = "arg_max_calories"
 
-        fun newInstance(filters: FilterState): FilterBottomSheetFragment {
+        fun newInstance(filters: FilterState, maxCaloriesLimit: Float): FilterBottomSheetFragment {
             return FilterBottomSheetFragment().apply {
                 arguments = Bundle().apply {
                     putSerializable(ARG_FILTERS, filters as Serializable)
+                    putFloat(ARG_MAX_CALORIES, maxCaloriesLimit)
                 }
             }
         }
@@ -43,6 +47,8 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
         @Suppress("DEPRECATION")
         currentFilters = arguments?.getSerializable(ARG_FILTERS) as? FilterState ?: FilterState()
+        maxCaloriesLimit = (arguments?.getFloat(ARG_MAX_CALORIES, DEFAULT_MAX_CALORIES_PER_PORTION)
+            ?: DEFAULT_MAX_CALORIES_PER_PORTION).coerceAtLeast(DEFAULT_MAX_CALORIES_PER_PORTION)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -182,17 +188,35 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
 
     private fun setupSliders() {
         binding.sliderPrepTime.setLabelFormatter { "${it.toInt()} мин" }
+
+        binding.sliderCalories.valueTo = maxCaloriesLimit
+        binding.sliderCalories.values = currentCaloriesSliderValues()
         binding.sliderCalories.setLabelFormatter { "${it.toInt()} ккал" }
 
         binding.sliderPrepTime.addOnChangeListener { _, _, _ -> updateLabels() }
         binding.sliderCalories.addOnChangeListener { _, _, _ -> updateLabels() }
     }
 
+
+    private fun currentCaloriesSliderValues(): List<Float> {
+        val minValue = currentFilters.minCalories.coerceIn(0f, maxCaloriesLimit)
+        val requestedMax = if (currentFilters.maxCalories >= DEFAULT_MAX_CALORIES_PER_PORTION) {
+            maxCaloriesLimit
+        } else {
+            currentFilters.maxCalories
+        }
+        val maxValue = requestedMax.coerceIn(minValue, maxCaloriesLimit)
+        return listOf(minValue, maxValue)
+    }
+
     private fun updateLabels() {
         val t = binding.sliderPrepTime.values
         val c = binding.sliderCalories.values
         if (t.size >= 2) binding.tvPrepTimeRange.text = "${t[0].toInt()} – ${t[1].toInt()} мин"
-        if (c.size >= 2) binding.tvCaloriesRange.text = "${c[0].toInt()} – ${c[1].toInt()} ккал"
+        if (c.size >= 2) {
+            val maxLabel = if (c[1] >= maxCaloriesLimit) "${maxCaloriesLimit.toInt()}+" else c[1].toInt().toString()
+            binding.tvCaloriesRange.text = "${c[0].toInt()} – $maxLabel ккал"
+        }
     }
 
     private fun restoreFiltersState() {
@@ -200,8 +224,8 @@ class FilterBottomSheetFragment : BottomSheetDialogFragment() {
         checkChips(binding.cuisineChipGroup, currentFilters.selectedCuisines, DEFAULT_CUISINE)
 
         binding.sliderPrepTime.values = listOf(currentFilters.minPrepTime, currentFilters.maxPrepTime)
-        binding.sliderCalories.values = listOf(currentFilters.minCalories, currentFilters.maxCalories)
-        
+        binding.sliderCalories.values = currentCaloriesSliderValues()
+
         updateLabels()
     }
 

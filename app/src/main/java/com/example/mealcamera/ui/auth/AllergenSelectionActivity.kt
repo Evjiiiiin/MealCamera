@@ -13,9 +13,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.tasks.await
 
 class AllergenSelectionActivity : AppCompatActivity() {
+
+    companion object {
+        private const val SAVE_TIMEOUT_MS = 2_500L
+    }
 
     private lateinit var binding: ActivityAllergenSelectionBinding
     private val firestore = FirebaseFirestore.getInstance()
@@ -88,28 +93,40 @@ class AllergenSelectionActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                firestore.collection("users")
-                    .document(userId)
-                    .set(userPayload, com.google.firebase.firestore.SetOptions.merge())
-                    .await()
+                val saveResult = withTimeoutOrNull(SAVE_TIMEOUT_MS) {
+                    firestore.collection("users")
+                        .document(userId)
+                        .set(userPayload, com.google.firebase.firestore.SetOptions.merge())
+                        .await()
+                    true
+                } ?: false
 
-                Toast.makeText(
-                    this@AllergenSelectionActivity,
-                    "Аллергены сохранены",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (saveResult) {
+                    Toast.makeText(
+                        this@AllergenSelectionActivity,
+                        "Аллергены сохранены",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this@AllergenSelectionActivity,
+                        "Нет интернета: изменения сохранены локально",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
 
                 (application as MealCameraApplication).sharedViewModel.notifyAllergensChanged()
                 openMain()
 
             } catch (e: Exception) {
-                val errorMsg = e.message ?: "Unknown error"
                 Toast.makeText(
                     this@AllergenSelectionActivity,
-                    "Ошибка сохранения: $errorMsg",
-                    Toast.LENGTH_SHORT
+                    "Нет интернета: изменения сохранены локально",
+                    Toast.LENGTH_LONG
                 ).show()
                 Log.e("AllergenSelection", "Error saving allergens", e)
+                (application as MealCameraApplication).sharedViewModel.notifyAllergensChanged()
+                openMain()
             }
         }
     }

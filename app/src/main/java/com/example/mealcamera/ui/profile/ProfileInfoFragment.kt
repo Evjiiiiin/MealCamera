@@ -10,13 +10,16 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.signature.ObjectKey
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
+import com.example.mealcamera.data.local.AppStatsManager
 import com.example.mealcamera.databinding.FragmentProfileInfoBinding
 import com.example.mealcamera.ui.auth.AllergenSelectionActivity
 import com.example.mealcamera.util.ImageStorage
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -49,7 +52,9 @@ class ProfileInfoFragment : Fragment() {
         val avatarFile = imageStorage.getAvatarFile(user?.uid ?: "")
         Glide.with(this)
             .load(avatarFile)
-            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+            .signature(ObjectKey(avatarFile.lastModified()))
+            .diskCacheStrategy(DiskCacheStrategy.NONE)
+            .skipMemoryCache(true)
             .placeholder(R.drawable.ic_profile_placeholder)
             .error(R.drawable.ic_profile_placeholder)
             .into(binding.ivAvatar)

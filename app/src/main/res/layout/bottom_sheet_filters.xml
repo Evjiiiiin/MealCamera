@@ -252,7 +252,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="0dp"
-                    android:text="Калории"
+                    android:text="Калории за порцию"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -261,7 +261,7 @@
                     android:id="@+id/tvCaloriesRange"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0 – 1000 ккал"
+                    android:text="0 – 2000 ккал"
                     android:textColor="@color/color_primary"
                     android:textSize="14sp"
                     android:textStyle="bold"
@@ -277,7 +277,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginHorizontal="-12dp"
                 android:valueFrom="0"
-                android:valueTo="1000"
+                android:valueTo="2000"
                 app:values="@array/calories_default" />
 
             <!-- Labels with fixed positive margin -->
@@ -301,7 +301,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="end"
-                    android:text="1000+"
+                    android:text="2000+"
                     android:textColor="@color/gray_text"
                     android:textSize="12sp" />
             </LinearLayout>

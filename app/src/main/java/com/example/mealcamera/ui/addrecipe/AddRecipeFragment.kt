@@ -23,6 +23,7 @@ import com.example.mealcamera.data.remote.CloudIngredient
 import com.example.mealcamera.data.remote.CloudRecipe
 import com.example.mealcamera.data.remote.StepData
 import com.example.mealcamera.databinding.ActivityAddRecipeBinding
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
@@ -42,7 +43,7 @@ class AddRecipeFragment : Fragment() {
 
     private val categories = listOf("Завтрак", "Обед", "Ужин", "Десерт", "Напитки", "Перекус")
     private val cuisines = listOf("Русская", "Итальянская", "Испанская", "Французская", "Азиатская", "Американская", "Другая")
-    private val units = listOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан")
+    private val units = listOf("г", "кг", "мл", "л", "шт", "ст.л.", "ч.л.", "стакан", TASTE_UNIT)
 
     private val mainImagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -79,7 +80,7 @@ class AddRecipeFragment : Fragment() {
         val isEditing = recipeId > 0
 
         setupNavigation(isEditing)
-        
+
         if (isEditing) {
             binding.tvHeader.text = "Редактирование"
             binding.btnDeleteRecipe.visibility = View.VISIBLE
@@ -130,64 +131,73 @@ class AddRecipeFragment : Fragment() {
         binding.btnSaveRecipe.setOnClickListener { saveRecipe() }
         binding.btnClearFields.setOnClickListener { showClearConfirmation() }
         binding.btnDeleteRecipe.setOnClickListener { showDeleteConfirmation() }
-
-        requireActivity().onBackPressedDispatcher.addCallback(
-            viewLifecycleOwner,
-            object : OnBackPressedCallback(true) {
-                override fun handleOnBackPressed() {
-                    findNavController().popBackStack()
-                }
-            }
-        )
     }
 
     private fun showDeleteConfirmation() {
         AlertDialog.Builder(requireContext())
             .setTitle("Удалить рецепт?")
             .setMessage("Это действие нельзя отменить.")
-            .setPositiveButton("Удалить") { _, _ -> viewModel.deleteRecipe() }
-            .setNegativeButton("Отмена", null).show()
+            .setPositiveButton("Удалить") { _, _ ->
+                val recipeId = arguments?.getLong("edit_recipe_id") ?: -1L
+                if (recipeId > 0) viewModel.deleteRecipe(recipeId)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun showClearConfirmation() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Очистить всё?")
-            .setMessage("Все введенные данные будут удалены.")
-            .setPositiveButton("Да") { _, _ -> clearAllFields() }
-            .setNegativeButton("Нет", null).show()
-    }
-
-    private fun clearAllFields() {
-        binding.etRecipeName.text?.clear()
-        binding.etDescription.text?.clear()
-        binding.etCalories.text?.clear()
-        binding.etProteins.text?.clear()
-        binding.etFats.text?.clear()
-        binding.etCarbs.text?.clear()
-        binding.etCookHours.text?.clear()
-        binding.etCookMinutes.text?.clear()
-        binding.etTotalWeight.text?.clear()
-        binding.ingredientsContainer.removeAllViews()
-        binding.stepsContainer.removeAllViews()
-        binding.ivRecipePreview.setImageResource(R.drawable.ic_recipe_placeholder)
-        binding.btnSelectImage.visibility = View.VISIBLE
-        selectedMainImageBitmap = null
-        currentMainImagePath = ""
-        stepImageBitmaps.clear()
-        viewModel.resetEditing()
+            .setTitle("Очистить поля?")
+            .setMessage("Все введенные данные будут потеряны.")
+            .setPositiveButton("Очистить") { _, _ ->
+                findNavController().popBackStack()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun addIngredientRow(container: LinearLayout, data: CloudIngredient? = null) {
         val row = layoutInflater.inflate(R.layout.item_add_ingredient, container, false)
+        val quantityEditText = row.findViewById<EditText>(R.id.etIngredientQuantity)
         val actvUnit = row.findViewById<AutoCompleteTextView>(R.id.tvIngredientUnit)
         actvUnit.setAdapter(ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, units))
+
         data?.let {
+            val unit = if (isTasteUnit(it.unit) || isTasteUnit(it.quantity)) TASTE_UNIT else it.unit
             row.findViewById<EditText>(R.id.etIngredientName).setText(it.name)
-            row.findViewById<EditText>(R.id.etIngredientQuantity).setText(it.quantity)
-            actvUnit.setText(it.unit, false)
-        } ?: run { actvUnit.setText(units[0], false) }
+            quantityEditText.setText(if (isTasteUnit(unit)) "" else it.quantity)
+            actvUnit.setText(unit, false)
+        } ?: run {
+            actvUnit.setText(units[0], false)
+        }
+
+        updateTasteQuantityState(row, actvUnit.text.toString())
+        actvUnit.setOnItemClickListener { _, _, _, _ ->
+            updateTasteQuantityState(row, actvUnit.text.toString())
+        }
+        actvUnit.setOnDismissListener {
+            updateTasteQuantityState(row, actvUnit.text.toString())
+        }
         row.findViewById<View>(R.id.btnRemoveIngredient).setOnClickListener { container.removeView(row) }
         container.addView(row)
+    }
+
+    private fun updateTasteQuantityState(row: View, unit: String) {
+        val quantityLayout = row.findViewById<TextInputLayout>(R.id.layoutIngredientQuantity)
+        val quantityEditText = row.findViewById<EditText>(R.id.etIngredientQuantity)
+        val isTaste = isTasteUnit(unit)
+
+        if (isTaste) {
+            quantityEditText.text?.clear()
+        }
+
+        quantityLayout.isEnabled = !isTaste
+        quantityEditText.isEnabled = !isTaste
+        quantityLayout.alpha = if (isTaste) DISABLED_FIELD_ALPHA else 1f
+    }
+
+    private fun isTasteUnit(value: String): Boolean {
+        return value.trim().lowercase().contains(TASTE_UNIT)
     }
 
     private fun addStepRow(data: StepData? = null) {
@@ -196,50 +206,42 @@ class AddRecipeFragment : Fragment() {
             currentStepImagePickingIndex = binding.stepsContainer.indexOfChild(row)
             stepImagePicker.launch("image/*")
         }
+        row.findViewById<View>(R.id.btnRemoveStep).setOnClickListener { binding.stepsContainer.removeView(row) }
+        row.findViewById<Button>(R.id.btnAddStepIngredient).setOnClickListener {
+            addIngredientRow(row.findViewById(R.id.stepIngredientsContainer))
+        }
+
         data?.let {
             row.findViewById<EditText>(R.id.etStepTitle).setText(it.title)
             row.findViewById<EditText>(R.id.etStepDescription).setText(it.description)
-            if (it.timerMinutes > 0) {
-                row.findViewById<View>(R.id.tilStepTimer).visibility = View.VISIBLE
-                row.findViewById<EditText>(R.id.etStepTimer).setText(it.timerMinutes.toString())
-                row.findViewById<Button>(R.id.btnToggleTimer).text = "- Таймер"
-            }
+            row.findViewById<EditText>(R.id.etStepTimer).setText(it.timerMinutes.toString())
+            val iv = row.findViewById<ImageView>(R.id.ivStepImage)
             if (it.imagePath.isNotBlank()) {
-                val iv = row.findViewById<ImageView>(R.id.ivStepImage)
-                Glide.with(this).load(it.imagePath).into(iv)
                 iv.tag = it.imagePath
+                Glide.with(this).load(it.imagePath).into(iv)
                 row.findViewById<View>(R.id.btnSelectStepImage).visibility = View.GONE
             }
             it.ingredients.forEach { ing -> addIngredientRow(row.findViewById(R.id.stepIngredientsContainer), ing) }
         }
 
-        row.findViewById<Button>(R.id.btnToggleTimer).setOnClickListener { btn ->
-            val til = row.findViewById<View>(R.id.tilStepTimer)
-            if (til.visibility == View.VISIBLE) {
-                til.visibility = View.GONE
-                (btn as Button).text = "+ Таймер"
-            } else {
-                til.visibility = View.VISIBLE
-                (btn as Button).text = "- Таймер"
-            }
-        }
-
-        row.findViewById<Button>(R.id.btnAddStepIngredient).setOnClickListener {
-            addIngredientRow(row.findViewById(R.id.stepIngredientsContainer))
-        }
-
-        row.findViewById<View>(R.id.btnRemoveStep).setOnClickListener {
-            val idx = binding.stepsContainer.indexOfChild(row)
-            stepImageBitmaps.remove(idx)
-            binding.stepsContainer.removeView(row)
-        }
         binding.stepsContainer.addView(row)
     }
 
     private fun saveRecipe() {
+        val request = buildRequest()
+        if (request.name.isBlank()) {
+            Toast.makeText(requireContext(), "Введите название рецепта", Toast.LENGTH_SHORT).show()
+            return
+        }
+        viewModel.saveRecipe(request)
+    }
+
+    private fun buildRequest(): SaveRecipeRequest {
         val h = binding.etCookHours.text.toString().ifBlank { "0" }
         val m = binding.etCookMinutes.text.toString().ifBlank { "0" }
-        viewModel.saveRecipe(
+
+        return SaveRecipeRequest(
+            id = arguments?.getLong("edit_recipe_id") ?: 0L,
             name = binding.etRecipeName.text.toString(),
             description = binding.etDescription.text.toString(),
             category = binding.spinnerCategory.text.toString(),
@@ -264,10 +266,12 @@ class AddRecipeFragment : Fragment() {
     private fun collectIngredients(container: LinearLayout): List<CloudIngredient> {
         return (0 until container.childCount).map { i ->
             val v = container.getChildAt(i)
+            val unitText = v.findViewById<AutoCompleteTextView>(R.id.tvIngredientUnit).text.toString()
+            val isTaste = isTasteUnit(unitText)
             CloudIngredient(
                 v.findViewById<EditText>(R.id.etIngredientName).text.toString(),
-                v.findViewById<EditText>(R.id.etIngredientQuantity).text.toString(),
-                v.findViewById<AutoCompleteTextView>(R.id.tvIngredientUnit).text.toString()
+                if (isTaste) "" else v.findViewById<EditText>(R.id.etIngredientQuantity).text.toString(),
+                if (isTaste) TASTE_UNIT else unitText
             )
         }
     }
@@ -362,6 +366,11 @@ class AddRecipeFragment : Fragment() {
             Log.e("AddRecipeFragment", "Bitmap failed", e)
             null
         }
+    }
+
+    companion object {
+        private const val TASTE_UNIT = "по вкусу"
+        private const val DISABLED_FIELD_ALPHA = 0.55f
     }
 
     override fun onDestroyView() {

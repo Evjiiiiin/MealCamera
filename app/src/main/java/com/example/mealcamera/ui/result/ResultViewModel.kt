@@ -14,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.util.Locale
+import kotlin.math.floor
 
 class ResultViewModel(
     private val repository: RecipeRepository,
@@ -51,9 +52,10 @@ class ResultViewModel(
 
     private var searchJob: Job? = null
 
+    // Список ингредиентов, которые всегда считаются доступными (кухонный минимум)
     private val alwaysAvailableDefaults = setOf(
         "соль", "сахар", "вода", "перец", "сода", "уксус", "ванилин",
-        "корица", "разрыхлитель", "лимонная кислота", "лавровый лист", "гвоздика", "молотый перец"
+        "корица", "разрыхлитель", "лавровый лист", "молотый перец", "черный перец", "перец молотый"
     )
 
     private fun normalize(text: String): String = text.trim().lowercase(Locale.ROOT).replace("ё", "е")
@@ -109,6 +111,12 @@ class ResultViewModel(
 
     fun findRecipes(updatedIngredients: List<EditableIngredient>) {
         searchJob?.cancel()
+        if (updatedIngredients.isEmpty()) {
+            clearRecipeResults()
+            _isSearching.value = false
+            return
+        }
+
         searchJob = viewModelScope.launch {
             _isSearching.value = true
             delay(200)
@@ -120,6 +128,7 @@ class ResultViewModel(
                 _oneMissingRecipes.value = results.oneMissing
                 _twoMissingRecipes.value = results.twoMissing
             } catch (e: CancellationException) {
+                // ignore
             } catch (e: Exception) {
                 Log.e("ResultViewModel", "Search error", e)
                 _errorEvents.emit("Ошибка поиска")
@@ -161,6 +170,7 @@ class ResultViewModel(
 
             val normRecipeName = normalize(recipe.name)
 
+            // Фильтрация по аллергенам
             val hasAllergen = expandedAllergens.any { allergen ->
                 normRecipeName.contains(allergen) ||
                         recipeWithIngs.ingredients.any { ing -> normalize(ing.name).contains(allergen) }
@@ -175,56 +185,48 @@ class ResultViewModel(
             for (ing in recipeWithIngs.ingredients) {
                 val normIngName = normalize(ing.name)
 
-                if (combinedAlwaysAvailable.any { normIngName.contains(it) || it.contains(normIngName) }) continue
+                // Пропуск только точных базовых продуктов, чтобы лимон/болгарский перец/гвоздика
+                // не считались доступными из-за похожих названий базовых специй.
+                if (isAlwaysAvailableIngredient(normIngName, combinedAlwaysAvailable)) continue
 
+                // Поиск совпадения у пользователя
                 val userIng = normalizedUserIngredients.find { isSimilar(it.name, normIngName) }
 
                 val cr = crossRefs.find { it.ingredientId == ing.ingredientId }
                 val reqQtyStr = cr?.quantity ?: ""
                 val reqUnit = cr?.unit?.ifBlank { UnitHelper.getDefaultUnit(ing.name) } ?: UnitHelper.getDefaultUnit(ing.name)
-                val reqQty = reqQtyStr.toDoubleOrNull() ?: 0.0
+                if (isTasteOnlyIngredient(reqQtyStr, reqUnit)) continue
+
+                val reqQty = parseQuantity(reqQtyStr)
+                val requiredQty = calculateRequiredQuantity(recipe, reqQty, currentPortions)
 
                 if (userIng == null) {
                     missingStrings.add(ing.name)
-                    structuredMissing.add(MissingIngredientData(ing.name, reqQty * currentPortions, reqUnit))
+                    structuredMissing.add(MissingIngredientData(ing.name, requiredQty, reqUnit))
                     missingCount++
                 } else {
-                    if (reqQtyStr.lowercase(Locale.ROOT).contains("по вкусу")) continue
-
-                    val userQty = userIng.quantity.toDoubleOrNull() ?: 0.0
+                    val userQty = parseQuantity(userIng.quantity)
                     val userUnit = userIng.unit.ifBlank { UnitHelper.getDefaultUnit(userIng.name) }
 
-                    val sufficient = when {
-                        UnitHelper.areDiscreteUnitsCompatible(userUnit, reqUnit) -> {
-                            UnitHelper.isDiscreteAmountSufficient(userQty, userUnit, reqQty * currentPortions, reqUnit)
-                        }
-                        else -> {
-                            val uBase = UnitHelper.toBaseUnit(userQty, userUnit)
-                            val rBase = UnitHelper.toBaseUnit(reqQty * currentPortions, reqUnit)
-
-                            if (uBase.isNaN() || rBase.isNaN()) {
-                                userQty >= (reqQty * currentPortions)
-                            } else {
-                                uBase >= (rBase - 0.01)
-                            }
-                        }
-                    }
+                    val sufficient = UnitHelper.isAmountSufficient(
+                        haveQty = userQty,
+                        haveUnit = userUnit,
+                        needQty = requiredQty,
+                        needUnit = reqUnit,
+                        ingredientName = ing.name
+                    )
 
                     if (!sufficient) {
-                        val diffDesc = buildDiffDescription(userQty, userUnit, reqQty * currentPortions, reqUnit, ing.name)
+                        val diffDesc = buildDiffDescription(userQty, userUnit, requiredQty, reqUnit, ing.name)
                         missingStrings.add(diffDesc)
 
-                        val diffQty = if (UnitHelper.areDiscreteUnitsCompatible(userUnit, reqUnit)) {
-                            (reqQty * currentPortions) - userQty
-                        } else {
-                            val uBase = UnitHelper.toBaseUnit(userQty, userUnit)
-                            val rBase = UnitHelper.toBaseUnit(reqQty * currentPortions, reqUnit)
-                            if (uBase.isNaN() || rBase.isNaN()) (reqQty * currentPortions) - userQty
-                            else {
-                                val missingInBase = rBase - uBase
-                                UnitHelper.convert(missingInBase, "г", reqUnit).takeIf { !it.isNaN() } ?: ((reqQty * currentPortions) - userQty)
-                            }
-                        }
+                        val diffQty = UnitHelper.calculateMissingQuantity(
+                            haveQty = userQty,
+                            haveUnit = userUnit,
+                            needQty = requiredQty,
+                            needUnit = reqUnit,
+                            ingredientName = ing.name
+                        )
 
                         structuredMissing.add(MissingIngredientData(ing.name, diffQty, reqUnit))
                         missingCount++
@@ -233,7 +235,20 @@ class ResultViewModel(
                 if (missingCount > 2) break
             }
 
-            val res = RecipeResult(recipe, missingStrings, structuredMissing)
+            val availablePortions = calculateAvailablePortions(
+                recipe = recipe,
+                ingredients = recipeWithIngs.ingredients,
+                crossRefs = crossRefs,
+                normalizedUserIngredients = normalizedUserIngredients,
+                alwaysAvailable = combinedAlwaysAvailable
+            )
+            val res = RecipeResult(
+                recipe = recipe,
+                missingIngredients = missingStrings,
+                structuredMissingIngredients = structuredMissing,
+                availablePortions = availablePortions,
+                targetPortions = currentPortions
+            )
             when (missingCount) {
                 0 -> perfect.add(res)
                 1 -> oneMissing.add(res)
@@ -246,6 +261,94 @@ class ResultViewModel(
             oneMissing.sortedByDescending { it.recipe.popularityScore },
             twoMissing.sortedByDescending { it.recipe.popularityScore }
         )
+    }
+
+
+
+    private fun calculateRequiredQuantity(recipe: Recipe, baseQuantity: Double, selectedPortions: Int): Double {
+        val basePortions = recipe.basePortions.coerceAtLeast(1)
+        return baseQuantity * selectedPortions / basePortions
+    }
+
+    private fun calculateAvailablePortions(
+        recipe: Recipe,
+        ingredients: List<Ingredient>,
+        crossRefs: List<RecipeIngredientCrossRef>,
+        normalizedUserIngredients: List<EditableIngredient>,
+        alwaysAvailable: Set<String>
+    ): Int? {
+        val basePortions = recipe.basePortions.coerceAtLeast(1)
+        var minPortions = Double.POSITIVE_INFINITY
+        var hasRequiredIngredients = false
+
+        ingredients.forEach { ingredient ->
+            val normalizedName = normalize(ingredient.name)
+            if (isAlwaysAvailableIngredient(normalizedName, alwaysAvailable)) return@forEach
+
+            val crossRef = crossRefs.find { it.ingredientId == ingredient.ingredientId } ?: return@forEach
+            val quantityText = crossRef.quantity
+            if (isTasteOnlyIngredient(quantityText, crossRef.unit)) return@forEach
+
+            val baseQuantity = parseQuantity(quantityText)
+            if (baseQuantity <= 0.0) return@forEach
+
+            hasRequiredIngredients = true
+            val requiredPerPortion = baseQuantity / basePortions
+            val requiredUnit = crossRef.unit.ifBlank { UnitHelper.getDefaultUnit(ingredient.name) }
+            val userIngredient = normalizedUserIngredients.find { isSimilar(it.name, normalizedName) }
+            val coveredPortions = if (userIngredient == null) {
+                0.0
+            } else {
+                calculateCoveredPortions(
+                    userIngredient = userIngredient,
+                    requiredPerPortion = requiredPerPortion,
+                    requiredUnit = requiredUnit,
+                    ingredientName = ingredient.name
+                )
+            }
+            minPortions = minOf(minPortions, coveredPortions)
+        }
+
+        if (!hasRequiredIngredients || !minPortions.isFinite()) return null
+        return floor(minPortions).toInt().coerceAtLeast(0)
+    }
+
+    private fun calculateCoveredPortions(
+        userIngredient: EditableIngredient,
+        requiredPerPortion: Double,
+        requiredUnit: String,
+        ingredientName: String
+    ): Double {
+        if (requiredPerPortion <= 0.0) return Double.POSITIVE_INFINITY
+
+        val userQuantity = parseQuantity(userIngredient.quantity)
+        val userUnit = userIngredient.unit.ifBlank { UnitHelper.getDefaultUnit(userIngredient.name) }
+        val availableBase = UnitHelper.toBaseUnit(userQuantity, userUnit, ingredientName)
+        val requiredBase = UnitHelper.toBaseUnit(requiredPerPortion, requiredUnit, ingredientName)
+
+        return when {
+            !availableBase.isNaN() && !requiredBase.isNaN() && requiredBase > 0.0 -> availableBase / requiredBase
+            UnitHelper.areDiscreteUnitsCompatible(userUnit, requiredUnit) -> userQuantity / requiredPerPortion
+            else -> 0.0
+        }
+    }
+
+    private fun parseQuantity(value: String): Double {
+        return value.trim()
+            .replace(',', '.')
+            .toDoubleOrNull()
+            ?: 0.0
+    }
+
+    private fun isTasteOnlyIngredient(quantity: String, unit: String): Boolean {
+        return quantity.lowercase(Locale.ROOT).contains("по вкусу") ||
+                unit.lowercase(Locale.ROOT).contains("по вкусу")
+    }
+
+    private fun isAlwaysAvailableIngredient(ingredientName: String, alwaysAvailable: Set<String>): Boolean {
+        return alwaysAvailable.any { availableName ->
+            ingredientName == availableName
+        }
     }
 
     private fun buildDiffDescription(haveQty: Double, haveUnit: String, needQty: Double, needUnit: String, ingredientName: String): String {
@@ -282,8 +385,17 @@ class ResultViewModel(
     }
 
     fun resetIngredientsOnly() {
+        searchJob?.cancel()
         _editableIngredients.value = emptyList()
+        clearRecipeResults()
+        _isSearching.value = false
         sharedViewModel.endSession()
+    }
+
+    private fun clearRecipeResults() {
+        _perfectRecipes.value = emptyList()
+        _oneMissingRecipes.value = emptyList()
+        _twoMissingRecipes.value = emptyList()
     }
 
     private data class SearchResults(val perfect: List<RecipeResult>, val oneMissing: List<RecipeResult>, val twoMissing: List<RecipeResult>)

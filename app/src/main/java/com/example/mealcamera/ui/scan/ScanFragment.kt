@@ -2,6 +2,7 @@ package com.example.mealcamera.ui.scan
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -114,8 +115,13 @@ class ScanFragment : Fragment() {
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) startCamera()
-            else Toast.makeText(requireContext(), "Нужно разрешение на камеру", Toast.LENGTH_LONG).show()
+            setCameraFeatureEnabled(isGranted)
+            if (isGranted) {
+                startCamera()
+                showDetectorModeHint()
+            } else {
+                showCameraDisabledState("Камера выключена: разрешение не выдано")
+            }
         }
 
     override fun onCreateView(
@@ -138,15 +144,7 @@ class ScanFragment : Fragment() {
         setupBackPressed()
         setupClickListeners()
         observeIngredientsOnly()
-        showDetectorModeHint()
-
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            startCamera()
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        configureCameraAccess()
     }
 
     private fun setupCardsRecyclerView() {
@@ -183,11 +181,56 @@ class ScanFragment : Fragment() {
         )
     }
 
+    private fun configureCameraAccess() {
+        if (!isCameraFeatureEnabled()) {
+            showCameraDisabledState("Камера выключена в настройках профиля")
+            return
+        }
+
+        if (hasCameraPermission()) {
+            setCameraFeatureEnabled(true)
+            startCamera()
+            showDetectorModeHint()
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     private fun startCamera() {
         val controller = LifecycleCameraController(requireContext())
         controller.bindToLifecycle(viewLifecycleOwner)
         binding.viewFinder.controller = controller
+        binding.btnCapture.isEnabled = true
+        binding.btnCapture.alpha = 1f
         cameraController = controller
+    }
+
+    private fun showCameraDisabledState(message: String) {
+        binding.viewFinder.controller = null
+        binding.btnCapture.isEnabled = false
+        binding.btnCapture.alpha = DISABLED_BUTTON_ALPHA
+        cameraController = null
+        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        Log.d(TAG, message)
+    }
+
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) ==
+                PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun isCameraFeatureEnabled(): Boolean {
+        return requireContext()
+            .getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+            .getBoolean("camera_enabled", true)
+    }
+
+    private fun setCameraFeatureEnabled(enabled: Boolean) {
+        requireContext()
+            .getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("camera_enabled", enabled)
+            .apply()
     }
 
     private fun showDetectorModeHint() {
@@ -205,9 +248,15 @@ class ScanFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             sharedViewModel.temporaryIngredients.collect { ingredients ->
                 cardsAdapter.submitList(ingredients)
-                binding.btnShowResults.isEnabled = ingredients.isNotEmpty()
+                updateShowResultsButton(ingredients.isNotEmpty())
             }
         }
+    }
+
+    private fun updateShowResultsButton(enabled: Boolean) {
+        binding.btnShowResults.isEnabled = enabled
+        binding.btnShowResults.isClickable = enabled
+        binding.btnShowResults.alpha = if (enabled) 1f else DISABLED_BUTTON_ALPHA
     }
 
     private fun setupClickListeners() {
@@ -415,5 +464,6 @@ class ScanFragment : Fragment() {
         private const val CENTER_CROP_RATIO = 0.8f
         private const val MERGE_IOU_THRESHOLD = 0.60f
         private const val MAX_CAPTURE_DETECTIONS = 24
+        private const val DISABLED_BUTTON_ALPHA = 0.45f
     }
 }

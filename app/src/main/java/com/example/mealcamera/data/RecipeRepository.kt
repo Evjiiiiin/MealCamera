@@ -11,6 +11,7 @@ import com.example.mealcamera.data.remote.StepData
 import com.example.mealcamera.data.remote.CloudIngredient
 import com.example.mealcamera.data.util.UnitHelper
 import com.example.mealcamera.util.IngredientTranslator
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -25,10 +26,28 @@ class RecipeRepository(
     private val firestoreService: FirestoreService
 ) {
 
+    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+
     val allRecipes: Flow<List<Recipe>> = recipeDao.getAllRecipes()
+        .map { recipes ->
+            val currentUserId = auth.currentUser?.uid
+            recipes.filter { recipe -> isRecipeVisible(recipe, currentUserId) }
+        }
 
     fun allRecipesWithIngredientsFlow(): Flow<List<RecipeWithIngredients>> =
         recipeDao.getAllRecipesWithIngredientsFlow()
+            .map { recipes ->
+                val currentUserId = auth.currentUser?.uid
+                recipes.filter { recipeWithIngredients ->
+                    isRecipeVisible(recipeWithIngredients.recipe, currentUserId)
+                }
+            }
+
+    private fun isRecipeVisible(recipe: Recipe, currentUserId: String?): Boolean {
+        val isPublic = recipe.isPublicRecipe == true
+        val isOwner = currentUserId != null && recipe.createdByUserId == currentUserId
+        return isPublic || isOwner
+    }
 
     private fun normalize(name: String): String {
         return name.trim().lowercase(Locale.ROOT).replace("ё", "е")
@@ -285,7 +304,11 @@ class RecipeRepository(
         return withContext(Dispatchers.IO) {
             try {
                 if (firestoreId != null) {
-                    firestoreService.updateRecipe(firestoreId, cloudRecipe)
+                    val remoteUpdated = firestoreService.updateRecipe(firestoreId, cloudRecipe)
+                    if (!remoteUpdated) {
+                        Log.e("RecipeRepository", "Remote update failed for firestoreId=$firestoreId")
+                        return@withContext false
+                    }
                 }
                 val updatedRecipe = Recipe(
                     recipeId = recipeId,
@@ -466,7 +489,13 @@ class RecipeRepository(
 
     suspend fun incrementRecipePopularity(recipeId: Long) = recipeDao.incrementPopularity(recipeId)
     suspend fun getAllDbIngredients(): List<Ingredient> = recipeDao.getAllIngredients()
-    suspend fun getAllRecipesWithIngredients(): List<RecipeWithIngredients> = recipeDao.getAllRecipesWithIngredients()
+    suspend fun getAllRecipesWithIngredients(): List<RecipeWithIngredients> {
+        val currentUserId = auth.currentUser?.uid
+        return recipeDao.getAllRecipesWithIngredients()
+            .filter { recipeWithIngredients ->
+                isRecipeVisible(recipeWithIngredients.recipe, currentUserId)
+            }
+    }
     fun getShoppingListItems(userId: String): Flow<List<ShoppingListItem>> = shoppingListDao.getAllItems(userId)
     suspend fun updateShoppingListItemChecked(item: ShoppingListItem, checked: Boolean) = shoppingListDao.updateItem(item.copy(isChecked = checked))
     suspend fun deleteShoppingListItem(item: ShoppingListItem) = shoppingListDao.deleteItem(item)

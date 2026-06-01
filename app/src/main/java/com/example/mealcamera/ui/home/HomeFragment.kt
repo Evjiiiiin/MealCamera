@@ -8,11 +8,12 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.mealcamera.MealCameraApplication
 import com.example.mealcamera.R
+import com.example.mealcamera.data.model.DEFAULT_MAX_CALORIES_PER_PORTION
 import com.example.mealcamera.databinding.FragmentHomeBinding
 import com.example.mealcamera.ui.detail.RecipeDetailActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -25,11 +26,12 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var recipeAdapter: RecipeAdapter
-    private val viewModel: MainViewModel by viewModels {
+    private val viewModel: MainViewModel by activityViewModels {
         (requireActivity().application as MealCameraApplication).viewModelFactory
     }
 
     private val auth = FirebaseAuth.getInstance()
+    private var latestAdaptiveCaloriesMax: Float = DEFAULT_MAX_CALORIES_PER_PORTION
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
@@ -97,7 +99,10 @@ class HomeFragment : Fragment() {
 
     private fun showFilterBottomSheet() {
         // Используем newInstance для безопасной передачи данных при пересоздании фрагмента
-        val bottomSheet = FilterBottomSheetFragment.newInstance(viewModel.currentFilterState).apply {
+        val bottomSheet = FilterBottomSheetFragment.newInstance(
+            filters = viewModel.currentFilterState,
+            maxCaloriesLimit = latestAdaptiveCaloriesMax
+        ).apply {
             onApply = { newFilters ->
                 viewModel.setFilters(newFilters)
             }
@@ -114,6 +119,7 @@ class HomeFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
+                latestAdaptiveCaloriesMax = state.adaptiveMaxCalories
                 recipeAdapter.setFavoriteIds(state.favoriteIds)
                 recipeAdapter.submitList(state.recipes)
                 binding.swipeRefresh.isRefreshing = state.isRefreshing
@@ -130,8 +136,8 @@ class HomeFragment : Fragment() {
         val filter = viewModel.currentFilterState
         val hasActiveFilters = state.categoryFilter != "Все" || state.cuisineFilter != "Все кухни"
                 || filter.minPrepTime > 0f || filter.maxPrepTime < 240f
-                || filter.minCalories > 0f || filter.maxCalories < 1000f
-        
+                || filter.minCalories > 0f || filter.maxCalories < DEFAULT_MAX_CALORIES_PER_PORTION
+
         if (hasActiveFilters) {
             binding.btnFilter.setColorFilter(resources.getColor(R.color.color_primary, null))
         } else {
