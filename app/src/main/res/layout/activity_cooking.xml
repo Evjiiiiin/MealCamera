@@ -18,7 +18,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_arrow_back_outlined">
-            
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -111,7 +111,7 @@
                         android:textStyle="bold"
                         android:textSize="14sp"
                         android:layout_marginBottom="8dp" />
-                    
+
                     <LinearLayout
                         android:id="@+id/ingredientsContainer"
                         android:layout_width="match_parent"
@@ -207,7 +207,7 @@
                 android:layout_marginStart="32dp"
                 android:text="Сброс" />
         </LinearLayout>
-        
+
         <ProgressBar
             android:id="@+id/progressBar"
             style="?android:attr/progressBarStyleHorizontal"
@@ -215,7 +215,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="4dp"
             android:progressTint="@color/color_primary" />
-            
+
         <TextView
             android:id="@+id/tvProgress"
             android:layout_width="wrap_content"
@@ -236,6 +236,8 @@
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_weight="1"
+                android:alpha="0.45"
+                android:enabled="false"
                 android:text="Назад"
                 android:layout_marginEnd="8dp" />
             <com.google.android.material.button.MaterialButton

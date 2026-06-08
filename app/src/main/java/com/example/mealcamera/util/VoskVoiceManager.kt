@@ -119,7 +119,6 @@ class VoskVoiceManager(
         stopListening()
         pausedByStopCommand = false
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "vosk_tts")
-        // restart listening shortly after speaking starts/ends; simple timeout approach
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (!destroyed && !pausedByStopCommand) startListening()
         }, 1200L)
@@ -202,7 +201,7 @@ class VoskVoiceManager(
         containsAny(text, "ингредиенты", "зачитай ингредиенты", "прочитай ингредиенты", "скажи ингредиенты", "какие ингредиенты", "что нужно") -> VoiceCommand.READ_INGREDIENTS
         containsAny(text, "сбросить таймер", "сбрось таймер", "обнулить таймер", "сбросить", "сбрось") -> VoiceCommand.TIMER_RESET
         containsAny(text, "пауза", "поставь на паузу", "останови таймер", "стоп таймер") -> VoiceCommand.TIMER_PAUSE
-        containsAny(text, "запустить таймер", "запусти таймер", "старт таймер", "старт", "таймер", "продолжить таймер", "продолжи таймер") -> VoiceCommand.TIMER
+        containsAny(text, "запустить таймер", "запусти таймер", "старт таймер", "старт", "таймер", "продолжить таймер", "продолжи таймер", "продолжить") -> VoiceCommand.TIMER
         containsAny(text, "повтори", "еще раз") -> VoiceCommand.REPEAT
         containsAny(text, "прочитай шаг", "зачитай шаг", "озвучь шаг", "что делать", "шаг") -> VoiceCommand.READ_STEP
         containsAny(text, "стоп", "хватит") -> VoiceCommand.STOP

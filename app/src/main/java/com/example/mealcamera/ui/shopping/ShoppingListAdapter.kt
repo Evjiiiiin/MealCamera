@@ -35,8 +35,7 @@ class ShoppingListAdapter(
             val unitText = item.unit.ifBlank { "шт" }
             binding.tvQuantity.text = item.quantity
             binding.tvUnit.text = unitText
-            
-            // Отключаем слушатель перед установкой значения, чтобы избежать зацикливания
+
             binding.checkbox.setOnCheckedChangeListener(null)
             binding.checkbox.isChecked = item.isChecked
 

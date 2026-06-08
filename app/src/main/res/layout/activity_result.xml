@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/background_main">
 
-    <!-- Header -->
     <LinearLayout
         android:id="@+id/headerLayout"
         android:layout_width="0dp"
@@ -130,6 +129,24 @@
                 android:visibility="gone" />
 
             <TextView
+                android:id="@+id/tvNameMatchHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:text="Похоже, можно приготовить"
+                android:textColor="@color/text_main"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/nameMatchRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone" />
+
+            <TextView
                 android:id="@+id/tvOneMissingHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -161,8 +178,10 @@
                 android:id="@+id/twoMissingRecyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
                 android:nestedScrollingEnabled="false"
                 android:visibility="gone" />
+
 
             <TextView
                 android:id="@+id/tvNoResults"

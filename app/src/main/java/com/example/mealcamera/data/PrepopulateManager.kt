@@ -23,7 +23,7 @@ class PrepopulateManager(
 
     suspend fun prepopulateIfNeeded(recipeDao: RecipeDao) = withContext(Dispatchers.IO) {
         try {
-            // Проверяем наличие данных в Firestore асинхронно, без блокировки
+            // проверка на наличие данных в Firestore
             val hasCloudData = runCatching { firestoreService.hasData() }.getOrDefault(false)
             val localRecipeCount = runCatching { recipeDao.getRecipeCount() }.getOrDefault(0)
 
@@ -42,7 +42,7 @@ class PrepopulateManager(
 
             saveToLocalDatabase(recipeDao, ingredients, recipes)
 
-            // Загружаем в Firestore в фоне, игнорируем ошибки, чтобы не ломать запуск
+            // загрузка в Firestore в фоне
             try {
                 firestoreService.uploadInitialData(
                     ingredients = ingredients.map { (name, isAlwaysAvailable, isCoreIngredient) ->
@@ -163,7 +163,9 @@ class PrepopulateManager(
     }
 
     private fun jsonQuantityToString(obj: JSONObject, key: String = "quantity"): String {
-        return when (val value = obj.opt(key)) {
+        val value: Any? = obj.opt(key)
+
+        return when (value) {
             null, JSONObject.NULL -> ""
             is Number -> {
                 val asDouble = value.toDouble()

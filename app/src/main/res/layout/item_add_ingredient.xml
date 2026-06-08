@@ -40,7 +40,7 @@
 
     <com.google.android.material.textfield.TextInputLayout
         style="@style/Widget_MealCamera_TextInputLayout_ExposedDropdownMenu"
-        android:layout_width="110dp"
+        android:layout_width="120dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
         android:hint="Мера">

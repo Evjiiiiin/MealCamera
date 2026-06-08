@@ -9,11 +9,9 @@ object UnitHelper {
     private const val MILK_DENSITY = 1.03
     private const val THICK_SAUCE_DENSITY = 1.3
 
-    /**
-     * Возвращает единицу по умолчанию для ингредиента.
-     */
+    // возврат единицы по умолчанию для ингредиента
     fun getDefaultUnit(ingredientName: String): String {
-        val name = ingredientName.lowercase().trim()
+        val name = normalizeName(ingredientName)
         return when {
             isLiquid(name) -> "мл"
             isPieceBased(name) -> "шт"
@@ -21,9 +19,7 @@ object UnitHelper {
         }
     }
 
-    /**
-     * Форматирование количества для отображения (без лишних нулей).
-     */
+     // форматирование количества для отображения
     fun formatQuantity(quantity: Double): String {
         return if (quantity <= 0) "0"
         else if (quantity % 1.0 == 0.0) {
@@ -33,10 +29,7 @@ object UnitHelper {
         }
     }
 
-    /**
-     * Конвертирует количество в базовую единицу без знания ингредиента:
-     * г для массы, мл для объема. Штучные единицы возвращают NaN.
-     */
+    // конвертер количества в базовую единицу без знания ингредиента
     fun toBaseUnit(quantity: Double, unit: String): Double {
         val u = normalizeUnit(unit)
         return when (u) {
@@ -53,10 +46,6 @@ object UnitHelper {
         }
     }
 
-    /**
-     * Конвертирует количество в граммы с учетом ингредиента.
-     * Это нужно для сравнения, например: 1 кг картофеля >= 2 шт картофеля.
-     */
     fun toBaseUnit(quantity: Double, unit: String, ingredientName: String): Double {
         val u = normalizeUnit(unit)
         val name = normalizeName(ingredientName)
@@ -68,9 +57,6 @@ object UnitHelper {
         }
     }
 
-    /**
-     * Универсальная конвертация между единицами без знания ингредиента.
-     */
     fun convert(quantity: Double, fromUnit: String, toUnit: String): Double {
         val from = normalizeUnit(fromUnit)
         val to = normalizeUnit(toUnit)
@@ -92,9 +78,6 @@ object UnitHelper {
         }
     }
 
-    /**
-     * Универсальная конвертация между единицами с учетом ингредиента и плотности/среднего веса.
-     */
     fun convert(quantity: Double, fromUnit: String, toUnit: String, ingredientName: String): Double {
         val from = normalizeUnit(fromUnit)
         val to = normalizeUnit(toUnit)
@@ -276,7 +259,12 @@ object UnitHelper {
             name.contains("банан") -> 120.0
             name.contains("яблок") -> 180.0
             name.contains("огур") -> 100.0
-            name.contains("лимон") -> 100.0
+            name.contains("лимон") || name.contains("лайм") -> 100.0
+            name.contains("апельсин") -> 180.0
+            name.contains("киви") -> 80.0
+            name.contains("имбир") -> 40.0
+            name.contains("груш") -> 170.0
+            name.contains("авокад") -> 200.0
             name.contains("перец") -> 120.0
             else -> 100.0
         }
@@ -292,8 +280,9 @@ object UnitHelper {
 
     private fun isPieceBased(name: String): Boolean {
         val pieces = listOf(
-            "яйцо", "яблоко", "банан", "лук", "морковь", "картофель", "картошка", "помидор",
-            "томат", "огурец", "перец", "чеснок", "лимон"
+            "яйцо", "яблоко", "банан", "апельсин", "киви", "имбирь", "лук", "морковь",
+            "картофель", "картошка", "помидор", "томат", "огурец", "перец", "чеснок",
+            "лимон", "лайм", "груша", "авокадо", "баклажан", "кабачок", "свекла"
         )
         return pieces.any { name.contains(it) }
     }

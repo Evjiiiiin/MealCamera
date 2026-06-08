@@ -69,7 +69,6 @@
             android:layout_height="60dp"
             android:text="Войти" />
 
-        <!-- Разделитель "или" с линиями -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

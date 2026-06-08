@@ -57,15 +57,14 @@ class ProfileViewModel(
 
     fun refreshStats() {
         val currentUserId = auth.currentUser?.uid
-        
-        // 1. Быстрое локальное отображение
+
         val localRecipes = statsManager.getRecentCookedRecipes(currentUserId)
         
         _stats.value = ProfileStats(
             cookedCount = statsManager.getCookedRecipesCount(currentUserId),
             uniqueCount = statsManager.getUniqueCookedRecipesCount(currentUserId),
             recentRecipes = localRecipes,
-            isLoading = true // Все еще грузим из облака
+            isLoading = true
         )
 
         if (currentUserId == null) {
@@ -75,7 +74,6 @@ class ProfileViewModel(
 
         viewModelScope.launch {
             try {
-                // 2. Получаем историю из облака
                 val cloudHistory = firestoreService.getCookingHistory(currentUserId)
                 val cloudRecent = cloudHistory.map { map ->
                     AppStatsManager.RecentCookedRecipe(
@@ -85,7 +83,6 @@ class ProfileViewModel(
                     )
                 }
 
-                // Ключ: Имя + Время (точность до минуты)
                 val combined = (localRecipes + cloudRecent)
                     .distinctBy { "${it.name}_${it.cookedAtMillis / 60000}" }
                     .sortedByDescending { it.cookedAtMillis }

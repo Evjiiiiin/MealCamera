@@ -15,7 +15,6 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     companion object {
-        // 30 минут = 30 * 60 * 1000 миллисекунд
         private const val INACTIVITY_TIMEOUT = 30 * 60 * 1000L
     }
 
@@ -36,7 +35,6 @@ abstract class BaseActivity : AppCompatActivity() {
 
     private fun resetInactivityTimer() {
         stopInactivityTimer()
-        // Не запускаем таймер, если пользователь не авторизован
         if (FirebaseAuth.getInstance().currentUser != null) {
             logoutHandler.postDelayed(logoutRunnable, INACTIVITY_TIMEOUT)
         }

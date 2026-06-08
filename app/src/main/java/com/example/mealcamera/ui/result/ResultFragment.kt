@@ -43,6 +43,7 @@ class ResultFragment : Fragment() {
     private lateinit var perfectAdapter: RecipeAdapter
     private lateinit var oneMissingAdapter: RecipeAdapter
     private lateinit var twoMissingAdapter: RecipeAdapter
+    private lateinit var nameMatchAdapter: RecipeAdapter
     private lateinit var editableAdapter: EditableIngredientAdapter
 
     private val catalogLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -50,13 +51,11 @@ class ResultFragment : Fragment() {
             val selectedNames = result.data?.getStringArrayListExtra("selected_names") ?: return@registerForActivityResult
             val currentList = viewModel.editableIngredients.value.toMutableList()
 
-            // 1. Удаляем ингредиенты, которые больше не выбраны в каталоге
             val normalizedSelected = selectedNames.map { it.trim().lowercase().replace("ё", "е") }.toSet()
             currentList.removeAll { ing ->
                 !normalizedSelected.contains(ing.name.trim().lowercase().replace("ё", "е"))
             }
 
-            // 2. Добавляем новые, которых не было
             selectedNames.forEach { name ->
                 val isAlreadyPresent = currentList.any { it.name.equals(name, ignoreCase = true) }
                 if (!isAlreadyPresent) {
@@ -115,6 +114,11 @@ class ResultFragment : Fragment() {
             onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) },
             onAddToShoppingList = { missing -> viewModel.addToShoppingList(missing) }
         )
+        nameMatchAdapter = RecipeAdapter(
+            onItemClick = { recipe -> navigateToDetail(recipe.recipeId) },
+            onFavoriteClick = { recipe, _ -> viewModel.toggleFavorite(recipe) },
+            onAddToShoppingList = { missing -> viewModel.addToShoppingList(missing) }
+        )
 
         binding.perfectMatchRecyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), 2)
@@ -127,6 +131,10 @@ class ResultFragment : Fragment() {
         binding.twoMissingRecyclerView.apply {
             layoutManager = GridLayoutManager(requireContext(), 2)
             adapter = twoMissingAdapter
+        }
+        binding.nameMatchRecyclerView.apply {
+            layoutManager = GridLayoutManager(requireContext(), 2)
+            adapter = nameMatchAdapter
         }
 
         editableAdapter = EditableIngredientAdapter(
@@ -175,6 +183,7 @@ class ResultFragment : Fragment() {
                 launch {
                     viewModel.isSearching.collect { isSearching ->
                         binding.searchProgressBar.visibility = if (isSearching) View.VISIBLE else View.GONE
+                        updateNoResultsVisibility()
                     }
                 }
 
@@ -189,6 +198,7 @@ class ResultFragment : Fragment() {
                         perfectAdapter.setFavoriteIds(favoriteIds)
                         oneMissingAdapter.setFavoriteIds(favoriteIds)
                         twoMissingAdapter.setFavoriteIds(favoriteIds)
+                        nameMatchAdapter.setFavoriteIds(favoriteIds)
                     }
                 }
 
@@ -218,6 +228,15 @@ class ResultFragment : Fragment() {
                         updateNoResultsVisibility()
                     }
                 }
+
+                launch {
+                    viewModel.nameMatchRecipes.collectLatest { list ->
+                        nameMatchAdapter.submitList(list)
+                        binding.tvNameMatchHeader.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        binding.nameMatchRecyclerView.visibility = if (list.isNotEmpty()) View.VISIBLE else View.GONE
+                        updateNoResultsVisibility()
+                    }
+                }
             }
         }
     }
@@ -226,7 +245,8 @@ class ResultFragment : Fragment() {
         val hasIngredients = viewModel.editableIngredients.value.isNotEmpty()
         val isEmpty = viewModel.perfectRecipes.value.isEmpty() &&
                 viewModel.oneMissingRecipes.value.isEmpty() &&
-                viewModel.twoMissingRecipes.value.isEmpty()
+                viewModel.twoMissingRecipes.value.isEmpty() &&
+                viewModel.nameMatchRecipes.value.isEmpty()
 
         binding.tvNoResults.visibility = if (hasIngredients && isEmpty && !viewModel.isSearching.value) View.VISIBLE else View.GONE
     }

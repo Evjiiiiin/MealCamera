@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Основная палитра (Темная тема) -->
+    <!-- основная палитра (темная тема) -->
     <color name="color_primary">#EA674B</color>
     <color name="color_primary_variant">#D1563D</color>
     <color name="color_on_primary">#FFFFFF</color>
@@ -11,7 +11,7 @@
     <color name="surface_card">#1E1E1E</color>
     <color name="surface_card_variant">#2C2C2C</color>
 
-    <!-- Эффект стекла (полупрозрачный фон меню) -->
+    <!-- эффект стекла -->
     <color name="nav_glass_background">#CC121212</color>
 
     <color name="text_main">#FFFFFF</color>
@@ -21,7 +21,7 @@
 
     <color name="icon_tint">#E0E0E0</color>
 
-    <!-- Обводка и подсказки (сделал ярче #CCCCCC для максимальной видимости) -->
+    <!-- обводка и подсказки -->
     <color name="border_light">#CCCCCC</color>
     <color name="placeholder">#CCCCCC</color>
     <color name="search_border">#CCCCCC</color>

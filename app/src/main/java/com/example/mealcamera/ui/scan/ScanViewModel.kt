@@ -48,9 +48,21 @@ class ScanViewModel(
     private val iouThreshold = 0.4f
     private val maxShownGroups = 3
 
-    // DEMO PROFILE: финальные ограничения для стабильного списка.
     private val captureIouDedupThreshold = 0.55f
-    private val captureMaxClasses = 4
+    private val captureMinDisplayConfidence = 0.55f
+    private val captureReliableConfidenceThreshold = 0.65f
+    private val classSpecificDisplayConfidence = mapOf(
+        "шоколад" to 0.95f,
+        "chocolate" to 0.95f,
+        "чай" to 0.70f,
+        "tea" to 0.70f,
+        "сливочное масло" to 0.70f,
+        "butter" to 0.70f,
+        "ананас" to 0.70f,
+        "pineapple" to 0.70f
+    )
+    private val captureWeakSceneMinClasses = 2
+    private val captureMaxClasses = 6
     private val captureMaxObjectsTotal = 6
 
     private var allowedIngredients: Set<String> = emptySet()
@@ -229,19 +241,43 @@ class ScanViewModel(
         }
     }
 
-
     private fun normalizeCaptureDetections(detections: List<DetectedFood>): List<DetectedFood> {
         if (detections.isEmpty()) return emptyList()
 
         val deduplicated = deduplicateByIou(detections, captureIouDedupThreshold)
+            .filter { it.confidence >= captureMinDisplayConfidence }
+            .filter { passesClassSpecificDisplayConfidence(it) }
+        if (deduplicated.isEmpty()) return emptyList()
 
-        return deduplicated
+        val distinctClasses = deduplicated.map { normalizeLabel(it.name) }.toSet().size
+        val hasReliableDetection = deduplicated.any { it.confidence >= captureReliableConfidenceThreshold }
+        if (!hasReliableDetection && distinctClasses < captureWeakSceneMinClasses) return emptyList()
+
+        val selectedGroups = deduplicated
             .groupBy { normalizeLabel(it.name) }
             .values
             .sortedByDescending { group -> group.maxOf { it.confidence } }
             .take(captureMaxClasses)
-            .flatMap { classGroup -> classGroup.sortedByDescending { it.confidence } }
-            .take(captureMaxObjectsTotal)
+            .map { group -> group.sortedByDescending { it.confidence } }
+
+        val bestPerClass = selectedGroups.mapNotNull { it.firstOrNull() }
+        val extraInstances = selectedGroups
+            .flatMap { group -> group.drop(1) }
+            .sortedByDescending { it.confidence }
+
+        return (bestPerClass + extraInstances).take(captureMaxObjectsTotal)
+    }
+
+    private fun passesClassSpecificDisplayConfidence(detection: DetectedFood): Boolean {
+        val threshold = listOf(
+            normalizeLabel(detection.name),
+            normalizeLabel(detection.originalLabel)
+        )
+            .mapNotNull { classSpecificDisplayConfidence[it] }
+            .maxOrNull()
+            ?: return true
+
+        return detection.confidence >= threshold
     }
 
     private fun deduplicateByIou(

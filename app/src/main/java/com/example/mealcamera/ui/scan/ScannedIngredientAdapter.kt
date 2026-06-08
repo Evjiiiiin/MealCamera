@@ -23,7 +23,6 @@ class ScannedIngredientAdapter(
                 .centerCrop()
                 .into(binding.ivIngredientThumb)
 
-            // Устанавливаем тег для идентификации
             binding.ivDelete.tag = item
             binding.root.tag = item
 

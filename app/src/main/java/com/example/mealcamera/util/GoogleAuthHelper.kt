@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.example.mealcamera.util
 
 import android.content.Context
@@ -10,7 +12,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.AuthCredential
 import com.google.firebase.auth.GoogleAuthProvider
 
-@Suppress("DEPRECATION")
 class GoogleAuthHelper(private val context: Context) {
 
     private val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)

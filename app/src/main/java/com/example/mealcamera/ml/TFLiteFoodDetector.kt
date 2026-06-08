@@ -21,9 +21,6 @@ class TFLiteFoodDetector(context: Context) {
     private var labels: List<String> = emptyList()
 
     private val inputSize = 640
-
-    // Локальный режим оставляем менее строгим, т.к. это fallback без интернета.
-    // Далее стабильность усиливается в ScanViewModel (smoothing + tracking).
     private val minConfidenceThreshold = 0.40f
     private val nmsThreshold = 0.45f
     private val maxDetections = 50
@@ -111,10 +108,8 @@ class TFLiteFoodDetector(context: Context) {
                 val batch = output[0]
 
                 when {
-                    // [1, 1, 8400, 81] / [1, 1, 8400, 84]
                     outputShape[1] == 1 -> normalizeCandidateMatrix(batch[0])
 
-                    // [1, 81, 8400, 1]
                     outputShape[3] == 1 -> Array(outputShape[1]) { attr ->
                         FloatArray(outputShape[2]) { candidate -> batch[attr][candidate][0] }
                     }

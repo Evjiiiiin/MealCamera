@@ -25,13 +25,13 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true">
 
-        <!-- Yandex Login SDK Meta-data: using placeholder to synchronize with build.gradle.kts -->
+        <!-- Yandex Login SDK Meta-data -->
         <meta-data
             android:name="com.yandex.auth.CLIENT_ID"
             android:value="${YANDEX_CLIENT_ID}"
             tools:replace="android:value" />
 
-        <!-- Optional Roboflow credentials. Empty values keep the existing local TFLite detector as fallback. -->
+        <!-- Optional Roboflow credentials -->
         <meta-data
             android:name="com.example.mealcamera.ROBOFLOW_API_KEY"
             android:value="xMdLAXOS8WP8PlXzKZVK" />

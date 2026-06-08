@@ -39,7 +39,6 @@ class CookingStepsAdapter : RecyclerView.Adapter<CookingStepsAdapter.StepViewHol
             binding.tvStepTitle.text = step.title
             binding.tvStepDescription.text = step.instruction
 
-            // ИСПРАВЛЕНО: прямой доступ к ingredient.name
             val ingredientsText = stepWithIngredients.ingredients.joinToString("\n") {
                 "• ${it.name}"
             }

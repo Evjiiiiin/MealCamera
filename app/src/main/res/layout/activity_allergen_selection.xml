@@ -40,7 +40,6 @@
                 android:textSize="14sp"
                 android:layout_marginBottom="24dp" />
 
-            <!-- Группы с описанием -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -146,7 +145,6 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <!-- Добавлено: Яйца -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

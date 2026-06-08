@@ -29,9 +29,6 @@ class ProfileFragment : Fragment() {
         setupViewPager()
     }
 
-    // ИСПРАВЛЕНО: Удален onResume, который принудительно переключал меню на профиль.
-    // Это вызывало "прыжок" навигации при возврате на главный экран.
-
     private fun setupViewPager() {
         val adapter = ProfilePagerAdapter(this)
         binding.viewPager.adapter = adapter

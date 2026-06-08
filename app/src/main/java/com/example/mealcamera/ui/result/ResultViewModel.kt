@@ -34,6 +34,9 @@ class ResultViewModel(
     private val _twoMissingRecipes = MutableStateFlow<List<RecipeResult>>(emptyList())
     val twoMissingRecipes: StateFlow<List<RecipeResult>> = _twoMissingRecipes.asStateFlow()
 
+    private val _nameMatchRecipes = MutableStateFlow<List<RecipeResult>>(emptyList())
+    val nameMatchRecipes: StateFlow<List<RecipeResult>> = _nameMatchRecipes.asStateFlow()
+
     private val _portions = MutableStateFlow(1)
     val portions: StateFlow<Int> = _portions.asStateFlow()
 
@@ -52,10 +55,9 @@ class ResultViewModel(
 
     private var searchJob: Job? = null
 
-    // Список ингредиентов, которые всегда считаются доступными (кухонный минимум)
     private val alwaysAvailableDefaults = setOf(
-        "соль", "сахар", "вода", "перец", "сода", "уксус", "ванилин",
-        "корица", "разрыхлитель", "лавровый лист", "молотый перец", "черный перец", "перец молотый"
+        "соль", "сахар", "вода", "вода газированная", "перец", "сода", "уксус",
+        "молотый перец", "черный перец", "перец молотый"
     )
 
     private fun normalize(text: String): String = text.trim().lowercase(Locale.ROOT).replace("ё", "е")
@@ -127,6 +129,7 @@ class ResultViewModel(
                 _perfectRecipes.value = results.perfect
                 _oneMissingRecipes.value = results.oneMissing
                 _twoMissingRecipes.value = results.twoMissing
+                _nameMatchRecipes.value = results.nameMatch
             } catch (e: CancellationException) {
                 // ignore
             } catch (e: Exception) {
@@ -160,6 +163,12 @@ class ResultViewModel(
         val perfect = mutableListOf<RecipeResult>()
         val oneMissing = mutableListOf<RecipeResult>()
         val twoMissing = mutableListOf<RecipeResult>()
+        val nameMatch = mutableListOf<RecipeResult>()
+        val canUseNameMatch = normalizedUserIngredients
+            .map { it.name }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .size >= MIN_NAME_MATCH_USER_INGREDIENTS
         val processedKeys = mutableSetOf<String>()
 
         for (recipeWithIngs in allRecipesWithIngredients) {
@@ -170,7 +179,6 @@ class ResultViewModel(
 
             val normRecipeName = normalize(recipe.name)
 
-            // Фильтрация по аллергенам
             val hasAllergen = expandedAllergens.any { allergen ->
                 normRecipeName.contains(allergen) ||
                         recipeWithIngs.ingredients.any { ing -> normalize(ing.name).contains(allergen) }
@@ -185,11 +193,8 @@ class ResultViewModel(
             for (ing in recipeWithIngs.ingredients) {
                 val normIngName = normalize(ing.name)
 
-                // Пропуск только точных базовых продуктов, чтобы лимон/болгарский перец/гвоздика
-                // не считались доступными из-за похожих названий базовых специй.
                 if (isAlwaysAvailableIngredient(normIngName, combinedAlwaysAvailable)) continue
 
-                // Поиск совпадения у пользователя
                 val userIng = normalizedUserIngredients.find { isSimilar(it.name, normIngName) }
 
                 val cr = crossRefs.find { it.ingredientId == ing.ingredientId }
@@ -253,17 +258,50 @@ class ResultViewModel(
                 0 -> perfect.add(res)
                 1 -> oneMissing.add(res)
                 2 -> twoMissing.add(res)
+                else -> if (canUseNameMatch && hasEnoughNameMatches(
+                        recipeIngredients = recipeWithIngs.ingredients,
+                        normalizedUserIngredients = normalizedUserIngredients,
+                        alwaysAvailable = combinedAlwaysAvailable
+                    )
+                ) {
+                    nameMatch.add(
+                        RecipeResult(
+                            recipe = recipe,
+                            availablePortions = availablePortions,
+                            targetPortions = currentPortions
+                        )
+                    )
+                }
             }
         }
 
         return SearchResults(
             perfect.sortedByDescending { it.recipe.popularityScore },
             oneMissing.sortedByDescending { it.recipe.popularityScore },
-            twoMissing.sortedByDescending { it.recipe.popularityScore }
+            twoMissing.sortedByDescending { it.recipe.popularityScore },
+            nameMatch.sortedWith(compareByDescending<RecipeResult> { it.recipe.popularityScore }.thenBy { it.recipe.name })
         )
     }
 
+    private fun hasEnoughNameMatches(
+        recipeIngredients: List<Ingredient>,
+        normalizedUserIngredients: List<EditableIngredient>,
+        alwaysAvailable: Set<String>
+    ): Boolean {
+        val meaningfulRecipeIngredients = recipeIngredients
+            .map { normalize(it.name) }
+            .filter { it.isNotBlank() && !isAlwaysAvailableIngredient(it, alwaysAvailable) }
+            .distinct()
 
+        if (meaningfulRecipeIngredients.isEmpty()) return false
+
+        val matchedCount = meaningfulRecipeIngredients.count { recipeIngredient ->
+            normalizedUserIngredients.any { userIngredient -> isSimilar(userIngredient.name, recipeIngredient) }
+        }
+        val matchedRatio = matchedCount.toDouble() / meaningfulRecipeIngredients.size
+
+        return matchedCount >= MIN_NAME_MATCH_COUNT || matchedRatio >= MIN_NAME_MATCH_RATIO
+    }
 
     private fun calculateRequiredQuantity(recipe: Recipe, baseQuantity: Double, selectedPortions: Int): Double {
         val basePortions = recipe.basePortions.coerceAtLeast(1)
@@ -396,7 +434,19 @@ class ResultViewModel(
         _perfectRecipes.value = emptyList()
         _oneMissingRecipes.value = emptyList()
         _twoMissingRecipes.value = emptyList()
+        _nameMatchRecipes.value = emptyList()
     }
 
-    private data class SearchResults(val perfect: List<RecipeResult>, val oneMissing: List<RecipeResult>, val twoMissing: List<RecipeResult>)
+    private data class SearchResults(
+        val perfect: List<RecipeResult>,
+        val oneMissing: List<RecipeResult>,
+        val twoMissing: List<RecipeResult>,
+        val nameMatch: List<RecipeResult>
+    )
+
+    private companion object {
+        const val MIN_NAME_MATCH_USER_INGREDIENTS = 2
+        const val MIN_NAME_MATCH_COUNT = 2
+        const val MIN_NAME_MATCH_RATIO = 0.4
+    }
 }

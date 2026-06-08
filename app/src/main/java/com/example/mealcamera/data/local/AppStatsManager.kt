@@ -27,7 +27,7 @@ class AppStatsManager(context: Context) {
 
         val recentList = getRecentCookedRecipes(userId).toMutableList()
         
-        // ЗАЩИТА ОТ ДУБЛИКАТОВ: Проверяем, не готовили ли мы это же блюдо в последние 5 минут
+        // защита от дубликатов
         val isDuplicate = recentList.any { 
             it.name == recipeName && (System.currentTimeMillis() - it.cookedAtMillis) < 300000 
         }

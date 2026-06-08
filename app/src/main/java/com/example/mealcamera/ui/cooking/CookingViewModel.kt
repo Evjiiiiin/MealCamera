@@ -29,14 +29,10 @@ class CookingViewModel(
 
         val userId = auth.currentUser?.uid
 
-        // 1. Увеличиваем популярность в локальной БД
         repository.incrementRecipePopularity(recipeId)
 
-        // 2. Регистрируем приготовление в локальной статистике (для мгновенного обновления UI)
         statsManager.registerCookedRecipe(userId, recipeId, recipeName)
 
-        // 3. Сохраняем историю в облако best-effort.
-        // В офлайне/при зависаниях сети не блокируем завершение приготовления.
         if (userId != null) {
             runCatching {
                 withTimeoutOrNull(CLOUD_SAVE_TIMEOUT_MS) {

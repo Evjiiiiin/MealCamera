@@ -27,7 +27,7 @@
                 android:paddingBottom="8dp"
                 app:layout_collapseMode="parallax">
 
-                <!-- Приветствие -->
+                <!-- приветствие -->
                 <TextView
                     android:id="@+id/tvGreeting"
                     android:layout_width="wrap_content"
@@ -51,7 +51,7 @@
                     android:textStyle="bold"
                     tools:text="Что будем готовить?" />
 
-                <!-- Блок инфо об ингредиентах -->
+                <!-- информация об ингредиентах -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/cardAlwaysAvailable"
                     android:layout_width="match_parent"
@@ -91,7 +91,7 @@
 
         </com.google.android.material.appbar.CollapsingToolbarLayout>
 
-        <!-- Строка поиска (Sticky) -->
+        <!-- поиск -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/searchContainer"
             android:layout_width="match_parent"

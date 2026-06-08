@@ -16,7 +16,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent" />
 
-    <!-- Пустое состояние -->
+    <!-- пустое состояние -->
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="match_parent"
@@ -55,7 +55,6 @@
             android:text="Найти рецепты" />
     </LinearLayout>
 
-    <!-- Градиент строго внизу -->
     <View
         android:layout_width="match_parent"
         android:layout_height="180dp"

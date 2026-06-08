@@ -98,7 +98,6 @@ class HomeFragment : Fragment() {
     }
 
     private fun showFilterBottomSheet() {
-        // Используем newInstance для безопасной передачи данных при пересоздании фрагмента
         val bottomSheet = FilterBottomSheetFragment.newInstance(
             filters = viewModel.currentFilterState,
             maxCaloriesLimit = latestAdaptiveCaloriesMax

@@ -41,10 +41,9 @@ class MealCameraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Применяем сохраненную тему сразу при запуске
+        // применение сохранённой темы сразу при запуске
         ThemeManager.applyTheme(this)
 
-        // Отложенный запуск тяжелых операций, чтобы не блокировать UI
         appScope.launch {
             try {
                 Log.i("MealCameraApplication", "🚀 Начало инициализации данных...")

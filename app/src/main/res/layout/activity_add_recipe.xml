@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/background_main">
 
-    <!-- Header -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerLayout"
         android:layout_width="match_parent"
@@ -116,6 +115,20 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:text="Добавить фото" />
+
+                    <ImageButton
+                        android:id="@+id/btnRemoveImage"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Убрать фото"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_close_outlined"
+                        android:visibility="gone"
+                        app:tint="@color/red_error"
+                        tools:visibility="visible" />
                 </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -166,7 +179,6 @@
                 android:text="+ Добавить шаг"
                 android:textColor="@color/color_primary" />
 
-            <!-- КБЖУ Fields -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -230,7 +242,6 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
-            <!-- Time Fields -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -316,7 +327,6 @@
                 android:checked="true"
                 android:text="Публичный доступ" />
 
-            <!-- Buttons hierarchy -->
             <LinearLayout
                 android:id="@+id/bottomButtonsContainer"
                 android:layout_width="match_parent"

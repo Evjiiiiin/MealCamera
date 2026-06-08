@@ -45,7 +45,6 @@ class CookingActivity : AppCompatActivity() {
     private var timer: CountDownTimer? = null
 
     private var isVoiceEnabled = true
-    private var voiceAssistant: VoiceAssistantManager? = null
     private var voskVoiceManager: VoskVoiceManager? = null
 
     private var isTimerRunning = false
@@ -56,8 +55,11 @@ class CookingActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
+            saveVoiceSetting(enabled = true, disabledByPermission = false)
             initVoiceAssistant()
         } else {
+            isVoiceEnabled = false
+            saveVoiceSetting(enabled = false, disabledByPermission = true)
             Toast.makeText(
                 this,
                 "Голосовое управление недоступно без микрофона",
@@ -100,8 +102,17 @@ class CookingActivity : AppCompatActivity() {
         ) {
             requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         } else {
+            saveVoiceSetting(enabled = true, disabledByPermission = false)
             initVoiceAssistant()
         }
+    }
+
+    private fun saveVoiceSetting(enabled: Boolean, disabledByPermission: Boolean) {
+        getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("voice_enabled", enabled)
+            .putBoolean(KEY_VOICE_DISABLED_BY_PERMISSION, disabledByPermission)
+            .apply()
     }
 
     private fun initVoiceAssistant() {
@@ -142,19 +153,19 @@ class CookingActivity : AppCompatActivity() {
             VoskVoiceManager.VoiceCommand.STOP ->
                 voskVoiceManager?.stopAll()
 
-            // Озвучить ингредиенты текущего шага
+            // озвучка ингредиентов текущего шага
             VoskVoiceManager.VoiceCommand.READ_INGREDIENTS ->
                 readCurrentIngredients()
 
-            // Запустить или продолжить таймер
+            // запуск или продолжение таймера
             VoskVoiceManager.VoiceCommand.TIMER ->
                 startOrResumeTimerByVoice()
 
-            // Поставить таймер на паузу
+            // поставить таймер на паузу
             VoskVoiceManager.VoiceCommand.TIMER_PAUSE ->
                 pauseTimerByVoice()
 
-            // Сбросить таймер
+            // сбросить таймер
             VoskVoiceManager.VoiceCommand.TIMER_RESET ->
                 resetTimerByVoice()
 
@@ -213,9 +224,7 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Запуск или продолжение таймера голосовой командой.
-     */
+     // запуск или продолжение таймера голосовой командой
     private fun startOrResumeTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -230,9 +239,7 @@ class CookingActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Пауза таймера голосовой командой.
-     */
+    // пауза таймера голосовой командой
     private fun pauseTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -246,9 +253,7 @@ class CookingActivity : AppCompatActivity() {
         pauseStepTimer()
     }
 
-    /**
-     * Сброс таймера голосовой командой.
-     */
+    // сброс таймера голосовой командой
     private fun resetTimerByVoice() {
         if (
             binding.timerContainer.visibility != View.VISIBLE ||
@@ -339,9 +344,7 @@ class CookingActivity : AppCompatActivity() {
         voskVoiceManager?.speak(text)
     }
 
-    /**
-     * Озвучивает ингредиенты текущего шага.
-     */
+    // озвучка ингредиентов текущего шага
     private fun readCurrentIngredients() {
         if (
             !isVoiceEnabled ||
@@ -522,7 +525,7 @@ class CookingActivity : AppCompatActivity() {
                 binding.tvToolbarTitle.text.toString()
             )
 
-            // Очистка временных ингредиентов
+            // очистка временных ингредиентов
             sharedViewModel.endSession()
 
             Toast.makeText(
@@ -531,7 +534,7 @@ class CookingActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
 
-            // Возврат на главный экран
+            // возврат на главный экран после приготовления
             val intent = Intent(
                 this@CookingActivity,
                 MainActivity::class.java
@@ -570,5 +573,6 @@ class CookingActivity : AppCompatActivity() {
         const val EXTRA_RECIPE_NAME = "recipe_name"
         const val EXTRA_PORTIONS = "portions"
         private const val DISABLED_BUTTON_ALPHA = 0.45f
+        private const val KEY_VOICE_DISABLED_BY_PERMISSION = "voice_disabled_by_permission"
     }
 }

@@ -13,11 +13,11 @@ object SymbolBindingAdapter {
     fun setSymbol(view: TextView, name: String?) {
         if (name == null) return
         
-        // Устанавливаем шрифт Google Symbols
+        // шрифт Google Symbols
         val typeface = ResourcesCompat.getFont(view.context, R.font.google_symbols)
         view.typeface = typeface
         
-        // В шрифте Material Symbols иконка отображается по её текстовому названию
+        // иконка отображается по её текстовому названию
         view.text = name
     }
 }

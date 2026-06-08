@@ -44,7 +44,6 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_15_16 = object : Migration(15, 16) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Добавляем поле totalWeight для расчета граммовки
                 db.execSQL("ALTER TABLE recipes ADD COLUMN totalWeight INTEGER NOT NULL DEFAULT 0")
             }
         }

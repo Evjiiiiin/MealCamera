@@ -12,9 +12,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,7 +48,6 @@ class ScanFragment : Fragment() {
     private var cameraExecutor: ExecutorService? = null
     private var localDetector: TFLiteFoodDetector? = null
     private var roboflowDetector: RoboflowFoodDetector? = null
-    private var loadingDialog: AlertDialog? = null
 
     private lateinit var cardsAdapter: ScannedCardsAdapter
 
@@ -236,9 +232,9 @@ class ScanFragment : Fragment() {
     private fun showDetectorModeHint() {
         val cloudAvailable = roboflowDetector?.isAvailable() == true
         val mode = if (cloudAvailable) {
-            "Режим: Cloud->Local fallback (по снимку)"
+            "Режим: облачный"
         } else {
-            "Режим: только локальная модель (по снимку)"
+            "Режим: локальный"
         }
         Toast.makeText(requireContext(), mode, Toast.LENGTH_SHORT).show()
         Log.d(TAG, mode)
@@ -275,14 +271,15 @@ class ScanFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            showLoadingDialog()
-            binding.btnCapture.isEnabled = false
+            showAnalysisOverlay(bitmap)
+            setCaptureControlsEnabled(false)
 
             viewLifecycleOwner.lifecycleScope.launch {
                 val detectionResult = withContext(Dispatchers.IO) { analyzeCapture(bitmap) }
 
-                hideLoadingDialog()
-                binding.btnCapture.isEnabled = true
+                _binding ?: return@launch
+                hideAnalysisOverlay()
+                setCaptureControlsEnabled(true)
 
                 val detections = detectionResult.first
                 val sourceTag = detectionResult.second
@@ -290,8 +287,8 @@ class ScanFragment : Fragment() {
                 if (detections.isEmpty()) {
                     Toast.makeText(
                         requireContext(),
-                        "Продукты не обнаружены. Попробуйте другой ракурс/свет.",
-                        Toast.LENGTH_SHORT
+                        "Не удалось найти продукты. Поднесите камеру ближе, улучшите свет или добавьте продукт вручную.",
+                        Toast.LENGTH_LONG
                     ).show()
                     Log.w(TAG, "Capture analysis result=empty source=$sourceTag")
                     return@launch
@@ -334,36 +331,150 @@ class ScanFragment : Fragment() {
 
     private fun analyzeCapture(bitmap: Bitmap): Pair<List<DetectedFood>, String> {
         val cloud = roboflowDetector
+        val local = localDetector
+
         if (cloud?.isAvailable() == true) {
             val cloudFull = cloud.detectFood(bitmap)
-            val cloudCrop = cloud.detectFood(createCenterCrop(bitmap, CENTER_CROP_RATIO))
+            val cloudCrop = detectOnPass(
+                createCenterCropPass(bitmap, CENTER_CROP_RATIO),
+                cloud::detectFood
+            )
             val mergedCloud = mergeDetections(cloudFull + cloudCrop, MERGE_IOU_THRESHOLD)
+
+            val localAssist = local?.let { detector ->
+                detectAcrossLocalPasses(bitmap, detector::detectFood)
+            }.orEmpty()
+
+            val mergedAll = mergeDetections(mergedCloud + localAssist, MERGE_IOU_THRESHOLD)
             Log.d(
                 TAG,
-                "Cloud multi-pass: full=${cloudFull.size}, crop=${cloudCrop.size}, merged=${mergedCloud.size}"
+                "Cloud+local multi-pass: cloudFull=${cloudFull.size}, cloudCrop=${cloudCrop.size}, " +
+                        "cloudMerged=${mergedCloud.size}, localAssist=${localAssist.size}, merged=${mergedAll.size}"
             )
 
-            if (mergedCloud.isNotEmpty()) {
-                Log.d(TAG, "Capture analysis source=CLOUD, detections=${mergedCloud.size}")
-                return mergedCloud to "cloud"
+            if (mergedAll.isNotEmpty()) {
+                Log.d(TAG, "Capture analysis source=CLOUD_LOCAL_MERGE, detections=${mergedAll.size}")
+                return mergedAll to "cloud_local_merge"
             }
 
-            Log.w(TAG, "Capture analysis fallback=LOCAL reason=cloud_empty_or_error")
-            val local = localDetector?.detectFood(bitmap).orEmpty()
-            return local to "local_fallback"
+            return emptyList<DetectedFood>() to "cloud_local_empty"
         }
 
         Log.w(TAG, "Capture analysis source=LOCAL reason=cloud_unavailable")
-        return localDetector?.detectFood(bitmap).orEmpty() to "local_only"
+        val localDetections = local?.let { detectAcrossLocalPasses(bitmap, it::detectFood) }.orEmpty()
+        return mergeDetections(localDetections, MERGE_IOU_THRESHOLD) to "local_only"
     }
 
-    private fun createCenterCrop(source: Bitmap, ratio: Float): Bitmap {
+    private fun detectAcrossLocalPasses(
+        source: Bitmap,
+        detect: (Bitmap) -> List<DetectedFood>
+    ): List<DetectedFood> {
+        val passes = listOf(
+            CapturePass(source, offsetX = 0, offsetY = 0, ownsBitmap = false, name = "full"),
+            createCenterCropPass(source, CENTER_CROP_RATIO),
+            createHorizontalCropPass(source, EDGE_CROP_RATIO, alignEnd = false),
+            createHorizontalCropPass(source, EDGE_CROP_RATIO, alignEnd = true),
+            createVerticalCropPass(source, EDGE_CROP_RATIO, alignEnd = false),
+            createVerticalCropPass(source, EDGE_CROP_RATIO, alignEnd = true),
+            createCornerCropPass(source, TILE_CROP_RATIO, alignEndX = false, alignEndY = false),
+            createCornerCropPass(source, TILE_CROP_RATIO, alignEndX = true, alignEndY = false),
+            createCornerCropPass(source, TILE_CROP_RATIO, alignEndX = false, alignEndY = true),
+            createCornerCropPass(source, TILE_CROP_RATIO, alignEndX = true, alignEndY = true)
+        )
+
+        return passes.flatMap { pass ->
+            detectOnPass(pass, detect).also { detections ->
+                Log.d(TAG, "Local pass=${pass.name}, detections=${detections.size}")
+            }
+        }
+    }
+
+    private fun detectOnPass(
+        pass: CapturePass,
+        detect: (Bitmap) -> List<DetectedFood>
+    ): List<DetectedFood> {
+        return try {
+            detect(pass.bitmap).map { detection -> detection.translateToOriginal(pass.offsetX, pass.offsetY) }
+        } finally {
+            if (pass.ownsBitmap) pass.bitmap.recycle()
+        }
+    }
+
+    private fun createCenterCropPass(source: Bitmap, ratio: Float): CapturePass {
         val safeRatio = ratio.coerceIn(0.5f, 1f)
         val cropWidth = (source.width * safeRatio).toInt().coerceAtLeast(1)
         val cropHeight = (source.height * safeRatio).toInt().coerceAtLeast(1)
         val left = ((source.width - cropWidth) / 2).coerceAtLeast(0)
         val top = ((source.height - cropHeight) / 2).coerceAtLeast(0)
-        return Bitmap.createBitmap(source, left, top, cropWidth, cropHeight)
+        return CapturePass(
+            bitmap = Bitmap.createBitmap(source, left, top, cropWidth, cropHeight),
+            offsetX = left,
+            offsetY = top,
+            ownsBitmap = true,
+            name = "center"
+        )
+    }
+
+    private fun createHorizontalCropPass(source: Bitmap, ratio: Float, alignEnd: Boolean): CapturePass {
+        val safeRatio = ratio.coerceIn(0.5f, 1f)
+        val cropWidth = (source.width * safeRatio).toInt().coerceAtLeast(1)
+        val left = if (alignEnd) (source.width - cropWidth).coerceAtLeast(0) else 0
+        val name = if (alignEnd) "right" else "left"
+        return CapturePass(
+            bitmap = Bitmap.createBitmap(source, left, 0, cropWidth, source.height),
+            offsetX = left,
+            offsetY = 0,
+            ownsBitmap = true,
+            name = name
+        )
+    }
+
+    private fun createVerticalCropPass(source: Bitmap, ratio: Float, alignEnd: Boolean): CapturePass {
+        val safeRatio = ratio.coerceIn(0.5f, 1f)
+        val cropHeight = (source.height * safeRatio).toInt().coerceAtLeast(1)
+        val top = if (alignEnd) (source.height - cropHeight).coerceAtLeast(0) else 0
+        val name = if (alignEnd) "bottom" else "top"
+        return CapturePass(
+            bitmap = Bitmap.createBitmap(source, 0, top, source.width, cropHeight),
+            offsetX = 0,
+            offsetY = top,
+            ownsBitmap = true,
+            name = name
+        )
+    }
+
+    private fun createCornerCropPass(
+        source: Bitmap,
+        ratio: Float,
+        alignEndX: Boolean,
+        alignEndY: Boolean
+    ): CapturePass {
+        val safeRatio = ratio.coerceIn(0.5f, 1f)
+        val cropWidth = (source.width * safeRatio).toInt().coerceAtLeast(1)
+        val cropHeight = (source.height * safeRatio).toInt().coerceAtLeast(1)
+        val left = if (alignEndX) (source.width - cropWidth).coerceAtLeast(0) else 0
+        val top = if (alignEndY) (source.height - cropHeight).coerceAtLeast(0) else 0
+        val horizontalName = if (alignEndX) "right" else "left"
+        val verticalName = if (alignEndY) "bottom" else "top"
+        return CapturePass(
+            bitmap = Bitmap.createBitmap(source, left, top, cropWidth, cropHeight),
+            offsetX = left,
+            offsetY = top,
+            ownsBitmap = true,
+            name = "${horizontalName}_${verticalName}"
+        )
+    }
+
+    private fun DetectedFood.translateToOriginal(offsetX: Int, offsetY: Int): DetectedFood {
+        val sourceBox = boundingBox ?: return this
+        return copy(
+            boundingBox = RectF(
+                sourceBox.left + offsetX,
+                sourceBox.top + offsetY,
+                sourceBox.right + offsetX,
+                sourceBox.bottom + offsetY
+            )
+        )
     }
 
     private fun mergeDetections(detections: List<DetectedFood>, iouThreshold: Float): List<DetectedFood> {
@@ -405,38 +516,24 @@ class ScanFragment : Fragment() {
         return if (union <= 0f) 0f else intersection / union
     }
 
-    private fun showLoadingDialog() {
-        if (loadingDialog?.isShowing == true) return
-
-        val container = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(56, 40, 56, 40)
-            gravity = android.view.Gravity.CENTER_VERTICAL
-        }
-
-        val progressBar = ProgressBar(requireContext()).apply {
-            isIndeterminate = true
-        }
-
-        val textView = TextView(requireContext()).apply {
-            text = "Анализ фото..."
-            textSize = 16f
-            setPadding(32, 0, 0, 0)
-        }
-
-        container.addView(progressBar)
-        container.addView(textView)
-
-        loadingDialog = AlertDialog.Builder(requireContext())
-            .setView(container)
-            .setCancelable(false)
-            .create()
-            .also { it.show() }
+    private fun showAnalysisOverlay(bitmap: Bitmap) {
+        binding.ivCapturedFrame.setImageBitmap(bitmap)
+        binding.analysisOverlay.visibility = View.VISIBLE
     }
 
-    private fun hideLoadingDialog() {
-        loadingDialog?.dismiss()
-        loadingDialog = null
+    private fun hideAnalysisOverlay() {
+        val currentBinding = _binding ?: return
+        currentBinding.analysisOverlay.visibility = View.GONE
+        currentBinding.ivCapturedFrame.setImageDrawable(null)
+    }
+
+    private fun setCaptureControlsEnabled(enabled: Boolean) {
+        binding.btnCapture.isEnabled = enabled
+        binding.btnCapture.isClickable = enabled
+        binding.btnCapture.alpha = if (enabled) 1f else DISABLED_BUTTON_ALPHA
+        binding.btnAddManually.isEnabled = enabled
+        binding.btnAddManually.isClickable = enabled
+        binding.btnAddManually.alpha = if (enabled) 1f else DISABLED_BUTTON_ALPHA
     }
 
     private fun processDetections(bitmap: android.graphics.Bitmap, detections: List<DetectedFood>) {
@@ -449,7 +546,7 @@ class ScanFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        hideLoadingDialog()
+        hideAnalysisOverlay()
         cameraExecutor?.shutdown()
         cameraExecutor = null
         localDetector?.close()
@@ -459,9 +556,19 @@ class ScanFragment : Fragment() {
         _binding = null
     }
 
+    private data class CapturePass(
+        val bitmap: Bitmap,
+        val offsetX: Int,
+        val offsetY: Int,
+        val ownsBitmap: Boolean,
+        val name: String
+    )
+
     companion object {
         private const val TAG = "ScanFragment"
         private const val CENTER_CROP_RATIO = 0.8f
+        private const val EDGE_CROP_RATIO = 0.68f
+        private const val TILE_CROP_RATIO = 0.58f
         private const val MERGE_IOU_THRESHOLD = 0.60f
         private const val MAX_CAPTURE_DETECTIONS = 24
         private const val DISABLED_BUTTON_ALPHA = 0.45f

@@ -13,18 +13,12 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * Хелпер для интеграции Yandex Auth SDK версии 3.2.0.
- */
 class YandexAuthHelper(private val context: Context) {
 
     private val sdk: YandexAuthSdk by lazy {
         YandexAuthSdk.create(YandexAuthOptions(context.applicationContext))
     }
 
-    /**
-     * Запуск процесса авторизации.
-     */
     fun signIn(launcher: ActivityResultLauncher<Intent>) {
         try {
             val loginOptions = YandexAuthLoginOptions()
@@ -35,9 +29,6 @@ class YandexAuthHelper(private val context: Context) {
         }
     }
 
-    /**
-     * Обработка результата и извлечение токена.
-     */
     fun handleResult(resultCode: Int, data: Intent?): String? {
         return try {
             val result = sdk.contract.parseResult(resultCode, data)
@@ -52,9 +43,6 @@ class YandexAuthHelper(private val context: Context) {
         }
     }
 
-    /**
-     * Получение данных профиля через API Яндекса по OAuth токену.
-     */
     suspend fun fetchUserInfo(token: String): JSONObject? = withContext(Dispatchers.IO) {
         val url = URL("https://login.yandex.ru/info?format=json")
         val connection = url.openConnection() as HttpURLConnection

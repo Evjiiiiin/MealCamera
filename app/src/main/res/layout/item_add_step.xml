@@ -40,7 +40,6 @@
                 android:contentDescription="Удалить шаг" />
         </LinearLayout>
 
-        <!-- Единообразное поле для фото шага -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/stepImageCard"
             android:layout_width="match_parent"
@@ -80,7 +79,6 @@
                 android:hint="Описание шага" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Поле для таймера -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilStepTimer"
             style="@style/Widget_MealCamera_TextInputLayout"

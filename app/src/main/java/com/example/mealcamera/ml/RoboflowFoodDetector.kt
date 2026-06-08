@@ -190,14 +190,11 @@ class RoboflowFoodDetector(context: Context) {
         private const val META_MODEL = "com.example.mealcamera.ROBOFLOW_MODEL"
         private const val META_VERSION = "com.example.mealcamera.ROBOFLOW_VERSION"
 
-        // DEMO PROFILE: консервативные пороги для стабильности.
-        // Отдельный порог для сервера: чем выше, тем меньше шум в ответе API.
-        private const val REQUEST_CONFIDENCE = 0.30f // старое: 0.25
-        // Дополнительный локальный фильтр после ответа API.
-        private const val POST_FILTER_CONFIDENCE = 0.40f // старое: 0.35
+        private const val REQUEST_CONFIDENCE = 0.30f
+        private const val POST_FILTER_CONFIDENCE = 0.40f
         private const val REQUEST_OVERLAP = 30
-        private const val MIN_BOX_AREA_RATIO = 0.004f // старое: 0.003
-        private const val MAX_DETECTIONS = 12 // старое: 20
+        private const val MIN_BOX_AREA_RATIO = 0.004f
+        private const val MAX_DETECTIONS = 12
 
         private const val JPEG_QUALITY = 90
         private const val CONNECT_TIMEOUT_MS = 4_000

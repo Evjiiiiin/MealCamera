@@ -5,9 +5,9 @@ import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
 
 fun ImageProxy.toBitmapSafe(): Bitmap {
-    val yBuffer = planes[0].buffer // Y
-    val uBuffer = planes[1].buffer // U
-    val vBuffer = planes[2].buffer // V
+    val yBuffer = planes[0].buffer
+    val uBuffer = planes[1].buffer
+    val vBuffer = planes[2].buffer
 
     val ySize = yBuffer.remaining()
     val uSize = uBuffer.remaining()
@@ -29,7 +29,7 @@ fun ImageProxy.toBitmapSafe(): Bitmap {
     return if (rotationDegrees != 0) {
         val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
         val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        bitmap.recycle() // Fix: recycle original bitmap
+        bitmap.recycle()
         rotatedBitmap
     } else {
         bitmap

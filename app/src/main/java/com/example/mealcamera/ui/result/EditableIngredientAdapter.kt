@@ -33,7 +33,7 @@ class EditableIngredientAdapter(
         fun bind(ingredient: EditableIngredient) {
             binding.ingredient = ingredient
             
-            // Настройка количества
+            // настройка количества
             binding.ingredientQuantity.setText(ingredient.quantity)
             binding.ingredientQuantity.doAfterTextChanged { s ->
                 val newVal = s?.toString() ?: ""
@@ -43,7 +43,7 @@ class EditableIngredientAdapter(
                 }
             }
 
-            // Настройка единиц измерения (Меры)
+            // настройка единиц измерения (мера)
             val unitAdapter = ArrayAdapter(binding.root.context, android.R.layout.simple_dropdown_item_1line, units)
             binding.unitAutoComplete.setAdapter(unitAdapter)
             binding.unitAutoComplete.setText(ingredient.unit, false)

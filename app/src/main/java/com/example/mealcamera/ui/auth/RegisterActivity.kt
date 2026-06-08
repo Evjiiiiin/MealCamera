@@ -194,7 +194,7 @@ class RegisterActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             try {
-                // Проверка существования пользователя через попытку создания
+                // проверка существования пользователя через попытку создания
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
                 val user = result.user
 

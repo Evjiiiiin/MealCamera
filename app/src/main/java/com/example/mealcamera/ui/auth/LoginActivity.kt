@@ -1,20 +1,24 @@
 package com.example.mealcamera.ui.auth
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.CountDownTimer
+import android.util.Patterns
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.lifecycleScope
 import com.example.mealcamera.data.remote.FirestoreService
 import com.example.mealcamera.databinding.ActivityLoginBinding
 import com.example.mealcamera.ui.home.MainActivity
 import com.example.mealcamera.util.GoogleAuthHelper
 import com.example.mealcamera.util.YandexAuthHelper
-import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,7 +34,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var yandexAuthHelper: YandexAuthHelper
     private val firestoreService = FirestoreService()
 
-    // Секретный ключ для генерации пароля (никогда не меняйте после релиза)
+    private val authPrefs by lazy { getSharedPreferences("auth_security", Context.MODE_PRIVATE) }
+    private var loginBlockTimer: CountDownTimer? = null
+    private var isEmailLoginLoading = false
+    private var isEmailLoginBlocked = false
+
     private val YANDEX_SALT = "MealCamera_Yandex_Salt_2024"
 
     private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -62,15 +70,17 @@ class LoginActivity : AppCompatActivity() {
         googleAuthHelper = GoogleAuthHelper(this)
         yandexAuthHelper = YandexAuthHelper(this)
 
-        // Если уже авторизован, переходим на главный экран
+        // если уже авторизован, переход на главный экран
         if (auth.currentUser != null && !auth.currentUser!!.isAnonymous) {
             startMainActivity()
         } else if (auth.currentUser?.isAnonymous == true) {
-            // Если остался анонимный пользователь, выходим из него
+            // если остался анонимный пользователь, выходим из него
             auth.signOut()
         }
 
         setupClickListeners()
+        setupInputErrorReset()
+        checkLockoutStatus()
     }
 
     private fun setupClickListeners() {
@@ -88,20 +98,120 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupInputErrorReset() {
+        binding.etEmail.doOnTextChanged { _, _, _, _ -> binding.tilEmail.error = null }
+        binding.etPassword.doOnTextChanged { _, _, _, _ -> binding.tilPassword.error = null }
+    }
+
+    private fun checkLockoutStatus() {
+        val lockoutUntil = authPrefs.getLong(KEY_LOCKOUT_UNTIL, 0L)
+        val remainingMillis = lockoutUntil - System.currentTimeMillis()
+
+        if (remainingMillis > 0L) {
+            startEmailLoginBlock(remainingMillis, resetAttemptsOnFinish = true)
+        } else if (lockoutUntil > 0L) {
+            resetAttempts()
+        }
+    }
+
     private fun loginWithEmail() {
+        if (isEmailLoginBlocked) return
+
         val email = binding.etEmail.text.toString().trim()
         val password = binding.etPassword.text.toString().trim()
-        if (email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Заполните все поля", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (!validateEmailLoginInput(email, password)) return
+
         showLoading()
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 hideLoading()
-                if (task.isSuccessful) startMainActivity()
-                else Toast.makeText(this, "Ошибка: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                if (task.isSuccessful) {
+                    resetAttempts()
+                    startMainActivity()
+                } else {
+                    handleEmailLoginError(task.exception)
+                }
             }
+    }
+
+    private fun validateEmailLoginInput(email: String, password: String): Boolean {
+        var isValid = true
+
+        if (email.isEmpty()) {
+            binding.tilEmail.error = "Введите email"
+            isValid = false
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            binding.tilEmail.error = "Некорректный формат email"
+            isValid = false
+        }
+
+        if (password.isEmpty()) {
+            binding.tilPassword.error = "Введите пароль"
+            isValid = false
+        }
+
+        return isValid
+    }
+
+    private fun handleEmailLoginError(exception: Exception?) {
+        val attempts = authPrefs.getInt(KEY_FAILED_ATTEMPTS, 0) + 1
+        authPrefs.edit()
+            .putInt(KEY_FAILED_ATTEMPTS, attempts)
+            .apply()
+
+        showEmailLoginError(exception)
+
+        when {
+            attempts >= MAX_ATTEMPTS_BEFORE_LOCKOUT -> {
+                val lockoutUntil = System.currentTimeMillis() + LOCKOUT_MS
+                authPrefs.edit()
+                    .putLong(KEY_LOCKOUT_UNTIL, lockoutUntil)
+                    .apply()
+                Toast.makeText(this, "Слишком много попыток. Вход заблокирован на 1 минуту", Toast.LENGTH_LONG).show()
+                startEmailLoginBlock(LOCKOUT_MS, resetAttemptsOnFinish = true)
+            }
+            attempts >= MAX_ATTEMPTS_BEFORE_DELAY -> {
+                Toast.makeText(this, "Слишком много попыток. Подождите 5 секунд", Toast.LENGTH_SHORT).show()
+                startEmailLoginBlock(DELAY_MS, resetAttemptsOnFinish = false)
+            }
+        }
+    }
+
+    private fun showEmailLoginError(exception: Exception?) {
+        when (exception) {
+            is FirebaseAuthInvalidUserException -> binding.tilEmail.error = "Пользователь не найден"
+            is FirebaseAuthInvalidCredentialsException -> binding.tilPassword.error = "Неверный email или пароль"
+            else -> Toast.makeText(this, "Ошибка входа. Проверьте интернет", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun startEmailLoginBlock(millis: Long, resetAttemptsOnFinish: Boolean) {
+        loginBlockTimer?.cancel()
+        isEmailLoginBlocked = true
+        updateEmailLoginControls()
+
+        loginBlockTimer = object : CountDownTimer(millis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val seconds = ((millisUntilFinished + 999) / 1000).coerceAtLeast(1)
+                binding.btnLogin.text = "Войти через $seconds сек"
+            }
+
+            override fun onFinish() {
+                isEmailLoginBlocked = false
+                binding.btnLogin.text = "Войти"
+                if (resetAttemptsOnFinish) resetAttempts()
+                updateEmailLoginControls()
+                loginBlockTimer = null
+            }
+        }.start()
+    }
+
+    private fun resetAttempts() {
+        authPrefs.edit()
+            .remove(KEY_FAILED_ATTEMPTS)
+            .remove(KEY_LOCKOUT_UNTIL)
+            .apply()
+        binding.btnLogin.text = "Войти"
     }
 
     private fun signInWithCredential(credential: com.google.firebase.auth.AuthCredential) {
@@ -146,18 +256,17 @@ class LoginActivity : AppCompatActivity() {
                 val password = generatePassword(yandexId)
 
                 try {
-                    // Пробуем войти с существующим аккаунтом
+                    // существующий аккаунт
                     auth.signInWithEmailAndPassword(email, password).await()
                 } catch (e: FirebaseAuthInvalidCredentialsException) {
-                    // Аккаунт не существует, создаём новый
+                    // новый аккаунт
                     auth.createUserWithEmailAndPassword(email, password).await()
                 } catch (e: FirebaseAuthUserCollisionException) {
-                    // Теоретически невозможная ситуация, но обработаем
                     auth.signInWithEmailAndPassword(email, password).await()
                 }
 
                 val uid = auth.currentUser!!.uid
-                // Обновляем профиль в Firestore
+                // обновление профиля в Firestore
                 firestoreService.saveUserProfile(uid, name, avatarUrl, yandexId)
 
                 hideLoading()
@@ -177,16 +286,39 @@ class LoginActivity : AppCompatActivity() {
 
     private fun showLoading() {
         binding.progressBar.visibility = View.VISIBLE
-        binding.btnLogin.isEnabled = false
+        isEmailLoginLoading = true
+        updateEmailLoginControls()
     }
 
     private fun hideLoading() {
         binding.progressBar.visibility = View.GONE
-        binding.btnLogin.isEnabled = true
+        isEmailLoginLoading = false
+        updateEmailLoginControls()
+    }
+
+    private fun updateEmailLoginControls() {
+        val emailLoginEnabled = !isEmailLoginLoading && !isEmailLoginBlocked
+        binding.btnLogin.isEnabled = emailLoginEnabled
+        binding.etEmail.isEnabled = emailLoginEnabled
+        binding.etPassword.isEnabled = emailLoginEnabled
     }
 
     private fun startMainActivity() {
         startActivity(Intent(this, MainActivity::class.java))
         finish()
+    }
+
+    override fun onDestroy() {
+        loginBlockTimer?.cancel()
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val KEY_FAILED_ATTEMPTS = "failed_attempts"
+        private const val KEY_LOCKOUT_UNTIL = "lockout_until"
+        private const val MAX_ATTEMPTS_BEFORE_DELAY = 3
+        private const val MAX_ATTEMPTS_BEFORE_LOCKOUT = 5
+        private const val DELAY_MS = 5_000L
+        private const val LOCKOUT_MS = 60_000L
     }
 }

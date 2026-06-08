@@ -78,7 +78,7 @@ class AddRecipeViewModel(
             )
         }
 
-        // --- Валидация (синхронная) ---
+        // синхронная валидация
         if (capitalizedName.isBlank()) {
             _uiState.value = AddRecipeState.Error("Введите название блюда")
             return
@@ -117,7 +117,7 @@ class AddRecipeViewModel(
         viewModelScope.launch {
             _uiState.value = AddRecipeState.Loading
             
-            // --- Валидация съедобности (асинхронная, так как требует доступа к БД) ---
+            // валидация для съедобных объектов
             val allIngNames = capitalizedIngredients.map { it.name } + 
                               capitalizedSteps.flatMap { s -> s.ingredients.map { it.name } }
             

@@ -31,10 +31,10 @@ data class Recipe(
     val fats: Double = 0.0,
     val carbs: Double = 0.0,
 
-    // Вес готового блюда для базового количества порций
+    // вес готового блюда для базового количества порций
     val totalWeight: Int = 0,
 
-    // Исходное количество порций, для которого указаны ингредиенты и КБЖУ
+    // Исходное количество порций
     val basePortions: Int = 1,
 
     @ColumnInfo(name = "authorId", defaultValue = "admin")

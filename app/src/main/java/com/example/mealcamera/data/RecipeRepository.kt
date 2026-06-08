@@ -453,8 +453,7 @@ class RecipeRepository(
                     shoppingListDao.updateItem(existing.copy(quantity = "по вкусу", unit = ""))
                 } else {
                     val existingQty = existing.quantity.toDoubleOrNull() ?: 0.0
-                    val addQty = quantity
-                    val newQuantity = existingQty + addQty
+                    val newQuantity = existingQty + quantity
                     val newQuantityStr = UnitHelper.formatQuantity(newQuantity)
                     shoppingListDao.updateItem(existing.copy(quantity = newQuantityStr))
                 }

@@ -28,7 +28,7 @@ class FirestoreService {
         }
     }
 
-    // ========== ПОЛЬЗОВАТЕЛИ ==========
+    // ПОЛЬЗОВАТЕЛИ
 
     suspend fun saveUserProfile(userId: String, name: String, photoUrl: String, yandexId: String? = null): Boolean {
         return try {
@@ -81,7 +81,7 @@ class FirestoreService {
         } catch (e: Exception) { emptyList() }
     }
 
-    // ========== ИНГРЕДИЕНТЫ ==========
+    // ИНГРЕДИЕНТЫ
 
     suspend fun getAllIngredients(): List<CloudIngredientData> {
         return try {
@@ -115,7 +115,7 @@ class FirestoreService {
         } catch (e: Exception) { false }
     }
 
-    // ========== РЕЦЕПТЫ ==========
+    // РЕЦЕПТЫ
 
     suspend fun getAllRecipes(): List<RecipeData> {
         return try {

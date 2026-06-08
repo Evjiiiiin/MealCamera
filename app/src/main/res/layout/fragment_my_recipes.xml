@@ -18,7 +18,7 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:listitem="@layout/item_my_recipe" />
 
-    <!-- Пустое состояние -->
+    <!-- пустое состояние -->
     <LinearLayout
         android:id="@+id/emptyState"
         android:layout_width="match_parent"
@@ -57,7 +57,6 @@
             android:text="Создать рецепт" />
     </LinearLayout>
 
-    <!-- Градиент строго внизу -->
     <View
         android:layout_width="match_parent"
         android:layout_height="180dp"
